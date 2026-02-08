@@ -106,7 +106,7 @@ model Event {
   id          String    @id @default(cuid())
   userId      String
   name        String
-  type        EventType
+  type        String    // BIRTHDAY, ANNIVERSARY, WEDDING, BABY_SHOWER, CHRISTMAS, HOLIDAY, OTHER
   date        DateTime
   description String?
   shareUrl    String?   @unique @default(cuid())
@@ -142,28 +142,11 @@ model Contribution {
   message       String?
   isAnonymous   Boolean  @default(false)
   stripePaymentId String?
-  status        ContributionStatus @default(PENDING)
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   createdAt     DateTime @default(now())
 
   item        Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
   contributor User? @relation(fields: [contributorId], references: [id])
 
   @@index([itemId])
-}
-
-enum EventType {
-  BIRTHDAY
-  ANNIVERSARY
-  WEDDING
-  BABY_SHOWER
-  CHRISTMAS
-  HOLIDAY
-  OTHER
-}
-
-enum ContributionStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
 }
