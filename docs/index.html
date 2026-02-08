@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Giftist - Wishlist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #E85D4C;
+      --secondary: #2D3436;
+      --accent: #F8B500;
+      --background: #FFF9F5;
+      --success: #00B894;
+      --white: #FFFFFF;
+      --gray-100: #f8f9fa;
+      --gray-200: #e9ecef;
+      --gray-300: #dee2e6;
+      --gray-500: #adb5bd;
+      --gray-600: #6c757d;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background);
+      color: var(--secondary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .logo-text {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      color: var(--gray-600);
+      font-size: 16px;
+    }
+
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Error State */
+    .error {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .error h2 {
+      margin-bottom: 8px;
+    }
+
+    .error p {
+      color: var(--gray-600);
+    }
+
+    /* Items Grid */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .item-card {
+      background: var(--white);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+    }
+
+    .item-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .item-card.price-drop {
+      border: 2px solid var(--success);
+    }
+
+    .item-card.price-drop::before {
+      content: 'Price Drop!';
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: var(--success);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      z-index: 1;
+    }
+
+    .item-image-container {
+      position: relative;
+      padding-top: 75%;
+      background: var(--gray-100);
+    }
+
+    .item-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .item-content {
+      padding: 16px;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--secondary);
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .item-price {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .item-price.dropped {
+      color: var(--success);
+    }
+
+    .item-original-price {
+      font-size: 14px;
+      color: var(--gray-500);
+      text-decoration: line-through;
+      margin-left: 8px;
+    }
+
+    .item-category {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(248, 181, 0, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    .item-domain {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+    }
+
+    .item-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .item-btn:hover {
+      background: #d14d3d;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      background: var(--white);
+      border-radius: 16px;
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state h2 {
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--gray-600);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 60px;
+      padding: 24px;
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Categories Filter */
+    .categories-filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .category-btn {
+      padding: 8px 16px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .category-btn:hover,
+    .category-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 32px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 24px 16px;
+      }
+
+      .items-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        gap: 24px;
+      }
+
+      .stat-value {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 64 64" fill="none">
+          <rect x="8" y="24" width="48" height="36" rx="4" fill="#E85D4C"/>
+          <rect x="8" y="20" width="48" height="12" rx="2" fill="#E85D4C"/>
+          <rect x="28" y="20" width="8" height="40" fill="#F8B500"/>
+          <path d="M24 8C24 8 20 16 32 20C44 16 40 8 40 8" stroke="#F8B500" stroke-width="4" stroke-linecap="round"/>
+          <path d="M22 36L28 44L42 28" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">The Giftist</span>
+      </div>
+      <p class="subtitle">Someone shared their wishlist with you!</p>
+    </header>
+
+    <main id="content">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading wishlist...</p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>Create your own wishlist with <a href="#">The Giftist Chrome Extension</a></p>
+    </footer>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // API URL - update this when you deploy the website
+      const API_URL = 'https://thegiftist.vercel.app/api';
+
+      const content = document.getElementById('content');
+
+      // Handle 404 redirect (GitHub Pages SPA workaround)
+      const redirectPath = getQueryParam('p');
+      if (redirectPath) {
+        // Extract share ID from redirected path like /share/abc123
+        const match = redirectPath.match(/\/share\/([^\/]+)/);
+        if (match) {
+          history.replaceState(null, '', '/share/' + match[1]);
+        }
+      }
+
+      // Get share ID from URL
+      const pathParts = window.location.pathname.split('/');
+      const shareId = pathParts[pathParts.length - 1] || getQueryParam('id');
+
+      if (!shareId || shareId === 'share') {
+        showError('No wishlist ID provided. Share links look like: /share/abc123');
+        return;
+      }
+
+      // Fetch giftlist data from API
+      fetchGiftlist(shareId);
+
+      function getQueryParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      }
+
+      async function fetchGiftlist(id) {
+        try {
+          // Check for demo data in URL (for testing)
+          const demoData = getQueryParam('demo');
+          if (demoData) {
+            try {
+              const data = JSON.parse(decodeURIComponent(demoData));
+              renderGiftlist(data);
+              return;
+            } catch (e) {
+              console.error('Failed to parse demo data');
+            }
+          }
+
+          // Try to fetch from API
+          try {
+            const response = await fetch(`${API_URL}/share/${id}`);
+            if (response.ok) {
+              const data = await response.json();
+              renderGiftlist(data);
+              return;
+            }
+          } catch (apiError) {
+            console.log('API not available, showing demo data');
+          }
+
+          // Fallback: Show demo wishlist for testing
+          renderGiftlist({
+            items: [
+              {
+                id: '1',
+                name: 'Apple AirPods Pro (2nd Generation)',
+                price: '$199.99',
+                priceValue: 199.99,
+                image: 'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400&h=300&fit=crop',
+                url: 'https://amazon.com/example',
+                domain: 'amazon.com',
+                category: 'Birthday'
+              },
+              {
+                id: '2',
+                name: 'Kindle Paperwhite (16 GB)',
+                price: '$139.99',
+                priceValue: 139.99,
+                image: 'https://images.unsplash.com/photo-1594377157609-5c996118ac7f?w=400&h=300&fit=crop',
+                url: 'https://amazon.com/example',
+                domain: 'amazon.com',
+                category: 'Birthday'
+              },
+              {
+                id: '3',
+                name: 'Lululemon Define Jacket',
+                price: '$128.00',
+                priceValue: 128.00,
+                image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=300&fit=crop',
+                url: 'https://lululemon.com/example',
+                domain: 'lululemon.com',
+                category: 'Just For Me'
+              }
+            ],
+            categories: ['Birthday', 'Just For Me'],
+            shareId: id,
+            ownerName: 'Demo User'
+          });
+
+        } catch (error) {
+          console.error('Failed to fetch giftlist:', error);
+          showError('Could not load this wishlist. It may have been deleted or the link is invalid.');
+        }
+      }
+
+      function renderGiftlist(data) {
+        if (!data.items || data.items.length === 0) {
+          showEmpty();
+          return;
+        }
+
+        const items = data.items;
+        const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
+        const totalValue = items.reduce((sum, item) => sum + (item.priceValue || 0), 0);
+
+        let html = `
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value">${items.length}</div>
+              <div class="stat-label">Items</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">$${totalValue.toFixed(0)}</div>
+              <div class="stat-label">Total Value</div>
+            </div>
+          </div>
+        `;
+
+        if (categories.length > 0) {
+          html += `
+            <div class="categories-filter">
+              <button class="category-btn active" data-category="all">All</button>
+              ${categories.map(cat => `<button class="category-btn" data-category="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`).join('')}
+            </div>
+          `;
+        }
+
+        html += `<div class="items-grid" id="itemsGrid">`;
+        html += items.map(item => renderItem(item)).join('');
+        html += `</div>`;
+
+        content.innerHTML = html;
+
+        // Setup category filter
+        document.querySelectorAll('.category-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterItems(btn.dataset.category);
+          });
+        });
+      }
+
+      function renderItem(item) {
+        const hasPriceDrop = item.priceHistory && item.priceHistory.length > 1 &&
+          item.priceValue < item.priceHistory[0].price;
+
+        return `
+          <div class="item-card ${hasPriceDrop ? 'price-drop' : ''}" data-category="${escapeHtml(item.category || '')}">
+            <div class="item-image-container">
+              <img class="item-image" src="${item.image || 'https://via.placeholder.com/400x300/f8f9fa/adb5bd?text=No+Image'}" alt="${escapeHtml(item.name)}" loading="lazy">
+            </div>
+            <div class="item-content">
+              ${item.category ? `<span class="item-category">${escapeHtml(item.category)}</span>` : ''}
+              <h3 class="item-name">${escapeHtml(item.name)}</h3>
+              <p class="item-price ${hasPriceDrop ? 'dropped' : ''}">
+                ${item.price || 'Price not available'}
+                ${hasPriceDrop ? `<span class="item-original-price">$${item.priceHistory[0].price.toFixed(2)}</span>` : ''}
+              </p>
+              <p class="item-domain">from ${escapeHtml(item.domain)}</p>
+              <a href="${item.url}" target="_blank" rel="noopener" class="item-btn">View Product</a>
+            </div>
+          </div>
+        `;
+      }
+
+      function filterItems(category) {
+        const cards = document.querySelectorAll('.item-card');
+        cards.forEach(card => {
+          if (category === 'all' || card.dataset.category === category) {
+            card.style.display = '';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      }
+
+      function showError(message) {
+        content.innerHTML = `
+          <div class="error">
+            <div class="error-icon">😕</div>
+            <h2>Oops!</h2>
+            <p>${escapeHtml(message)}</p>
+          </div>
+        `;
+      }
+
+      function showEmpty() {
+        content.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🎁</div>
+            <h2>This wishlist is empty</h2>
+            <p>No items have been added yet.</p>
+          </div>
+        `;
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+    })();
+  </script>
+</body>
+</html>

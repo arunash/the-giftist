@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  phone         String?   @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  items         Item[]
+  events        Event[]
+  contributions Contribution[]
+  shareId       String?   @unique @default(cuid())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  price        String?
+  priceValue   Float?
+  image        String?
+  url          String
+  domain       String
+  category     String?
+  addedAt      DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Price tracking
+  priceHistory PriceHistory[]
+
+  // Wallet/funding
+  goalAmount   Float?
+  fundedAmount Float    @default(0)
+  isPurchased  Boolean  @default(false)
+  purchasedAt  DateTime?
+
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventItems    EventItem[]
+  contributions Contribution[]
+
+  @@index([userId])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  itemId    String
+  price     Float
+  recordedAt DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  type        EventType
+  date        DateTime
+  description String?
+  shareUrl    String?   @unique @default(cuid())
+  isPublic    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  EventItem[]
+
+  @@index([userId])
+}
+
+model EventItem {
+  id        String   @id @default(cuid())
+  eventId   String
+  itemId    String
+  priority  Int      @default(0)
+  addedAt   DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  item  Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, itemId])
+}
+
+model Contribution {
+  id            String   @id @default(cuid())
+  itemId        String
+  contributorId String?  // null if anonymous
+  amount        Float
+  message       String?
+  isAnonymous   Boolean  @default(false)
+  stripePaymentId String?
+  status        ContributionStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+
+  item        Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  contributor User? @relation(fields: [contributorId], references: [id])
+
+  @@index([itemId])
+}
+
+enum EventType {
+  BIRTHDAY
+  ANNIVERSARY
+  WEDDING
+  BABY_SHOWER
+  CHRISTMAS
+  HOLIDAY
+  OTHER
+}
+
+enum ContributionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}

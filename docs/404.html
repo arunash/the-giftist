@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // Redirect to index.html with the path as a query parameter
+    // This enables SPA-style routing on GitHub Pages
+    const path = window.location.pathname;
+    const search = window.location.search;
+    window.location.replace(
+      window.location.origin + '/?p=' + encodeURIComponent(path) + (search ? '&' + search.slice(1) : '')
+    );
+  </script>
+</head>
+<body>
+  Redirecting...
+</body>
+</html>

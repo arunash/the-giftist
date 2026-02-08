@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { z } from 'zod'
+
+const itemSchema = z.object({
+  name: z.string().min(1).max(500),
+  price: z.string().optional().nullable(),
+  priceValue: z.number().optional().nullable(),
+  image: z.string().url().optional().nullable(),
+  url: z.string().url(),
+  domain: z.string().optional(),
+  category: z.string().optional().nullable(),
+})
+
+// GET all items for the authenticated user
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = (session.user as any).id
+
+    const items = await prisma.item.findMany({
+      where: { userId },
+      orderBy: { addedAt: 'desc' },
+      include: {
+        priceHistory: {
+          orderBy: { recordedAt: 'asc' },
+        },
+      },
+    })
+
+    return NextResponse.json(items)
+  } catch (error) {
+    console.error('Error fetching items:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch items' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST create a new item
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = (session.user as any).id
+    const body = await request.json()
+    const data = itemSchema.parse(body)
+
+    // Extract domain from URL if not provided
+    const domain = data.domain || new URL(data.url).hostname
+
+    const item = await prisma.item.create({
+      data: {
+        userId,
+        name: data.name,
+        price: data.price,
+        priceValue: data.priceValue,
+        image: data.image,
+        url: data.url,
+        domain,
+        category: data.category,
+        goalAmount: data.priceValue,
+        priceHistory: data.priceValue
+          ? {
+              create: {
+                price: data.priceValue,
+              },
+            }
+          : undefined,
+      },
+      include: {
+        priceHistory: true,
+      },
+    })
+
+    return NextResponse.json(item, { status: 201 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid data', details: error.errors },
+        { status: 400 }
+      )
+    }
+    console.error('Error creating item:', error)
+    return NextResponse.json(
+      { error: 'Failed to create item' },
+      { status: 500 }
+    )
+  }
+}
