@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
 
 const itemSchema = z.object({
@@ -12,6 +13,9 @@ const itemSchema = z.object({
   url: z.string().url(),
   domain: z.string().optional(),
   category: z.string().optional().nullable(),
+  source: z.enum(['WHATSAPP', 'EXTENSION', 'MANUAL', 'CHAT']).optional(),
+  notes: z.string().optional().nullable(),
+  tags: z.string().optional().nullable(),
 })
 
 // GET all items for the authenticated user
@@ -71,6 +75,9 @@ export async function POST(request: NextRequest) {
         url: data.url,
         domain,
         category: data.category,
+        source: data.source || 'MANUAL',
+        notes: data.notes,
+        tags: data.tags,
         goalAmount: data.priceValue,
         priceHistory: data.priceValue
           ? {
@@ -84,6 +91,15 @@ export async function POST(request: NextRequest) {
         priceHistory: true,
       },
     })
+
+    // Emit activity event (fire-and-forget)
+    createActivity({
+      userId,
+      type: 'ITEM_ADDED',
+      visibility: 'PUBLIC',
+      itemId: item.id,
+      metadata: { itemName: item.name, source: body.source || 'MANUAL' },
+    }).catch(() => {})
 
     return NextResponse.json(item, { status: 201 })
   } catch (error) {

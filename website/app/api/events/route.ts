@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
 
 const eventSchema = z.object({
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    // Emit activity event
+    createActivity({
+      userId,
+      type: 'EVENT_CREATED',
+      visibility: 'PUBLIC',
+      metadata: { eventName: event.name, eventType: event.type },
+    }).catch(() => {})
 
     return NextResponse.json(event, { status: 201 })
   } catch (error) {

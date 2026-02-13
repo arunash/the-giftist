@@ -3,6 +3,8 @@ import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
+import { normalizePhone } from './whatsapp'
+import { verifyCode } from './verification-codes'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -23,22 +25,21 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // In production, verify the code against your SMS service
-        // For now, accept any 6-digit code for demo
-        if (credentials.code.length !== 6) {
+        const normalized = normalizePhone(credentials.phone)
+
+        if (!verifyCode(normalized, credentials.code)) {
           return null
         }
 
-        // Find or create user by phone
         let user = await prisma.user.findUnique({
-          where: { phone: credentials.phone },
+          where: { phone: normalized },
         })
 
         if (!user) {
           user = await prisma.user.create({
             data: {
-              phone: credentials.phone,
-              name: `User ${credentials.phone.slice(-4)}`,
+              phone: normalized,
+              name: `User ${normalized.slice(-4)}`,
             },
           })
         }
@@ -46,6 +47,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           name: user.name,
+          email: user.email,
           phone: user.phone,
         }
       },
@@ -58,12 +60,24 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.phone = (user as any).phone || null
+      }
+      // On subsequent requests, look up phone from DB if not set
+      if (token.id && !token.phone) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { phone: true },
+        })
+        if (dbUser?.phone) {
+          token.phone = dbUser.phone
+        }
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id
+        ;(session.user as any).phone = token.phone || null
       }
       return session
     },

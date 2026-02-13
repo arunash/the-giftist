@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Gift, Calendar, ArrowLeft, Check } from 'lucide-react'
+import { Gift, Check } from 'lucide-react'
 
 const eventTypes = [
   { value: 'BIRTHDAY', label: 'Birthday', emoji: '🎂' },
@@ -28,10 +27,9 @@ export default function NewEventPage() {
   })
 
   useEffect(() => {
-    // Fetch user's items
     fetch('/api/items')
       .then((res) => res.json())
-      .then((data) => setItems(data))
+      .then((data) => setItems(Array.isArray(data) ? data : []))
       .catch(console.error)
   }, [])
 
@@ -70,42 +68,21 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Back
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="p-6 lg:p-8">
+      <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h1 className="text-2xl font-bold text-secondary mb-6">
-            Create Event
-          </h1>
+          <h1 className="text-2xl font-bold text-secondary mb-6">Create Event</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Event Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Event Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Event Type</label>
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                 {eventTypes.map((type) => (
                   <button
                     key={type.value}
                     type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, type: type.value }))
-                    }
+                    onClick={() => setFormData((prev) => ({ ...prev, type: type.value }))}
                     className={`flex flex-col items-center p-3 rounded-lg border-2 transition ${
                       formData.type === type.value
                         ? 'border-primary bg-primary-light'
@@ -121,15 +98,11 @@ export default function NewEventPage() {
 
             {/* Event Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Event Name</label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Sarah's 30th Birthday"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
@@ -138,15 +111,11 @@ export default function NewEventPage() {
 
             {/* Event Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
               <input
                 type="date"
                 value={formData.date}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, date: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
               />
@@ -154,14 +123,10 @@ export default function NewEventPage() {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description (optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
               <textarea
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, description: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Add any notes about the event..."
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
@@ -170,15 +135,11 @@ export default function NewEventPage() {
 
             {/* Select Items */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Add Items to This Event
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Add Items to This Event</label>
               {items.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
                   <Gift className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-600">
-                    No items in your Giftist yet.
-                  </p>
+                  <p className="text-gray-600">No items in your Giftist yet.</p>
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
@@ -195,11 +156,7 @@ export default function NewEventPage() {
                     >
                       <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.image ? (
-                          <img
-                            src={item.image}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={item.image} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <Gift className="h-6 w-6 text-gray-300" />
@@ -207,9 +164,7 @@ export default function NewEventPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-secondary text-sm line-clamp-1">
-                          {item.name}
-                        </p>
+                        <p className="font-medium text-secondary text-sm line-clamp-1">{item.name}</p>
                         <p className="text-primary text-sm">{item.price}</p>
                       </div>
                       {formData.itemIds.includes(item.id) && (
@@ -234,7 +189,7 @@ export default function NewEventPage() {
             </button>
           </form>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

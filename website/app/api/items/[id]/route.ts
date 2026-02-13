@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -105,6 +106,17 @@ export async function PATCH(
         priceHistory: true,
       },
     })
+
+    // Emit activity if marked as purchased
+    if (data.isPurchased && !existingItem.isPurchased) {
+      createActivity({
+        userId,
+        type: 'ITEM_PURCHASED',
+        visibility: 'PUBLIC',
+        itemId: id,
+        metadata: { itemName: item.name },
+      }).catch(() => {})
+    }
 
     return NextResponse.json(item)
   } catch (error) {

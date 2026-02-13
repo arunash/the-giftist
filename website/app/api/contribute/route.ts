@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
 
 const contributionSchema = z.object({
@@ -76,6 +77,26 @@ export async function POST(request: NextRequest) {
         // Don't auto-mark as purchased, let owner do that
       },
     })
+
+    // Emit activity events (fire-and-forget)
+    if (contributorId) {
+      createActivity({
+        userId: contributorId,
+        type: 'ITEM_FUNDED',
+        visibility: 'PUBLIC',
+        itemId: data.itemId,
+        metadata: { amount: data.amount, itemName: item.name },
+      }).catch(() => {})
+    }
+
+    // Notify item owner
+    createActivity({
+      userId: item.userId,
+      type: 'CONTRIBUTION_RECEIVED',
+      visibility: 'PRIVATE',
+      itemId: data.itemId,
+      metadata: { amount: data.amount, contributorName: data.isAnonymous ? 'Anonymous' : 'Someone' },
+    }).catch(() => {})
 
     return NextResponse.json({
       contribution,
