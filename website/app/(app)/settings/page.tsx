@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import LinkPhoneForm from './link-phone-form'
+import DemographicsForm from './demographics-form'
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
@@ -14,7 +15,11 @@ export default async function SettingsPage() {
   const userId = (session.user as any).id
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, email: true, phone: true, shareId: true },
+    select: {
+      name: true, email: true, phone: true, shareId: true,
+      birthday: true, gender: true, ageRange: true,
+      interests: true, giftBudget: true, relationship: true,
+    },
   })
 
   const shareUrl = `https://giftist.ai/share/${user?.shareId}`
@@ -67,6 +72,22 @@ export default async function SettingsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Demographics */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-semibold text-secondary mb-1">Personalization</h2>
+          <p className="text-sm text-gray-500 mb-4">Help our AI give you better gift recommendations</p>
+          <DemographicsForm
+            initialData={{
+              birthday: user?.birthday ? user.birthday.toISOString().split('T')[0] : null,
+              gender: user?.gender ?? null,
+              ageRange: user?.ageRange ?? null,
+              interests: user?.interests ? JSON.parse(user.interests) : [],
+              giftBudget: user?.giftBudget ?? null,
+              relationship: user?.relationship ?? null,
+            }}
+          />
         </div>
 
         {/* Share Link */}

@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -13,6 +14,38 @@ const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   CHRISTMAS: { label: 'Christmas', emoji: '🎄' },
   HOLIDAY: { label: 'Holiday', emoji: '🎉' },
   OTHER: { label: 'Event', emoji: '🎁' },
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string }
+}): Promise<Metadata> {
+  const event = await prisma.event.findFirst({
+    where: { OR: [{ shareUrl: params.id }, { id: params.id }] },
+    select: { name: true, type: true, description: true, user: { select: { name: true } } },
+  })
+
+  if (!event) return { title: 'Event Not Found' }
+
+  const typeInfo = eventTypeLabels[event.type] || eventTypeLabels.OTHER
+  const title = `${event.name} - ${typeInfo.label}`
+  const description = event.description || `${event.user.name || 'Someone'}'s ${typeInfo.label.toLowerCase()} wishlist on The Giftist`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function EventPage({
@@ -81,7 +114,7 @@ export default async function EventPage({
 
   const days = daysUntil(event.date)
   const typeInfo = eventTypeLabels[event.type] || eventTypeLabels.OTHER
-  const shareUrl = `https://thegiftist.com/events/${event.shareUrl}`
+  const shareUrl = `https://giftist.ai/events/${event.shareUrl}`
 
   const totalGoal = event.items.reduce(
     (sum, ei) => sum + (ei.item.goalAmount || ei.item.priceValue || 0),

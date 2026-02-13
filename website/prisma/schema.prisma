@@ -17,6 +17,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Demographics (for AI personalization)
+  birthday     DateTime?
+  gender       String?   // MALE, FEMALE, NON_BINARY, PREFER_NOT_TO_SAY
+  ageRange     String?   // 18-24, 25-34, 35-44, 45-54, 55-64, 65+
+  interests    String?   // JSON array: ["tech","fashion",...]
+  giftBudget   String?   // UNDER_50, 50_100, 100_250, 250_500, OVER_500
+  relationship String?   // SINGLE, COUPLE, FAMILY
+
   // Relations
   accounts       Account[]
   sessions       Session[]

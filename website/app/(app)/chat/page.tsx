@@ -4,13 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { ChatBubble } from '@/components/chat/chat-bubble'
 import { ChatInput } from '@/components/chat/chat-input'
 import { SuggestionChip } from '@/components/chat/suggestion-chip'
+import { useChatStream } from '@/lib/hooks/use-chat-stream'
 import { MessageCircle } from 'lucide-react'
-
-interface Message {
-  id: string
-  role: 'USER' | 'ASSISTANT'
-  content: string
-}
 
 const defaultSuggestions = [
   'What should I buy next?',
@@ -20,8 +15,7 @@ const defaultSuggestions = [
 ]
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [streaming, setStreaming] = useState(false)
+  const { messages, streaming, sendMessage, setInitialMessages } = useChatStream()
   const [loading, setLoading] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -37,79 +31,16 @@ export default function ChatPage() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setMessages(data.map((m: any) => ({ id: m.id, role: m.role, content: m.content })))
+          setInitialMessages(data.map((m: any) => ({ id: m.id, role: m.role, content: m.content })))
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [setInitialMessages])
 
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
-
-  async function handleSend(message: string) {
-    const userMsg: Message = { id: `user-${Date.now()}`, role: 'USER', content: message }
-    setMessages((prev) => [...prev, userMsg])
-    setStreaming(true)
-
-    const assistantId = `assistant-${Date.now()}`
-    setMessages((prev) => [...prev, { id: assistantId, role: 'ASSISTANT', content: '' }])
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
-
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-
-      if (!reader) throw new Error('No reader')
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
-            if (data === '[DONE]') break
-
-            try {
-              const parsed = JSON.parse(data)
-              if (parsed.text) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, content: m.content + parsed.text }
-                      : m
-                  )
-                )
-              }
-            } catch {
-              // Skip malformed JSON
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Chat error:', error)
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: 'Sorry, something went wrong. Please try again.' }
-            : m
-        )
-      )
-    } finally {
-      setStreaming(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -143,7 +74,7 @@ export default function ChatPage() {
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-md">
               {defaultSuggestions.map((s) => (
-                <SuggestionChip key={s} label={s} onClick={handleSend} />
+                <SuggestionChip key={s} label={s} onClick={sendMessage} />
               ))}
             </div>
           </div>
@@ -158,14 +89,14 @@ export default function ChatPage() {
       {messages.length > 0 && !streaming && (
         <div className="px-4 py-2 flex gap-2 overflow-x-auto flex-shrink-0">
           {defaultSuggestions.slice(0, 3).map((s) => (
-            <SuggestionChip key={s} label={s} onClick={handleSend} />
+            <SuggestionChip key={s} label={s} onClick={sendMessage} />
           ))}
         </div>
       )}
 
       {/* Input */}
       <div className="flex-shrink-0">
-        <ChatInput onSend={handleSend} disabled={streaming} />
+        <ChatInput onSend={sendMessage} disabled={streaming} />
       </div>
     </div>
   )

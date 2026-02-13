@@ -6,6 +6,7 @@ import { ItemFilters } from '@/components/feed/item-filters'
 import { ActivityItem } from '@/components/activity/activity-item'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import { EmptyState } from '@/components/ui/empty-state'
+import { HomeChatBar } from '@/components/chat/home-chat-bar'
 import { Gift, Loader2 } from 'lucide-react'
 import { dummyItems, dummyActivities } from '@/lib/dummy-data'
 
@@ -94,13 +95,17 @@ export default function FeedPage() {
         <div className="flex gap-8">
           {/* Left: Wishlist Feed */}
           <div className="flex-1 min-w-0 lg:max-w-[62%]">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h1 className="text-xl font-bold text-gray-900">Home</h1>
               {useDummy && (
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                   Sample data
                 </span>
               )}
+            </div>
+
+            <div className="mb-6">
+              <HomeChatBar />
             </div>
 
             <div className="mb-6">
