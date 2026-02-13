@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   },
   description: 'Create wishlists, organize events, and let friends contribute to your gifts. AI-powered gift recommendations tailored to you.',
   keywords: ['wishlist', 'gift registry', 'gift ideas', 'gift recommendations', 'wishlists', 'gift curator', 'crowdfunding gifts'],
-  metadataBase: new URL('https://giftist.arunash.com'),
+  metadataBase: new URL('https://giftist.ai'),
   openGraph: {
     type: 'website',
     locale: 'en_US',

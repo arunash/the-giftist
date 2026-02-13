@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/feed', '/chat', '/wallet', '/settings'],
     },
-    sitemap: 'https://giftist.arunash.com/sitemap.xml',
+    sitemap: 'https://giftist.ai/sitemap.xml',
   }
 }
