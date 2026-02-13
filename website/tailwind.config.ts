@@ -23,7 +23,7 @@ const config: Config = {
           DEFAULT: '#00B894',
           light: '#d4edda',
         },
-        background: '#FFF9F5',
+        background: '#FAFAFA',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

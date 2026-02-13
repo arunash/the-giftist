@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import {
   LayoutGrid,
-  Activity,
   MessageCircle,
   Wallet,
   Settings,
@@ -15,8 +14,7 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 
 const navItems = [
-  { href: '/feed', label: 'Feed', icon: LayoutGrid },
-  { href: '/activity', label: 'Activity', icon: Activity },
+  { href: '/feed', label: 'Home', icon: LayoutGrid },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/wallet', label: 'Wallet', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -31,9 +29,9 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
   const { data: session } = useSession()
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 h-screen fixed left-0 top-0 bg-white border-r border-gray-200">
+    <aside className="hidden lg:flex flex-col w-60 h-screen fixed left-0 top-0 bg-white shadow-sm">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-100">
+      <div className="p-6">
         <Link href="/feed" className="flex items-center gap-2">
           <Gift className="h-7 w-7 text-primary" />
           <span className="text-lg font-bold text-primary">The Giftist</span>
@@ -41,7 +39,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
           return (
@@ -69,7 +67,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       </div>
 
       {/* User section */}
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">

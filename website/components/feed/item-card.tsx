@@ -1,8 +1,7 @@
 'use client'
 
-import { ExternalLink, Gift, TrendingDown } from 'lucide-react'
+import { Gift } from 'lucide-react'
 import { formatPrice, getProgressPercentage } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 
 interface ItemCardProps {
   item: {
@@ -18,111 +17,68 @@ interface ItemCardProps {
     fundedAmount: number
     goalAmount: number | null
     isPurchased: boolean
-    priceHistory?: { price: number }[]
   }
   onFund?: (item: any) => void
 }
 
-const sourceLabels: Record<string, string> = {
-  WHATSAPP: 'WhatsApp',
-  EXTENSION: 'Extension',
-  MANUAL: 'Manual',
-  CHAT: 'AI Chat',
-}
-
-export function ItemCard({ item, onFund }: ItemCardProps) {
-  const hasPriceDrop =
-    item.priceHistory &&
-    item.priceHistory.length >= 2 &&
-    item.priceValue !== null &&
-    item.priceValue < item.priceHistory[0].price
-
+export function ItemCard({ item }: ItemCardProps) {
   const goal = item.goalAmount || item.priceValue || 0
   const progress = getProgressPercentage(item.fundedAmount, goal)
-  const remaining = Math.max(0, goal - item.fundedAmount)
+  const isPartiallyFunded = item.fundedAmount > 0 && progress < 100
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition group">
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+    >
       {/* Image */}
-      <div className="relative h-40 bg-gray-50">
+      <div className="relative aspect-[4/5] bg-gray-100">
         {item.image ? (
-          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <Gift className="h-12 w-12 text-gray-200" />
+            <Gift className="h-16 w-16 text-gray-200" />
           </div>
         )}
-        {hasPriceDrop && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 bg-success text-white text-xs font-semibold px-2 py-1 rounded-full">
-            <TrendingDown className="h-3 w-3" />
-            Price Drop
+
+        {/* Glass price pill */}
+        {item.price && (
+          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md text-white text-sm font-semibold">
+            {item.price}
           </div>
         )}
+
+        {/* Purchased badge */}
         {item.isPurchased && (
-          <div className="absolute top-2 right-2 bg-purple-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+          <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-xs font-semibold text-purple-600">
             Purchased
           </div>
         )}
-        {/* Domain badge */}
-        <div className="absolute bottom-2 left-2">
-          <Badge variant="outline" className="bg-white/90 backdrop-blur-sm text-[10px]">
-            {item.domain}
-          </Badge>
-        </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        <h3 className="font-medium text-secondary line-clamp-2 text-sm mb-1">
+      <div className="p-3">
+        <h3 className="font-medium text-gray-900 text-sm line-clamp-1">
           {item.name}
         </h3>
-        <div className="flex items-center gap-2 mb-2">
-          <p className={`font-bold text-lg ${hasPriceDrop ? 'text-success' : 'text-primary'}`}>
-            {item.price || 'No price'}
-          </p>
-          {item.source && item.source !== 'MANUAL' && (
-            <Badge variant="default" className="text-[10px]">
-              {sourceLabels[item.source] || item.source}
-            </Badge>
-          )}
-        </div>
+        <p className="text-xs text-gray-400 mt-0.5">{item.domain}</p>
 
-        {/* Funding progress */}
-        {goal > 0 && !item.isPurchased && (
-          <div className="mb-3">
-            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-success rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {formatPrice(item.fundedAmount)} of {formatPrice(goal)}
-            </p>
+        {/* Thin gradient progress bar — only if partially funded */}
+        {isPartiallyFunded && !item.isPurchased && (
+          <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         )}
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View
-          </a>
-          {!item.isPurchased && remaining > 0 && onFund && (
-            <button
-              onClick={() => onFund(item)}
-              className="flex-1 text-sm font-medium text-white bg-primary hover:bg-primary-hover py-2 rounded-lg transition"
-            >
-              Fund
-            </button>
-          )}
-        </div>
       </div>
-    </div>
+    </a>
   )
 }

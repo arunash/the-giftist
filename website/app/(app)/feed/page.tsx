@@ -3,23 +3,22 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { ItemCard } from '@/components/feed/item-card'
 import { ItemFilters } from '@/components/feed/item-filters'
-import { SuggestionCard } from '@/components/feed/suggestion-card'
+import { ActivityItem } from '@/components/activity/activity-item'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Gift, Loader2 } from 'lucide-react'
+import { dummyItems, dummyActivities } from '@/lib/dummy-data'
 
 export default function FeedPage() {
   const [items, setItems] = useState<any[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [suggestions, setSuggestions] = useState<any[]>([])
   const [filter, setFilter] = useState('all')
-  const [sort, setSort] = useState('newest')
-  const [category, setCategory] = useState('')
+  const [sort] = useState('newest')
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [walletBalance, setWalletBalance] = useState(0)
+  const [useDummy, setUseDummy] = useState(false)
   const observerRef = useRef<HTMLDivElement>(null)
 
   const fetchFeed = useCallback(async (reset = false) => {
@@ -33,44 +32,45 @@ export default function FeedPage() {
 
     try {
       const params = new URLSearchParams({ filter, sort, limit: '12' })
-      if (category) params.set('category', category)
       if (!reset && cursor) params.set('cursor', cursor)
 
       const res = await fetch(`/api/feed?${params}`)
       const data = await res.json()
 
-      if (reset) {
-        setItems(data.items || [])
-        setCategories(data.categories || [])
+      const fetchedItems = data.items || []
+
+      if (reset && fetchedItems.length === 0) {
+        setUseDummy(true)
+        setItems(dummyItems)
       } else {
-        setItems((prev) => [...prev, ...(data.items || [])])
+        setUseDummy(false)
+        if (reset) {
+          setItems(fetchedItems)
+        } else {
+          setItems((prev) => [...prev, ...fetchedItems])
+        }
       }
       setCursor(data.nextCursor)
     } catch (error) {
       console.error('Error fetching feed:', error)
+      setUseDummy(true)
+      setItems(dummyItems)
     } finally {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [filter, sort, category, cursor])
+  }, [filter, sort, cursor])
 
-  // Fetch suggestions on mount
   useEffect(() => {
-    fetch('/api/feed/suggestions')
-      .then((r) => r.json())
-      .then((data) => setSuggestions(data.suggestions || []))
-      .catch(() => {})
-
     fetch('/api/wallet')
       .then((r) => r.json())
       .then((data) => setWalletBalance(data.balance || 0))
       .catch(() => {})
   }, [])
 
-  // Reset feed when filters change
   useEffect(() => {
     fetchFeed(true)
-  }, [filter, sort, category]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Infinite scroll observer
   useEffect(() => {
@@ -87,78 +87,86 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, loadingMore]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Interleave suggestion cards
-  function renderItems() {
-    const elements: React.ReactNode[] = []
-    items.forEach((item, i) => {
-      elements.push(
-        <ItemCard key={item.id} item={item} onFund={setFundingItem} />
-      )
-      // Insert suggestion card every 5-6 items
-      if ((i + 1) % 6 === 0) {
-        const sugIdx = Math.floor((i + 1) / 6) - 1
-        if (suggestions[sugIdx]) {
-          elements.push(
-            <div key={`sug-${sugIdx}`} className="sm:col-span-2">
-              <SuggestionCard suggestion={suggestions[sugIdx]} />
-            </div>
-          )
-        }
-      }
-    })
-    return elements
-  }
-
   return (
-    <div className="p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-secondary">Your Items</h1>
+    <div className="p-4 lg:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Two-column layout */}
+        <div className="flex gap-8">
+          {/* Left: Wishlist Feed */}
+          <div className="flex-1 min-w-0 lg:max-w-[62%]">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-xl font-bold text-gray-900">Home</h1>
+              {useDummy && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                  Sample data
+                </span>
+              )}
+            </div>
 
-        <ItemFilters
-          filter={filter}
-          sort={sort}
-          category={category}
-          categories={categories}
-          onFilterChange={setFilter}
-          onSortChange={setSort}
-          onCategoryChange={setCategory}
-        />
+            <div className="mb-6">
+              <ItemFilters filter={filter} onFilterChange={setFilter} />
+            </div>
 
-        {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100">
-                <div className="h-40 bg-gray-200 rounded-t-xl" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-6 bg-gray-200 rounded w-1/3" />
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 animate-pulse">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+                    <div className="aspect-[4/5] bg-gray-100" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 bg-gray-100 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <EmptyState
+                icon={<Gift className="h-16 w-16" />}
+                title="No items yet"
+                description="Install the Chrome extension or use WhatsApp to start adding items to your wishlist."
+              />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {items.map((item) => (
+                    <ItemCard key={item.id} item={item} onFund={setFundingItem} />
+                  ))}
+                </div>
+                {cursor && (
+                  <div ref={observerRef} className="flex items-center justify-center py-6">
+                    {loadingMore && <Loader2 className="h-6 w-6 animate-spin text-gray-400" />}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Right: Activity Feed (desktop only) */}
+          <div className="hidden lg:block w-[38%] flex-shrink-0">
+            <div className="sticky top-8">
+              <div className="bg-white rounded-2xl shadow-sm p-5">
+                <h2 className="text-sm font-semibold text-gray-900 mb-4">Activity</h2>
+                <div className="divide-y-0 space-y-0">
+                  {dummyActivities.map((activity) => (
+                    <ActivityItem key={activity.id} activity={activity} />
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <EmptyState
-            icon={<Gift className="h-16 w-16" />}
-            title="No items yet"
-            description={
-              filter !== 'all'
-                ? 'No items match the current filters. Try adjusting your filters.'
-                : 'Install the Chrome extension or use WhatsApp to start adding items to your wishlist.'
-            }
-          />
-        ) : (
-          <>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {renderItems()}
             </div>
-            {/* Infinite scroll trigger */}
-            {cursor && (
-              <div ref={observerRef} className="flex items-center justify-center py-6">
-                {loadingMore && <Loader2 className="h-6 w-6 animate-spin text-gray-400" />}
-              </div>
-            )}
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Mobile: Activity feed below items */}
+        <div className="lg:hidden mt-8">
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">Activity</h2>
+            <div className="divide-y-0 space-y-0">
+              {dummyActivities.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {fundingItem && (
@@ -169,7 +177,6 @@ export default function FeedPage() {
           onFunded={() => {
             setFundingItem(null)
             fetchFeed(true)
-            // Refresh wallet balance
             fetch('/api/wallet')
               .then((r) => r.json())
               .then((data) => setWalletBalance(data.balance || 0))

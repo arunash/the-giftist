@@ -3,14 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --background: #FFF9F5;
+  --background: #FAFAFA;
   --foreground: #2D3436;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer utilities {
@@ -19,10 +25,17 @@ body {
   }
 }
 
+/* Modern focus styles */
+*:focus-visible {
+  outline: 2px solid rgba(232, 93, 76, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -30,12 +43,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: #d1d5db;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9ca3af;
 }
 
 /* Safe area for mobile bottom nav */
