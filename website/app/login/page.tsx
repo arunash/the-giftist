@@ -11,17 +11,27 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'phone' | 'verify'>('phone')
-  const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [phoneLoading, setPhoneLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true)
-    await signIn('google', { callbackUrl: '/dashboard' })
+  const handleGoogleSignIn = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setGoogleLoading(true)
+    setError('')
+    try {
+      await signIn('google', { callbackUrl: '/dashboard' })
+    } catch (err) {
+      console.error('Google sign-in error:', err)
+      setError('Failed to sign in with Google')
+      setGoogleLoading(false)
+    }
   }
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setPhoneLoading(true)
     setError('')
 
     try {
@@ -35,7 +45,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         setError(data.error || 'Failed to send code')
-        setLoading(false)
+        setPhoneLoading(false)
         return
       }
 
@@ -43,13 +53,13 @@ export default function LoginPage() {
     } catch {
       setError('Failed to send code. Please try again.')
     } finally {
-      setLoading(false)
+      setPhoneLoading(false)
     }
   }
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setPhoneLoading(true)
     setError('')
 
     const result = await signIn('phone', {
@@ -60,7 +70,7 @@ export default function LoginPage() {
 
     if (result?.error) {
       setError('Invalid or expired verification code')
-      setLoading(false)
+      setPhoneLoading(false)
     } else {
       router.push('/dashboard')
     }
@@ -88,8 +98,9 @@ export default function LoginPage() {
           <div className="mb-2">
             <p className="text-xs text-gray-500 mb-2 text-center">For web & extension users</p>
             <button
+              type="button"
               onClick={handleGoogleSignIn}
-              disabled={loading}
+              disabled={googleLoading || phoneLoading}
               className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-lg py-3 px-4 font-medium text-secondary hover:bg-gray-50 transition disabled:opacity-50"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -110,7 +121,7 @@ export default function LoginPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Continue with Google
+              {googleLoading ? 'Signing in...' : 'Continue with Google'}
             </button>
           </div>
 
@@ -146,11 +157,11 @@ export default function LoginPage() {
                 )}
                 <button
                   type="submit"
-                  disabled={loading || !phone}
+                  disabled={phoneLoading || googleLoading || !phone}
                   className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
                 >
                   <MessageCircle className="h-5 w-5" />
-                  {loading ? 'Sending...' : 'Send Code via WhatsApp'}
+                  {phoneLoading ? 'Sending...' : 'Send Code via WhatsApp'}
                 </button>
               </form>
             ) : (
@@ -179,10 +190,10 @@ export default function LoginPage() {
                 )}
                 <button
                   type="submit"
-                  disabled={loading || code.length !== 6}
+                  disabled={phoneLoading || googleLoading || code.length !== 6}
                   className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
                 >
-                  {loading ? 'Verifying...' : 'Verify & Sign In'}
+                  {phoneLoading ? 'Verifying...' : 'Verify & Sign In'}
                 </button>
                 <button
                   type="button"
