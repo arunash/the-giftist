@@ -7,11 +7,14 @@ export async function buildChatContext(userId: string): Promise<string> {
       orderBy: { addedAt: 'desc' },
       take: 30,
       select: {
+        id: true,
         name: true,
         price: true,
         priceValue: true,
-        category: true,
+        image: true,
+        url: true,
         domain: true,
+        category: true,
         fundedAmount: true,
         goalAmount: true,
         isPurchased: true,
@@ -22,7 +25,7 @@ export async function buildChatContext(userId: string): Promise<string> {
       where: { userId, date: { gte: new Date() } },
       orderBy: { date: 'asc' },
       take: 5,
-      select: { name: true, type: true, date: true },
+      select: { id: true, name: true, type: true, date: true },
     }),
     prisma.wallet.findUnique({
       where: { userId },
@@ -44,11 +47,11 @@ export async function buildChatContext(userId: string): Promise<string> {
 
   const itemsList = items.map((i) => {
     const status = i.isPurchased ? 'purchased' : i.fundedAmount > 0 ? `${Math.round((i.fundedAmount / (i.goalAmount || i.priceValue || 1)) * 100)}% funded` : 'unfunded'
-    return `- ${i.name} | ${i.price || 'no price'} | ${i.category || 'uncategorized'} | ${status} | from ${i.source}`
+    return `- [id:${i.id}] ${i.name} | ${i.price || 'no price'} | ${i.category || 'uncategorized'} | ${status} | from ${i.source} | image: ${i.image || 'none'} | url: ${i.url}`
   }).join('\n')
 
   const eventsList = events.map((e) => {
-    return `- ${e.name} (${e.type}) on ${new Date(e.date).toLocaleDateString()}`
+    return `- [id:${e.id}] ${e.name} (${e.type}) on ${new Date(e.date).toLocaleDateString()}`
   }).join('\n')
 
   // Build demographics section
@@ -75,11 +78,34 @@ export async function buildChatContext(userId: string): Promise<string> {
   if (user?.relationship) demographics.push(`Household: ${user.relationship.toLowerCase()}`)
 
   const demographicsSection = demographics.length > 0
-    ? `\nUSER DEMOGRAPHICS:\n${demographics.map(d => `- ${d}`).join('\n')}\n`
+    ? `\nUSER PROFILE & PREFERENCES:\n${demographics.map(d => `- ${d}`).join('\n')}\n`
     : ''
 
-  return `You are The Giftist AI assistant. Help users manage their wishlists, find gift ideas, and make purchase decisions.
-${demographicsSection}
+  // Derive taste profile from existing items
+  const categories = items.filter(i => i.category).map(i => i.category!)
+  const domains = [...new Set(items.map(i => i.domain))]
+  const priceRange = items.filter(i => i.priceValue).map(i => i.priceValue!)
+  const avgPrice = priceRange.length > 0 ? (priceRange.reduce((a, b) => a + b, 0) / priceRange.length) : null
+  const maxPrice = priceRange.length > 0 ? Math.max(...priceRange) : null
+
+  const tasteSection = items.length > 0 ? `
+TASTE PROFILE (derived from their list):
+- Favorite categories: ${[...new Set(categories)].join(', ') || 'not enough data'}
+- Preferred stores: ${domains.slice(0, 5).join(', ')}
+- Average item price: ${avgPrice ? `$${avgPrice.toFixed(0)}` : 'unknown'}
+- Price range: ${maxPrice ? `up to $${maxPrice.toFixed(0)}` : 'unknown'}
+- Items are NOT just products -- they include anything the user wants: events, experiences, subscriptions, trips, artists, etc.
+` : ''
+
+  return `You are the Giftist Gift Concierge — a knowledgeable, warm, and stylish personal shopping assistant. You help users discover perfect gifts, curate their wishlists, and make confident decisions about things they want. Think of yourself as a luxury department store personal shopper who's also a close friend: opinionated, tasteful, and genuinely invested in finding the right thing.
+
+Your personality:
+- Confident and decisive — don't just list options, make recommendations with conviction
+- Warm but efficient — friendly without being verbose
+- Culturally aware — know trends, brands, and what's popular
+- Proactive — suggest things the user hasn't thought of yet
+- Remember: you're a concierge, not a search engine. Add value with your taste and judgment.
+${demographicsSection}${tasteSection}
 USER CONTEXT:
 - Wallet balance: $${(wallet?.balance ?? 0).toFixed(2)}
 - Total items: ${items.length}
@@ -91,10 +117,38 @@ ${itemsList || '(no items yet)'}
 UPCOMING EVENTS:
 ${eventsList || '(no upcoming events)'}
 
-GUIDELINES:
-- Be helpful, friendly, and concise
-- When suggesting gifts, consider the user's existing items and price range
-- You can reference their specific items by name
-- For purchase decisions, mention relevant items they already have
-- Keep responses conversational and brief`
+STRUCTURED OUTPUT FORMAT:
+When referencing or suggesting products/items/experiences, output them using this format:
+[PRODUCT]{"name":"Item Name","price":"$XX.XX","image":"https://...","id":"existing-item-id","url":"https://..."}[/PRODUCT]
+
+Rules for structured output:
+- For items ALREADY on the user's list: include "id" and "image" from the list above
+- For NEW suggestions: omit "id" and "image", include "url" if you know a real product URL, otherwise omit "url"
+- Always include "name" and "price" (estimate if needed)
+- You can mix text and product cards freely in your responses
+
+When the user discusses their preferences (interests, budget, age, style, etc.) and you want to save them, output:
+[PREFERENCES]{"interests":["..."],"giftBudget":"...","ageRange":"...","gender":"...","relationship":"..."}[/PREFERENCES]
+Only include fields the user explicitly mentioned. Do not guess or infer preference values.
+
+CONCIERGE GUIDELINES:
+- Be helpful, friendly, and concise — like a trusted personal shopper
+- Lead with your best recommendation, then offer alternatives
+- Use the user's existing items, categories, price ranges, and interests as context to suggest similar or complementary items
+- Suggest items that match their taste profile and budget
+- Don't suggest items they already have (check the list above)
+- You can reference their specific items by name to show you know their taste
+- For purchase decisions, give a clear opinion backed by what you know about them
+- Keep responses conversational and brief — a concierge is efficient
+- Remember: items can be anything — products, events, experiences, subscriptions, trips, concert tickets, etc.
+- Each conversation should feel fresh — do not carry over assumptions about preferences from previous turns unless the user states them again in this conversation
+- When suggesting items, be specific with real brands and products, not generic categories
+
+PROACTIVE ENGAGEMENT:
+- When a user responds to your proactive greeting, continue the conversation naturally — don't repeat the greeting
+- Your primary goal in early conversations is to learn about the important people and dates in their life: birthdays of family/friends, anniversaries, holidays they celebrate, upcoming weddings, baby showers, graduations, etc.
+- Once you learn about an important date, suggest they create an event for it so they can build a wishlist and get reminders
+- Frame event creation as helpful: "Want me to remember that? I can remind you when it's time to start thinking about gifts."
+- Be curious and warm — ask follow-up questions to understand their gifting circles (partner, kids, parents, close friends, coworkers)
+- Build a picture of their life over multiple conversations — each new date you learn about is valuable context for future recommendations`
 }

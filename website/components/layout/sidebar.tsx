@@ -12,10 +12,11 @@ import {
   LogOut,
 } from 'lucide-react'
 import { cn, formatPrice } from '@/lib/utils'
+import { SidebarSummary } from './sidebar-summary'
 
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/chat', label: 'Concierge', icon: MessageCircle },
   { href: '/wallet', label: 'Wallet', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -29,7 +30,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
   const { data: session } = useSession()
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 h-screen fixed left-0 top-0 bg-white shadow-sm">
+    <aside className="hidden lg:flex flex-col w-80 h-screen fixed left-0 top-0 bg-surface border-r border-border">
       {/* Logo */}
       <div className="p-6">
         <Link href="/feed" className="flex items-center gap-2">
@@ -39,7 +40,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className="px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
           return (
@@ -50,7 +51,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  : 'text-muted hover:bg-surface-hover hover:text-white'
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -60,6 +61,11 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
         })}
       </nav>
 
+      {/* AI Summary — scrollable middle section */}
+      <div className="flex-1 overflow-y-auto py-4">
+        <SidebarSummary />
+      </div>
+
       {/* Wallet balance card */}
       <div className="mx-4 mb-4 p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white">
         <p className="text-xs text-white/70 mb-1">Wallet Balance</p>
@@ -67,19 +73,19 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       </div>
 
       {/* User section */}
-      <div className="p-4">
+      <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium text-white truncate">
               {session?.user?.name || 'User'}
             </p>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-muted truncate">
               {session?.user?.email || ''}
             </p>
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="text-muted hover:text-white p-1 transition"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />
