@@ -11,7 +11,8 @@ import { HomeChatBar } from '@/components/chat/home-chat-bar'
 import { AddProductBar } from '@/components/feed/add-product-bar'
 import { TrendingCarousel } from '@/components/feed/trending-carousel'
 import { LinkAccountsBanner } from '@/components/ui/link-accounts-banner'
-import { Gift, Loader2, RefreshCw } from 'lucide-react'
+import { Gift, Loader2, RefreshCw, Share2, Check } from 'lucide-react'
+import { shareOrCopy, giftistShareText } from '@/lib/utils'
 import { dummyItems } from '@/lib/dummy-data'
 
 const ACTIVITY_TYPE_CONFIG: Record<string, { emoji: string; verb: string }> = {
@@ -85,6 +86,9 @@ export default function FeedPage() {
   const [useDummy, setUseDummy] = useState(false)
   const [events, setEvents] = useState<{ id: string; name: string }[]>([])
   const observerRef = useRef<HTMLDivElement>(null)
+  const [shareId, setShareId] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>('')
+  const [shareCopied, setShareCopied] = useState(false)
 
   // Activity state
   const [activities, setActivities] = useState<any[]>([])
@@ -158,6 +162,10 @@ export default function FeedPage() {
         }
       })
       .catch(() => {})
+    fetch('/api/profile')
+      .then((r) => r.json())
+      .then((data) => { if (data.shareId) setShareId(data.shareId); if (data.name) setUserName(data.name) })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -228,6 +236,32 @@ export default function FeedPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-white">Your Giftist</h2>
               <div className="flex items-center gap-3">
+                {shareId && (
+                  <button
+                    onClick={async () => {
+                      const url = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to view ${userName || 'your friend'}'s wishlist on The Giftist!\n\nview ${shareId}`)}`
+                      const didShare = await shareOrCopy(url, 'My Giftist Wishlist', giftistShareText(userName || 'Your friend'))
+                      if (didShare) {
+                        setShareCopied(true)
+                        setTimeout(() => setShareCopied(false), 2000)
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-muted hover:text-white transition"
+                    title="Share your wishlist"
+                  >
+                    {shareCopied ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-400" />
+                        <span className="text-green-400">Shared!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4" />
+                        <span>Share</span>
+                      </>
+                    )}
+                  </button>
+                )}
                 <span className="text-sm text-muted">{items.length} items</span>
                 <button
                   onClick={() => { fetchFeed(true); fetchActivities(activityTab); }}
@@ -249,7 +283,7 @@ export default function FeedPage() {
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-4 gap-2 animate-pulse">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 animate-pulse">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="bg-surface rounded-2xl overflow-hidden border border-border">
                     <div className="aspect-[4/5] bg-surface-hover" />
@@ -268,11 +302,12 @@ export default function FeedPage() {
               />
             ) : (
               <>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {items.map((item) => (
                     <ItemCard
                       key={item.id}
                       item={item}
+                      ownerName={userName}
                       onFund={setFundingItem}
                       onRemove={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
                       events={events}

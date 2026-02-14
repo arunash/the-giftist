@@ -31,6 +31,7 @@ export async function GET() {
       name: true,
       email: true,
       phone: true,
+      shareId: true,
       birthday: true,
       gender: true,
       ageRange: true,

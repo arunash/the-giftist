@@ -36,3 +36,27 @@ export function getProgressPercentage(funded: number, goal: number): number {
 export function generateShareId(): string {
   return Math.random().toString(36).substring(2, 10)
 }
+
+/** Build the standard Giftist share message with the owner's name. */
+export function giftistShareText(ownerName: string): string {
+  return `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.`
+}
+
+/** Open native share sheet if available, fall back to clipboard copy. Returns true if shared/copied. */
+export async function shareOrCopy(url: string, title?: string, text?: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({ url, title, text })
+      return true
+    } catch (e: any) {
+      // User cancelled the share sheet — not an error
+      if (e?.name === 'AbortError') return false
+    }
+  }
+  // Fallback: copy to clipboard
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    await navigator.clipboard.writeText(url)
+    return true
+  }
+  return false
+}

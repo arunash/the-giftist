@@ -8,20 +8,40 @@ interface ContributeButtonProps {
   itemId: string
   itemName: string
   remaining: number
+  shareId: string
 }
 
 export default function ContributeButton({
   itemId,
   itemName,
   remaining,
+  shareId,
 }: ContributeButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(false)
 
   const suggestedAmounts = [10, 25, 50, 100].filter((a) => a <= remaining)
+
+  const handleClick = async () => {
+    setCheckingAuth(true)
+    try {
+      const res = await fetch('/api/auth/session')
+      const session = await res.json()
+      if (session?.user) {
+        setIsOpen(true)
+      } else {
+        window.location.href = `/login?callbackUrl=/u/${shareId}`
+      }
+    } catch {
+      window.location.href = `/login?callbackUrl=/u/${shareId}`
+    } finally {
+      setCheckingAuth(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +68,7 @@ export default function ContributeButton({
           amount: numAmount,
           message: message || null,
           isAnonymous,
-          returnUrl: window.location.pathname,
+          returnUrl: `/u/${shareId}`,
         }),
       })
 
@@ -70,11 +90,12 @@ export default function ContributeButton({
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
-        className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg font-medium hover:bg-primary-hover transition"
+        onClick={handleClick}
+        disabled={checkingAuth}
+        className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50"
       >
         <DollarSign className="h-4 w-4" />
-        Contribute
+        {checkingAuth ? 'Checking...' : 'Contribute'}
       </button>
 
       {/* Modal */}
