@@ -5,6 +5,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
 import twilio from 'twilio'
+import { ADMIN_PHONES } from './admin'
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -133,14 +134,29 @@ export const authOptions: NextAuthOptions = {
           token.phone = dbUser.phone
         }
       }
+      // Admin check
+      token.isAdmin = !!(token.phone && ADMIN_PHONES.includes(token.phone as string))
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id
         ;(session.user as any).phone = token.phone || null
+        ;(session.user as any).isAdmin = token.isAdmin || false
       }
       return session
+    },
+  },
+  cookies: {
+    sessionToken: {
+      name: 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
+        domain: '.giftist.ai',
+      },
     },
   },
   pages: {

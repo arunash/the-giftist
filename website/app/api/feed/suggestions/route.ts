@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -49,6 +50,16 @@ export async function GET() {
       ],
     })
 
+    logApiCall({
+      provider: 'ANTHROPIC',
+      endpoint: '/messages',
+      model: 'claude-sonnet-4-5-20250929',
+      inputTokens: response.usage?.input_tokens,
+      outputTokens: response.usage?.output_tokens,
+      userId,
+      source: 'WEB',
+    }).catch(() => {})
+
     const text = response.content[0].type === 'text' ? response.content[0].text : '[]'
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     let suggestions = []
@@ -64,6 +75,7 @@ export async function GET() {
     return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching suggestions:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ suggestions: [] })
   }
 }

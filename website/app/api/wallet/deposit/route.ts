@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { logApiCall, logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const depositSchema = z.object({
@@ -64,12 +65,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    logApiCall({
+      provider: 'STRIPE',
+      endpoint: '/checkout/sessions',
+      userId,
+      source: 'WEB',
+      amount,
+    }).catch(() => {})
+
     return NextResponse.json({ url: checkoutSession.url })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid amount', details: error.errors }, { status: 400 })
     }
     console.error('Error creating deposit:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ error: 'Failed to create deposit' }, { status: 500 })
   }
 }

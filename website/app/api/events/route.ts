@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
+import { logError } from '@/lib/api-logger'
 
 const eventSchema = z.object({
   name: z.string().min(1).max(200),
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(events)
   } catch (error) {
     console.error('Error fetching events:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch events' },
       { status: 500 }
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
       )
     }
     console.error('Error creating event:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create event' },
       { status: 500 }

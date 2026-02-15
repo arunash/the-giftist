@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { calculateFeeFromContribution } from '@/lib/platform-fee'
+import { logError } from '@/lib/api-logger'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -20,6 +22,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (err: any) {
     console.error('Webhook signature verification failed:', err.message)
+    logError({ source: 'STRIPE_WEBHOOK', message: err.message, stack: err.stack }).catch(() => {})
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -64,22 +67,40 @@ export async function POST(request: NextRequest) {
           })
 
           if (contribution && contribution.status === 'PENDING') {
-            // Mark contribution completed
+            const item = contribution.item
+
+            // Calculate platform fee from the goal/price ratio
+            const fee = calculateFeeFromContribution(
+              contribution.amount,
+              item.goalAmount,
+              item.priceValue
+            )
+
+            // Mark contribution completed with fee info
             await prisma.contribution.update({
               where: { id: contributionId },
               data: {
                 status: 'COMPLETED',
                 stripePaymentId: session.payment_intent as string,
+                platformFeeRate: fee.feeRate,
+                platformFeeAmount: fee.feeAmount,
               },
             })
 
             // Update item funded amount
-            const item = contribution.item
             const newFundedAmount = item.fundedAmount + contribution.amount
 
             await prisma.item.update({
               where: { id: item.id },
               data: { fundedAmount: newFundedAmount },
+            })
+
+            // Increment item owner's lifetime contributions received (net of fees)
+            await prisma.user.update({
+              where: { id: item.userId },
+              data: {
+                lifetimeContributionsReceived: { increment: fee.netAmount },
+              },
             })
 
             // Activity: contributor funded item
@@ -171,6 +192,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error processing webhook:', error)
+    logError({ source: 'STRIPE_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
   }
 

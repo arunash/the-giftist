@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { logApiCall, logError } from '@/lib/api-logger'
 
 export interface RetailerResult {
   retailer: string
@@ -47,6 +48,14 @@ If you cannot find the product at any retailer, return an empty array: []`,
       timeout: 30000,
     })
 
+    logApiCall({
+      provider: 'OPENAI',
+      endpoint: '/responses',
+      model: 'gpt-4o',
+      source: 'WEB',
+      metadata: { usage: (response as any).usage, searchQuery },
+    }).catch(() => {})
+
     // Extract text from output items
     const text = response.output
       .filter((item): item is OpenAI.Responses.ResponseOutputMessage => item.type === 'message')
@@ -80,6 +89,7 @@ If you cannot find the product at any retailer, return an empty array: []`,
     return { results, bestResult }
   } catch (error) {
     console.error('Retailer search error:', error)
+    logError({ source: 'EXTRACT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return { results: [], bestResult: null }
   }
 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { logError } from '@/lib/api-logger'
 
 const updateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -89,6 +90,7 @@ export async function GET(
     return NextResponse.json(event)
   } catch (error) {
     console.error('Error fetching event:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch event' },
       { status: 500 }
@@ -163,6 +165,7 @@ export async function PATCH(
       )
     }
     console.error('Error updating event:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to update event' },
       { status: 500 }
@@ -201,6 +204,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting event:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to delete event' },
       { status: 500 }

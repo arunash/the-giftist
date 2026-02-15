@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { calculateGoalAmount } from '@/lib/platform-fee'
+import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const itemSchema = z.object({
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(items)
   } catch (error) {
     console.error('Error fetching items:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch items' },
       { status: 500 }
@@ -65,6 +68,13 @@ export async function POST(request: NextRequest) {
     // Extract domain from URL if not provided
     const domain = data.domain || new URL(data.url).hostname
 
+    // Calculate goal amount with platform fee
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { lifetimeContributionsReceived: true },
+    })
+    const feeCalc = calculateGoalAmount(data.priceValue, user?.lifetimeContributionsReceived ?? 0)
+
     const item = await prisma.item.create({
       data: {
         userId,
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
         source: data.source || 'MANUAL',
         notes: data.notes,
         tags: data.tags,
-        goalAmount: data.priceValue,
+        goalAmount: feeCalc.goalAmount,
         priceHistory: data.priceValue
           ? {
               create: {
@@ -110,6 +120,7 @@ export async function POST(request: NextRequest) {
       )
     }
     console.error('Error creating item:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create item' },
       { status: 500 }

@@ -41,6 +41,11 @@ model User {
   activityEvents ActivityEvent[]
   chatMessages   ChatMessage[]
   shareId        String?   @unique @default(cuid())
+
+  // Monetization
+  lifetimeContributionsReceived Float   @default(0)
+  stripeConnectAccountId        String? @unique
+  stripeConnectOnboarded        Boolean @default(false)
 }
 
 model Account {
@@ -169,6 +174,8 @@ model Contribution {
   isAnonymous   Boolean  @default(false)
   stripePaymentId String?
   status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  platformFeeRate   Float @default(0)
+  platformFeeAmount Float @default(0)
   createdAt     DateTime @default(now())
 
   item        Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -243,7 +250,7 @@ model Wallet {
 model WalletTransaction {
   id              String   @id @default(cuid())
   walletId        String
-  type            String   // DEPOSIT, FUND_ITEM, REFUND
+  type            String   // DEPOSIT, FUND_ITEM, REFUND, PAYOUT
   amount          Float
   stripeSessionId String?
   itemId          String?
@@ -297,4 +304,34 @@ model Subscription {
   updatedAt            DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiCallLog {
+  id            String   @id @default(cuid())
+  provider      String   // ANTHROPIC, OPENAI, TWILIO, STRIPE, WHATSAPP
+  endpoint      String
+  model         String?
+  inputTokens   Int?
+  outputTokens  Int?
+  estimatedCost Float    @default(0)
+  userId        String?
+  source        String?  // WEB, WHATSAPP, WEBHOOK
+  metadata      String?
+  createdAt     DateTime @default(now())
+
+  @@index([provider])
+  @@index([createdAt])
+}
+
+model ErrorLog {
+  id        String   @id @default(cuid())
+  source    String   // STRIPE_WEBHOOK, WHATSAPP_WEBHOOK, API, CHAT, EXTRACT
+  message   String
+  stack     String?
+  metadata  String?
+  severity  String   @default("ERROR")
+  createdAt DateTime @default(now())
+
+  @@index([source])
+  @@index([createdAt])
 }

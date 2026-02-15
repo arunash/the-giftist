@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logError } from '@/lib/api-logger'
 
 export async function GET() {
   try {
@@ -21,6 +22,7 @@ export async function GET() {
     return NextResponse.json(messages.reverse())
   } catch (error) {
     console.error('Error fetching chat history:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 })
   }
 }

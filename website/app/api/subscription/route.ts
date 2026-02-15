@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logError } from '@/lib/api-logger'
 
 // GET subscription status
 export async function GET() {
@@ -31,6 +32,7 @@ export async function GET() {
     return NextResponse.json(subscription)
   } catch (error) {
     console.error('Error fetching subscription:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch subscription' },
       { status: 500 }

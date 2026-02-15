@@ -3,7 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { z } from 'zod'
+import { logError } from '@/lib/api-logger'
 
 const fundSchema = z.object({
   itemId: z.string(),
@@ -45,10 +47,33 @@ export async function POST(request: NextRequest) {
         data: { balance: { decrement: amount } },
       })
 
+      // Calculate platform fee
+      const fee = calculateFeeFromContribution(amount, item.goalAmount, item.priceValue)
+
       // Increment item funded amount
       const updatedItem = await tx.item.update({
         where: { id: itemId },
         data: { fundedAmount: { increment: amount } },
+      })
+
+      // Create contribution record with fee tracking
+      await tx.contribution.create({
+        data: {
+          itemId,
+          contributorId: userId,
+          amount,
+          status: 'COMPLETED',
+          platformFeeRate: fee.feeRate,
+          platformFeeAmount: fee.feeAmount,
+        },
+      })
+
+      // Increment item owner's lifetime contributions
+      await tx.user.update({
+        where: { id: item.userId },
+        data: {
+          lifetimeContributionsReceived: { increment: fee.netAmount },
+        },
       })
 
       // Create transaction record
@@ -93,6 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
     console.error('Error funding item:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ error: 'Failed to fund item' }, { status: 500 })
   }
 }

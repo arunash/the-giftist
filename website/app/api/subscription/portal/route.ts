@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { logError } from '@/lib/api-logger'
 
 // POST create Stripe Billing Portal session
 export async function POST() {
@@ -36,6 +37,7 @@ export async function POST() {
     return NextResponse.json({ url: portalSession.url })
   } catch (error) {
     console.error('Error creating portal session:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create portal session' },
       { status: 500 }

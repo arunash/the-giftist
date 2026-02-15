@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { logApiCall, logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const contributionSchema = z.object({
@@ -89,6 +90,14 @@ export async function POST(request: NextRequest) {
       cancel_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}contribute=cancelled`,
     })
 
+    logApiCall({
+      provider: 'STRIPE',
+      endpoint: '/checkout/sessions',
+      userId: contributorId,
+      source: 'WEB',
+      amount: data.amount,
+    }).catch(() => {})
+
     return NextResponse.json({ url: checkoutSession.url }, { status: 200 })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -98,6 +107,7 @@ export async function POST(request: NextRequest) {
       )
     }
     console.error('Error creating contribution:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create contribution' },
       { status: 500 }
@@ -147,6 +157,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(contributions)
   } catch (error) {
     console.error('Error fetching contributions:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch contributions' },
       { status: 500 }

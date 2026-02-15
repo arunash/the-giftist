@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { logApiCall, logError } from '@/lib/api-logger'
 
 // POST create Stripe Checkout session for Gold subscription
 export async function POST() {
@@ -79,9 +80,18 @@ export async function POST() {
       cancel_url: `${baseUrl}/settings?subscription=cancelled`,
     })
 
+    logApiCall({
+      provider: 'STRIPE',
+      endpoint: '/checkout/sessions',
+      userId,
+      source: 'WEB',
+      metadata: { type: 'subscription' },
+    }).catch(() => {})
+
     return NextResponse.json({ url: checkoutSession.url })
   } catch (error) {
     console.error('Error creating subscription checkout:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create checkout session' },
       { status: 500 }

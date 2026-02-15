@@ -6,6 +6,8 @@ import { downloadMedia, sendTextMessage, sendImageMessage } from '@/lib/whatsapp
 import { buildChatContext } from '@/lib/chat-context'
 import { stripSpecialBlocks } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
+import { calculateGoalAmount } from '@/lib/platform-fee'
+import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -31,7 +33,13 @@ async function savePendingProduct(
   pending: PendingProduct,
   phone: string,
 ): Promise<string> {
-  await prisma.user.update({ where: { id: userId }, data: { pendingProduct: null } })
+  const userData = await prisma.user.update({
+    where: { id: userId },
+    data: { pendingProduct: null },
+    select: { lifetimeContributionsReceived: true },
+  })
+
+  const feeCalc = calculateGoalAmount(pending.priceValue, userData.lifetimeContributionsReceived)
 
   const item = await prisma.item.create({
     data: {
@@ -43,7 +51,7 @@ async function savePendingProduct(
       url: pending.url,
       domain: pending.domain,
       source: 'WHATSAPP',
-      goalAmount: pending.priceValue,
+      goalAmount: feeCalc.goalAmount,
     },
   })
 
@@ -274,6 +282,12 @@ export async function handleTextMessage(
       return `I found *${product.name}* but couldn't get a product image. Could you send me a photo of it?`
     }
 
+    const urlUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { lifetimeContributionsReceived: true },
+    })
+    const urlFeeCalc = calculateGoalAmount(product.priceValue, urlUser?.lifetimeContributionsReceived ?? 0)
+
     const item = await prisma.item.create({
       data: {
         userId,
@@ -284,7 +298,7 @@ export async function handleTextMessage(
         url: product.url,
         domain: product.domain,
         source: 'WHATSAPP',
-        goalAmount: product.priceValue,
+        goalAmount: urlFeeCalc.goalAmount,
       },
     })
 
@@ -508,6 +522,16 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       messages,
     })
 
+    logApiCall({
+      provider: 'ANTHROPIC',
+      endpoint: '/messages',
+      model: 'claude-sonnet-4-5-20250929',
+      inputTokens: response.usage?.input_tokens,
+      outputTokens: response.usage?.output_tokens,
+      userId,
+      source: 'WHATSAPP',
+    }).catch(() => {})
+
     const fullContent = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
@@ -524,6 +548,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     return stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
   } catch (error) {
     console.error('WhatsApp chat error:', error)
+    logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return "Sorry, I couldn't process that right now. Try sending a product link, photo, or type *help* for instructions."
   }
 }

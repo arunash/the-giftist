@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { createActivity } from '@/lib/activity'
+import { calculateGoalAmount } from '@/lib/platform-fee'
+import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const urlSchema = z.object({
@@ -32,6 +34,13 @@ export async function POST(request: NextRequest) {
 
     const product = await extractProductFromUrl(url)
 
+    // Calculate goal amount with platform fee
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { lifetimeContributionsReceived: true },
+    })
+    const feeCalc = calculateGoalAmount(product.priceValue, user?.lifetimeContributionsReceived ?? 0)
+
     const item = await prisma.item.create({
       data: {
         userId,
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
         url: product.url,
         domain: product.domain,
         source: source || 'MANUAL',
-        goalAmount: product.priceValue,
+        goalAmount: feeCalc.goalAmount,
         priceHistory: product.priceValue
           ? { create: { price: product.priceValue } }
           : undefined,
@@ -67,6 +76,7 @@ export async function POST(request: NextRequest) {
       )
     }
     console.error('Error creating item from URL:', error)
+    logError({ source: 'EXTRACT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create item' },
       { status: 500 }

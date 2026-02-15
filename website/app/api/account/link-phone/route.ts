@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { normalizePhone } from '@/lib/whatsapp'
 import { verifyCode } from '@/lib/verification-codes'
 import { mergeUsers } from '@/lib/merge-users'
+import { logError } from '@/lib/api-logger'
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to link phone:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to link phone number' },
       { status: 500 }

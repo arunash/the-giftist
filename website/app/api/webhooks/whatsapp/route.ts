@@ -7,6 +7,7 @@ import {
   handleImageMessage,
   getWelcomeMessage,
 } from '@/lib/whatsapp-handlers'
+import { logError } from '@/lib/api-logger'
 
 // Meta webhook verification
 export async function GET(request: NextRequest) {
@@ -106,6 +107,7 @@ export async function POST(request: NextRequest) {
       })
     } catch (processingError) {
       console.error('WhatsApp processing error:', processingError)
+      logError({ source: 'WHATSAPP_WEBHOOK', message: String(processingError), stack: (processingError as Error)?.stack }).catch(() => {})
 
       await prisma.whatsAppMessage.update({
         where: { id: waMsg.id },
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('WhatsApp webhook error:', error)
+    logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
   }
 
   // Always return 200 to prevent Meta retries

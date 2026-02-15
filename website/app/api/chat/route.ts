@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildChatContext } from '@/lib/chat-context'
+import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -73,10 +74,23 @@ export async function POST(request: NextRequest) {
             })
           }
 
+          // Log after stream completes
+          const finalMessage = await stream.finalMessage()
+          logApiCall({
+            provider: 'ANTHROPIC',
+            endpoint: '/messages',
+            model: 'claude-sonnet-4-5-20250929',
+            inputTokens: finalMessage.usage?.input_tokens,
+            outputTokens: finalMessage.usage?.output_tokens,
+            userId,
+            source: 'WEB',
+          }).catch(() => {})
+
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
         } catch (error) {
           console.error('Stream error:', error)
+          logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`))
           controller.close()
         }
@@ -92,6 +106,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error in chat:', error)
+    logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return new Response('Internal error', { status: 500 })
   }
 }

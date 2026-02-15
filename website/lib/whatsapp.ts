@@ -1,3 +1,5 @@
+import { logApiCall } from '@/lib/api-logger'
+
 const GRAPH_API = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}`
 const TOKEN = () => process.env.WHATSAPP_ACCESS_TOKEN!
 
@@ -18,21 +20,25 @@ async function graphPost(endpoint: string, body: object) {
 }
 
 export async function sendTextMessage(to: string, body: string) {
-  return graphPost('/messages', {
+  const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
     type: 'text',
     text: { body },
   })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  return result
 }
 
 export async function sendImageMessage(to: string, imageUrl: string, caption: string) {
-  return graphPost('/messages', {
+  const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
     type: 'image',
     image: { link: imageUrl, caption },
   })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  return result
 }
 
 export async function downloadMedia(mediaId: string): Promise<Buffer> {

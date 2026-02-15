@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -100,6 +101,16 @@ Example output format:
       messages: [{ role: 'user', content: prompt }],
     })
 
+    logApiCall({
+      provider: 'ANTHROPIC',
+      endpoint: '/messages',
+      model: 'claude-haiku-4-5-20251001',
+      inputTokens: response.usage?.input_tokens,
+      outputTokens: response.usage?.output_tokens,
+      userId,
+      source: 'WEB',
+    }).catch(() => {})
+
     const rawText = response.content[0].type === 'text' ? response.content[0].text.trim() : '[]'
     console.log('[AI Summary] Raw Claude response:', rawText)
 
@@ -125,6 +136,7 @@ Example output format:
     return NextResponse.json({ cards, updatedAt: now.toISOString() })
   } catch (error) {
     console.error('AI summary error:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ cards: [], updatedAt: new Date().toISOString() })
   }
 }

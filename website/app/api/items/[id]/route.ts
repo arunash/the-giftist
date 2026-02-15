@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
 import { z } from 'zod'
+import { logError } from '@/lib/api-logger'
 
 const updateSchema = z.object({
   name: z.string().min(1).max(500).optional(),
@@ -53,6 +54,7 @@ export async function GET(
     return NextResponse.json(item)
   } catch (error) {
     console.error('Error fetching item:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to fetch item' },
       { status: 500 }
@@ -141,6 +143,7 @@ export async function PATCH(
       )
     }
     console.error('Error updating item:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to update item' },
       { status: 500 }
@@ -179,6 +182,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting item:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to delete item' },
       { status: 500 }

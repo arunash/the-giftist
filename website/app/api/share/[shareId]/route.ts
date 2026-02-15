@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { logError } from '@/lib/api-logger'
 
 export async function GET(
   request: NextRequest,
@@ -59,6 +60,7 @@ export async function GET(
     })
   } catch (error) {
     console.error('Error fetching shared giftlist:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to load wishlist' },
       { status: 500 }

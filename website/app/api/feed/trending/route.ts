@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logApiCall, logError } from '@/lib/api-logger'
 import OpenAI from 'openai'
 
 let _client: OpenAI | null = null
@@ -62,6 +63,15 @@ Return ONLY a JSON array, no other text:
       timeout: 30000,
     })
 
+    logApiCall({
+      provider: 'OPENAI',
+      endpoint: '/responses',
+      model: 'gpt-4o',
+      userId,
+      source: 'WEB',
+      metadata: { usage: (response as any).usage },
+    }).catch(() => {})
+
     const text = response.output
       .filter((item): item is OpenAI.Responses.ResponseOutputMessage => item.type === 'message')
       .flatMap((item) => item.content)
@@ -87,6 +97,7 @@ Return ONLY a JSON array, no other text:
     return NextResponse.json(items)
   } catch (error) {
     console.error('Error fetching trending:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json([])
   }
 }

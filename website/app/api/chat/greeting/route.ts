@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -102,12 +103,23 @@ Rules:
       messages: [{ role: 'user', content: prompt }],
     })
 
+    logApiCall({
+      provider: 'ANTHROPIC',
+      endpoint: '/messages',
+      model: 'claude-haiku-4-5-20251001',
+      inputTokens: response.usage?.input_tokens,
+      outputTokens: response.usage?.output_tokens,
+      userId,
+      source: 'WEB',
+    }).catch(() => {})
+
     const text =
       response.content[0].type === 'text' ? response.content[0].text.trim() : null
 
     return NextResponse.json({ greeting: text })
   } catch (error) {
     console.error('Greeting generation error:', error)
+    logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return NextResponse.json({ greeting: null })
   }
 }
