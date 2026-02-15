@@ -9,6 +9,7 @@ const DISMISS_KEY = 'linkBannerDismissed'
 interface ProfileInfo {
   email: string | null
   phone: string | null
+  hasGoogle: boolean
 }
 
 export function LinkAccountsBanner() {
@@ -29,9 +30,9 @@ export function LinkAccountsBanner() {
     fetch('/api/profile')
       .then((r) => r.json())
       .then((data) => {
-        setProfile({ email: data.email, phone: data.phone })
-        // Only show if missing one auth method
-        if (!data.email || !data.phone) {
+        setProfile({ email: data.email, phone: data.phone, hasGoogle: data.hasGoogle })
+        // Only show if missing an auth method
+        if (!data.hasGoogle || !data.phone) {
           setDismissed(false)
         }
       })
@@ -43,8 +44,11 @@ export function LinkAccountsBanner() {
     localStorage.setItem(DISMISS_KEY, 'true')
   }
 
+  const [linkLoading, setLinkLoading] = useState(false)
+
   const handleLinkGoogle = () => {
-    signIn('google', { callbackUrl: '/feed' })
+    setLinkLoading(true)
+    window.location.href = '/api/account/link-google'
   }
 
   const handleSendCode = async (e: React.FormEvent) => {
@@ -96,15 +100,16 @@ export function LinkAccountsBanner() {
   if (dismissed || !profile) return null
 
   // Already linked both — shouldn't show but guard anyway
-  if (profile.email && profile.phone) return null
+  if (profile.hasGoogle && profile.phone) return null
 
   if (success) {
+    setTimeout(() => setDismissed(true), 3000)
     return (
       <div className="mb-6 bg-green-900/30 border border-green-700/50 rounded-xl p-4 flex items-center justify-between">
         <p className="text-sm text-green-300 font-medium">
-          WhatsApp linked successfully! Your items are now synced.
+          Accounts linked successfully! Your items are now synced.
         </p>
-        <button onClick={handleDismiss} className="text-green-400 hover:text-white transition ml-3 shrink-0">
+        <button onClick={() => setDismissed(true)} className="text-green-400 hover:text-white transition ml-3 shrink-0">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -112,7 +117,7 @@ export function LinkAccountsBanner() {
   }
 
   // Scenario A: Google user, no phone
-  if (profile.email && !profile.phone) {
+  if (profile.hasGoogle && !profile.phone) {
     return (
       <div className="mb-6 bg-surface rounded-xl border border-border p-4">
         <div className="flex items-start justify-between gap-3">
@@ -212,7 +217,7 @@ export function LinkAccountsBanner() {
   }
 
   // Scenario B: Phone user, no Google
-  if (profile.phone && !profile.email) {
+  if (profile.phone && !profile.hasGoogle) {
     return (
       <div className="mb-6 bg-surface rounded-xl border border-border p-4">
         <div className="flex items-start justify-between gap-3">
@@ -241,7 +246,8 @@ export function LinkAccountsBanner() {
         <div className="mt-3 ml-12">
           <button
             onClick={handleLinkGoogle}
-            className="flex items-center gap-2 bg-surface-hover border border-border text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-surface-raised transition"
+            disabled={linkLoading}
+            className="flex items-center gap-2 bg-surface-hover border border-border text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-surface-raised transition disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -249,7 +255,7 @@ export function LinkAccountsBanner() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            Link Google
+            {linkLoading ? 'Connecting...' : 'Link Google'}
           </button>
         </div>
       </div>

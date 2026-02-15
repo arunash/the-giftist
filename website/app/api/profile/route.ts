@@ -38,6 +38,9 @@ export async function GET() {
       interests: true,
       giftBudget: true,
       relationship: true,
+      accounts: {
+        select: { provider: true },
+      },
     },
   })
 
@@ -45,9 +48,13 @@ export async function GET() {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
+  const providers = user.accounts.map((a) => a.provider)
+
   return NextResponse.json({
     ...user,
+    accounts: undefined,
     interests: user.interests ? JSON.parse(user.interests) : [],
+    hasGoogle: providers.includes('google'),
   })
 }
 

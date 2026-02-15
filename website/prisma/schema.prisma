@@ -42,6 +42,9 @@ model User {
   chatMessages   ChatMessage[]
   shareId        String?   @unique @default(cuid())
 
+  // Account linking
+  linkingToken String?
+
   // Monetization
   lifetimeContributionsReceived Float   @default(0)
   stripeConnectAccountId        String? @unique

@@ -13,8 +13,52 @@ const twilioClient = twilio(
 )
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || 'VA4d084fd13308242b810892d8bf45f4a0'
 
+// Wrap PrismaAdapter to intercept createUser for account linking
+const baseAdapter = PrismaAdapter(prisma) as any
+const adapter = {
+  ...baseAdapter,
+  createUser: async (user: any) => {
+    // Check if any user has a pending linking token (set by /api/account/prepare-link)
+    // and their email matches or they have no email yet
+    try {
+      const linkingUser = await prisma.user.findFirst({
+        where: {
+          linkingToken: { not: null },
+        },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      if (linkingUser) {
+        // Verify the token is recent (< 5 minutes)
+        const tokenTime = parseInt(linkingUser.linkingToken!.replace('link_', ''), 10)
+        if (Date.now() - tokenTime < 5 * 60 * 1000) {
+          // Return existing user instead of creating a new one
+          const updated = await prisma.user.update({
+            where: { id: linkingUser.id },
+            data: {
+              email: linkingUser.email || user.email,
+              name: linkingUser.name || user.name,
+              image: linkingUser.image || user.image,
+              linkingToken: null,
+            },
+          })
+          return updated
+        }
+        // Expired — clear it
+        await prisma.user.update({
+          where: { id: linkingUser.id },
+          data: { linkingToken: null },
+        })
+      }
+    } catch (e) {
+      console.error('[Auth] createUser linking check failed:', e)
+    }
+    return baseAdapter.createUser(user)
+  },
+}
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -79,17 +123,15 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // When signing in with Google, check if there's already a user with that email
-      // (e.g. a phone-first user who later added email, or whose email was set via profile)
-      // If so, link the Google account to the existing user instead of creating a duplicate
       if (account?.provider === 'google' && user.email) {
+        // Normal Google sign-in (not linking): check if a user already exists with this email
         const existing = await prisma.user.findUnique({
           where: { email: user.email },
           include: { accounts: { where: { provider: 'google' } } },
         })
 
         if (existing && existing.accounts.length === 0) {
-          // Existing user has this email but no Google account linked — link it
+          // User has this email but no Google account — link it
           await prisma.account.create({
             data: {
               userId: existing.id,
@@ -104,7 +146,6 @@ export const authOptions: NextAuthOptions = {
               id_token: account.id_token ?? undefined,
             },
           })
-          // Update name/image from Google if not already set
           await prisma.user.update({
             where: { id: existing.id },
             data: {
@@ -112,7 +153,6 @@ export const authOptions: NextAuthOptions = {
               image: existing.image || user.image,
             },
           })
-          // Override the user object so NextAuth uses the existing user's ID
           user.id = existing.id
           return true
         }
@@ -156,6 +196,24 @@ export const authOptions: NextAuthOptions = {
         path: '/',
         secure: true,
         domain: '.giftist.ai',
+      },
+    },
+    csrfToken: {
+      name: 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
+      },
+    },
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
       },
     },
   },
