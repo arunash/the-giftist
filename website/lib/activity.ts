@@ -7,6 +7,7 @@ export type ActivityType =
   | 'WALLET_DEPOSIT'
   | 'CONTRIBUTION_RECEIVED'
   | 'EVENT_CREATED'
+  | 'EVENT_ITEM_ADDED'
 
 export async function createActivity({
   userId,

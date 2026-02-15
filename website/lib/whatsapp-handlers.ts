@@ -3,7 +3,7 @@ import { extractProductFromUrl } from '@/lib/extract'
 import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
 import { downloadMedia, sendTextMessage, sendImageMessage } from '@/lib/whatsapp'
-import { buildChatContext } from '@/lib/chat-context'
+import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
 import { stripSpecialBlocks } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
@@ -492,6 +492,12 @@ async function handleInstagramLink(
 }
 
 async function handleChatMessage(userId: string, text: string): Promise<string> {
+  // Check daily message limit for free users
+  const { allowed } = await checkChatLimit(userId)
+  if (!allowed) {
+    return "You've reached your daily limit of 10 messages. Upgrade to Gold for unlimited conversations! Visit giftist.ai/settings to upgrade."
+  }
+
   // Save user message
   await prisma.chatMessage.create({
     data: { userId, role: 'USER', content: text },

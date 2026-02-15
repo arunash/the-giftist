@@ -2,11 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import {
   LayoutGrid,
   MessageCircle,
   Wallet,
   Settings,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +41,13 @@ export function BottomNav() {
             </Link>
           )
         })}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors text-muted hover:text-red-400"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="text-[10px] font-medium">Sign Out</span>
+        </button>
       </div>
     </nav>
   )

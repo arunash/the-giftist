@@ -1,55 +1,63 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Volume2, VolumeX } from 'lucide-react'
+import { useState } from 'react'
+import { Music, ChevronDown, ChevronUp } from 'lucide-react'
 
-// Royalty-free ambient loop from Pixabay (creative commons)
-const AMBIENT_URL = '/ambient.mp3'
+const PLAYLISTS = [
+  { id: '37i9dQZF1DX4WYpdgoIcn6', label: 'Chill' },
+  { id: '37i9dQZF1DX0SM0LYsmbMT', label: 'Jazz' },
+  { id: '37i9dQZF1DXc8kgYqQLMfH', label: 'Lo-fi' },
+]
 
 export function AmbientPlayer() {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    const audio = new Audio(AMBIENT_URL)
-    audio.loop = true
-    audio.volume = 0.15
-    audio.preload = 'none'
-    audioRef.current = audio
-
-    audio.addEventListener('canplaythrough', () => setLoaded(true))
-    audio.addEventListener('error', () => setLoaded(false))
-
-    return () => {
-      audio.pause()
-      audio.src = ''
-    }
-  }, [])
-
-  const toggle = () => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    if (playing) {
-      audio.pause()
-      setPlaying(false)
-    } else {
-      audio.play().then(() => setPlaying(true)).catch(() => {})
-    }
-  }
+  const [open, setOpen] = useState(false)
+  const [activePlaylist, setActivePlaylist] = useState(PLAYLISTS[0].id)
 
   return (
-    <button
-      onClick={toggle}
-      className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full hover:bg-surface-hover transition-all group"
-      title={playing ? 'Mute ambient sound' : 'Play ambient sound'}
-    >
-      {playing ? (
-        <Volume2 className="h-4 w-4 text-primary" />
-      ) : (
-        <VolumeX className="h-4 w-4 text-muted group-hover:text-white" />
+    <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-2">
+      {/* Spotify embed */}
+      {open && (
+        <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-surface">
+          {/* Playlist pills */}
+          <div className="flex gap-1 p-2 bg-surface border-b border-border">
+            {PLAYLISTS.map((pl) => (
+              <button
+                key={pl.id}
+                onClick={() => setActivePlaylist(pl.id)}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition ${
+                  activePlaylist === pl.id
+                    ? 'bg-primary text-white'
+                    : 'bg-surface-hover text-muted hover:text-white'
+                }`}
+              >
+                {pl.label}
+              </button>
+            ))}
+          </div>
+          <iframe
+            src={`https://open.spotify.com/embed/playlist/${activePlaylist}?utm_source=generator&theme=0`}
+            width="300"
+            height="80"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            className="block"
+          />
+        </div>
       )}
-    </button>
+
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full hover:bg-surface-hover transition-all group flex items-center gap-1.5"
+        title={open ? 'Hide player' : 'Show music player'}
+      >
+        <Music className={`h-4 w-4 ${open ? 'text-primary' : 'text-muted group-hover:text-white'}`} />
+        {open ? (
+          <ChevronDown className="h-3 w-3 text-muted" />
+        ) : (
+          <ChevronUp className="h-3 w-3 text-muted" />
+        )}
+      </button>
+    </div>
   )
 }

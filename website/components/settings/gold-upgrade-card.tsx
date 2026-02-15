@@ -119,11 +119,11 @@ export default function GoldUpgradeCard() {
       <div className="space-y-3 mb-6">
         <div className="flex items-center gap-3">
           <Sparkles className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-          <span className="text-sm text-secondary">Priority AI recommendations</span>
+          <span className="text-sm text-secondary">Unlimited Gift Concierge conversations</span>
         </div>
         <div className="flex items-center gap-3">
           <Zap className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-          <span className="text-sm text-secondary">Unlimited wishlists</span>
+          <span className="text-sm text-secondary">Priority AI recommendations</span>
         </div>
         <div className="flex items-center gap-3">
           <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" />

@@ -19,9 +19,15 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') || 'newest' // newest, oldest, price-high, price-low
     const cursor = searchParams.get('cursor')
     const limit = Math.min(parseInt(searchParams.get('limit') || '12'), 50)
+    const eventId = searchParams.get('eventId')
 
     // Build where clause
     const where: any = { userId }
+
+    // Filter by event
+    if (eventId) {
+      where.events = { some: { eventId } }
+    }
     if (filter === 'unfunded') {
       where.fundedAmount = 0
       where.isPurchased = false

@@ -29,6 +29,7 @@ const AVATAR_COLORS: Record<string, string> = {
   WALLET_DEPOSIT: 'bg-blue-500/20',
   CONTRIBUTION_RECEIVED: 'bg-pink-500/20',
   EVENT_CREATED: 'bg-purple-500/20',
+  EVENT_ITEM_ADDED: 'bg-indigo-500/20',
 }
 
 export function ActivityItem({ activity }: ActivityItemProps) {

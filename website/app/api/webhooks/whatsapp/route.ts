@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHmac } from 'crypto'
 import { prisma } from '@/lib/db'
 import { normalizePhone, sendTextMessage, markAsRead } from '@/lib/whatsapp'
 import {
@@ -8,6 +9,17 @@ import {
   getWelcomeMessage,
 } from '@/lib/whatsapp-handlers'
 import { logError } from '@/lib/api-logger'
+
+function verifyWebhookSignature(body: string, signature: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET
+  if (!appSecret) {
+    console.warn('WHATSAPP_APP_SECRET not set — skipping signature verification')
+    return true // Allow in dev if secret not configured
+  }
+  if (!signature) return false
+  const expectedSig = createHmac('sha256', appSecret).update(body).digest('hex')
+  return signature === `sha256=${expectedSig}`
+}
 
 // Meta webhook verification
 export async function GET(request: NextRequest) {
@@ -26,7 +38,16 @@ export async function GET(request: NextRequest) {
 // Message processing
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const rawBody = await request.text()
+
+    // Verify webhook signature from Meta
+    const signature = request.headers.get('x-hub-signature-256')
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      console.error('WhatsApp webhook signature verification failed')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+
+    const body = JSON.parse(rawBody)
 
     const entry = body.entry?.[0]
     const changes = entry?.changes?.[0]

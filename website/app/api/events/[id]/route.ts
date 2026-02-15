@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { createActivity } from '@/lib/activity'
 import { logError } from '@/lib/api-logger'
 
 const updateSchema = z.object({
@@ -126,6 +127,14 @@ export async function PATCH(
 
     // If itemIds provided, update the event items
     if (data.itemIds !== undefined) {
+      // Get existing item IDs to detect newly added ones
+      const existingItems = await prisma.eventItem.findMany({
+        where: { eventId: id },
+        select: { itemId: true },
+      })
+      const existingItemIds = new Set(existingItems.map((ei) => ei.itemId))
+      const newItemIds = data.itemIds.filter((iid) => !existingItemIds.has(iid))
+
       // Delete existing items
       await prisma.eventItem.deleteMany({
         where: { eventId: id },
@@ -139,6 +148,17 @@ export async function PATCH(
           priority: index,
         })),
       })
+
+      // Emit activity for newly added items
+      for (const itemId of newItemIds) {
+        createActivity({
+          userId,
+          type: 'EVENT_ITEM_ADDED',
+          visibility: 'PUBLIC',
+          metadata: { eventName: existingEvent.name, eventId: id },
+          itemId,
+        }).catch(() => {})
+      }
     }
 
     const { itemIds, ...updateData } = data

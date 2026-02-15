@@ -11,9 +11,20 @@ import { HomeChatBar } from '@/components/chat/home-chat-bar'
 import { AddProductBar } from '@/components/feed/add-product-bar'
 import { TrendingCarousel } from '@/components/feed/trending-carousel'
 import { LinkAccountsBanner } from '@/components/ui/link-accounts-banner'
-import { Gift, Loader2, RefreshCw, Share2, Check } from 'lucide-react'
-import { shareOrCopy, giftistShareText } from '@/lib/utils'
+import { Gift, Loader2, RefreshCw, Share2, Check, Calendar, Plus, X } from 'lucide-react'
+import { shareOrCopy, giftistShareText, daysUntil } from '@/lib/utils'
 import { dummyItems } from '@/lib/dummy-data'
+import Link from 'next/link'
+
+const EVENT_TYPE_EMOJI: Record<string, string> = {
+  BIRTHDAY: '🎂',
+  ANNIVERSARY: '💍',
+  WEDDING: '💒',
+  BABY_SHOWER: '👶',
+  CHRISTMAS: '🎄',
+  HOLIDAY: '🎉',
+  OTHER: '📅',
+}
 
 const ACTIVITY_TYPE_CONFIG: Record<string, { emoji: string; verb: string }> = {
   ITEM_ADDED: { emoji: '🎁', verb: 'added' },
@@ -22,6 +33,7 @@ const ACTIVITY_TYPE_CONFIG: Record<string, { emoji: string; verb: string }> = {
   WALLET_DEPOSIT: { emoji: '💵', verb: 'topped up their wallet' },
   CONTRIBUTION_RECEIVED: { emoji: '❤️', verb: 'received a contribution for' },
   EVENT_CREATED: { emoji: '🎂', verb: 'created an event' },
+  EVENT_ITEM_ADDED: { emoji: '📌', verb: 'added to event' },
 }
 
 function formatTimeAgo(dateStr: string): string {
@@ -40,9 +52,14 @@ function transformActivity(raw: any) {
   const config = ACTIVITY_TYPE_CONFIG[raw.type] || { emoji: '📌', verb: raw.type }
   const metadata = raw.metadata ? JSON.parse(raw.metadata) : {}
   const itemName = raw.item?.name || metadata.itemName
-  const action = itemName
-    ? `${config.verb} *${itemName}*`
-    : config.verb
+  let action: string
+  if (raw.type === 'EVENT_ITEM_ADDED' && itemName && metadata.eventName) {
+    action = `added *${itemName}* to *${metadata.eventName}*`
+  } else if (raw.type === 'EVENT_CREATED' && metadata.eventName) {
+    action = `${config.verb} *${metadata.eventName}*`
+  } else {
+    action = itemName ? `${config.verb} *${itemName}*` : config.verb
+  }
 
   // Generate contextual badge
   let contextBadge: string | null = null
@@ -84,7 +101,8 @@ export default function FeedPage() {
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [walletBalance, setWalletBalance] = useState(0)
   const [useDummy, setUseDummy] = useState(false)
-  const [events, setEvents] = useState<{ id: string; name: string }[]>([])
+  const [events, setEvents] = useState<{ id: string; name: string; type: string; date: string; itemCount: number }[]>([])
+  const [eventFilter, setEventFilter] = useState<string | null>(null)
   const observerRef = useRef<HTMLDivElement>(null)
   const [shareId, setShareId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('')
@@ -107,6 +125,7 @@ export default function FeedPage() {
     try {
       const params = new URLSearchParams({ filter, sort, limit: '12' })
       if (!reset && cursor) params.set('cursor', cursor)
+      if (eventFilter) params.set('eventId', eventFilter)
 
       const res = await fetch(`/api/feed?${params}`)
       const data = await res.json()
@@ -133,7 +152,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [filter, sort, cursor])
+  }, [filter, sort, cursor, eventFilter])
 
   const fetchActivities = useCallback(async (tab: 'mine' | 'community') => {
     setActivityLoading(true)
@@ -158,7 +177,13 @@ export default function FeedPage() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setEvents(data.map((e: any) => ({ id: e.id, name: e.name })))
+          setEvents(data.map((e: any) => ({
+            id: e.id,
+            name: e.name,
+            type: e.type,
+            date: e.date,
+            itemCount: e.items?.length || 0,
+          })))
         }
       })
       .catch(() => {})
@@ -170,7 +195,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchFeed(true)
-  }, [filter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter, eventFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchActivities(activityTab)
@@ -191,8 +216,74 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, loadingMore]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const upcomingEvents = events
+    .filter((e) => daysUntil(new Date(e.date)) >= 0)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5)
+
   const activityContent = (
     <>
+      {/* Upcoming Events */}
+      {upcomingEvents.length > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-primary" />
+              Upcoming Events
+            </h3>
+            <Link href="/events" className="text-xs text-primary hover:text-primary-hover transition">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {upcomingEvents.map((event) => {
+              const days = daysUntil(new Date(event.date))
+              return (
+                <button
+                  key={event.id}
+                  onClick={() => setEventFilter(eventFilter === event.id ? null : event.id)}
+                  className={`block w-full text-left rounded-xl p-3 border transition ${
+                    eventFilter === event.id
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'bg-surface-hover/50 border-border hover:border-border-light'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
+                      <div className="min-w-0">
+                        <Link href={`/events/${event.id}`} className="text-sm font-medium text-white truncate hover:underline" onClick={(e) => e.stopPropagation()}>
+                          {event.name}
+                        </Link>
+                        <p className="text-xs text-muted">{event.itemCount} item{event.itemCount !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        days <= 7
+                          ? 'bg-red-500/10 text-red-400'
+                          : days <= 30
+                          ? 'bg-yellow-500/10 text-yellow-400'
+                          : 'bg-green-500/10 text-green-400'
+                      }`}
+                    >
+                      {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days}d`}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <Link
+            href="/events/new"
+            className="flex items-center justify-center gap-1.5 w-full mt-2 py-2 text-xs font-medium text-muted hover:text-white border border-dashed border-border rounded-lg hover:border-border-light transition"
+          >
+            <Plus className="h-3 w-3" />
+            Create Event
+          </Link>
+        </div>
+      )}
+
       <div className="mb-4">
         <ActivityTabs activeTab={activityTab} onTabChange={setActivityTab} />
       </div>
@@ -278,8 +369,19 @@ export default function FeedPage() {
               <AddProductBar onAdded={() => fetchFeed(true)} />
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 space-y-3">
               <ItemFilters filter={filter} onFilterChange={setFilter} />
+              {eventFilter && (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
+                    {EVENT_TYPE_EMOJI[events.find((e) => e.id === eventFilter)?.type || ''] || '📅'}
+                    {events.find((e) => e.id === eventFilter)?.name || 'Event'}
+                    <button onClick={() => setEventFilter(null)} className="ml-1 hover:text-white transition">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
 
             {loading ? (

@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import { isPrivateUrl } from './url-safety'
 
 export interface ProductInfo {
   name: string
@@ -167,6 +168,11 @@ function extractFromDOM($: cheerio.CheerioAPI): Partial<ProductInfo> {
 export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
   const parsedUrl = new URL(url)
   const domain = parsedUrl.hostname
+
+  // SSRF protection: block requests to private/internal networks
+  if (isPrivateUrl(parsedUrl)) {
+    throw new Error('URLs pointing to private or internal networks are not allowed')
+  }
 
   let html: string
   try {

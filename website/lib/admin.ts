@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from './auth'
 
-const ADMIN_PHONES = ['13034087839']
+const ADMIN_PHONES = (process.env.ADMIN_PHONES || '').split(',').filter(Boolean)
 
 export function isAdmin(session: any): boolean {
   return session?.user?.isAdmin === true

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildChatContext } from '@/lib/chat-context'
+import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
 import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -20,6 +20,18 @@ export async function POST(request: NextRequest) {
 
     if (!message || typeof message !== 'string') {
       return new Response('Message is required', { status: 400 })
+    }
+
+    // Check daily message limit for free users
+    const { allowed, remaining } = await checkChatLimit(userId)
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'limit_reached',
+          message: "You've reached your daily limit of 10 messages. Upgrade to Gold for unlimited conversations with your Gift Concierge!",
+        }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     // Save user message

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { Gift, ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap } from 'lucide-react'
+import { Gift, ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X } from 'lucide-react'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 
 export default async function Home() {
@@ -243,6 +243,79 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Pricing: Free vs Gold */}
+      <section className="py-24 border-t border-[#1a1a1d]">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
+              Free forever. Gold when you're ready.
+            </h2>
+            <p className="text-[#888] max-w-lg mx-auto">
+              Everything you need to get started is free. Upgrade to Gold for the full concierge experience.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Free tier */}
+            <div className="bg-[#141416] rounded-2xl border border-[#222225] p-8">
+              <h3 className="text-xl font-bold text-white mb-1">Free</h3>
+              <p className="text-[#888] text-sm mb-6">Everything to get started</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-3xl font-bold text-white">$0</span>
+                <span className="text-sm text-[#555]">/forever</span>
+              </div>
+              <div className="space-y-3">
+                <PricingItem included text="Unlimited wishlist items" />
+                <PricingItem included text="Add items by URL or photo" />
+                <PricingItem included text="Share lists via WhatsApp" />
+                <PricingItem included text="Create events and registries" />
+                <PricingItem included text="Group gift funding" />
+                <PricingItem included text="10 concierge messages/day" />
+                <PricingItem included={false} text="Unlimited concierge conversations" />
+                <PricingItem included={false} text="Priority AI recommendations" />
+                <PricingItem included={false} text="Early access to new features" />
+              </div>
+              <Link
+                href="/login"
+                className="mt-8 w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm text-white border border-[#333] hover:border-[#555] hover:bg-[#1a1a1d] transition"
+              >
+                Get Started Free
+              </Link>
+            </div>
+
+            {/* Gold tier */}
+            <div className="bg-[#141416] rounded-2xl border border-yellow-500/30 p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
+                Popular
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                <h3 className="text-xl font-bold text-white">Gold</h3>
+              </div>
+              <p className="text-[#888] text-sm mb-6">The full concierge experience</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-3xl font-bold text-white">$4.99</span>
+                <span className="text-sm text-[#555]">/month</span>
+              </div>
+              <div className="space-y-3">
+                <PricingItem included text="Everything in Free" />
+                <PricingItem included text="Unlimited concierge conversations" />
+                <PricingItem included text="Priority AI recommendations" />
+                <PricingItem included text="Daily WhatsApp gift inspiration" />
+                <PricingItem included text="Early access to new features" />
+              </div>
+              <Link
+                href="/login"
+                className="mt-8 w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm bg-yellow-500 text-black hover:bg-yellow-400 transition"
+              >
+                <Crown className="h-4 w-4" />
+                Start Gold Trial
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-24">
         <div className="max-w-3xl mx-auto px-6 text-center">
@@ -271,9 +344,13 @@ export default async function Home() {
               <Gift className="h-5 w-5 text-primary" />
               <span className="text-sm font-semibold text-white">The Giftist</span>
             </div>
-            <p className="text-xs text-[#555]">
-              © 2026 The Giftist. All rights reserved.
-            </p>
+            <div className="flex items-center gap-6">
+              <Link href="/terms" className="text-xs text-[#555] hover:text-white transition">Terms</Link>
+              <Link href="/privacy" className="text-xs text-[#555] hover:text-white transition">Privacy</Link>
+              <p className="text-xs text-[#555]">
+                © 2026 The Giftist. All rights reserved.
+              </p>
+            </div>
           </div>
         </div>
       </footer>
@@ -317,6 +394,23 @@ function CheckItem({ text }: { text: string }) {
         </svg>
       </div>
       <span className="text-sm text-[#aaa]">{text}</span>
+    </div>
+  )
+}
+
+function PricingItem({ included, text }: { included: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      {included ? (
+        <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+          <Check className="h-3 w-3 text-green-400" />
+        </div>
+      ) : (
+        <div className="w-5 h-5 rounded-full bg-[#1a1a1d] flex items-center justify-center flex-shrink-0">
+          <X className="h-3 w-3 text-[#444]" />
+        </div>
+      )}
+      <span className={`text-sm ${included ? 'text-[#aaa]' : 'text-[#555]'}`}>{text}</span>
     </div>
   )
 }

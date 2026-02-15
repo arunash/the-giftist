@@ -27,6 +27,19 @@ export function useChatStream() {
         body: JSON.stringify({ message }),
       })
 
+      if (res.status === 429) {
+        const data = await res.json()
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: data.message || "You've reached your daily message limit. Upgrade to Gold for unlimited conversations!" }
+              : m
+          )
+        )
+        setStreaming(false)
+        return
+      }
+
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
 

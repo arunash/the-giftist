@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { User, Sparkles, MessageCircle, ArrowRight, Send, Check, Phone } from 'lucide-react'
-import { signIn } from 'next-auth/react'
+import { User, Sparkles, MessageCircle, ArrowRight, Send, Check, Phone, LogOut } from 'lucide-react'
+import { signIn, signOut } from 'next-auth/react'
 import LinkPhoneForm from './link-phone-form'
 import { ChatBubble } from '@/components/chat/chat-bubble'
 import { useChatStream } from '@/lib/hooks/use-chat-stream'
@@ -233,6 +233,15 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Sign Out */}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition font-medium text-sm"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
 
         {/* Conversational Preferences Chat */}
         {chatOpen && (

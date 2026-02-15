@@ -41,20 +41,48 @@ export async function sendImageMessage(to: string, imageUrl: string, caption: st
   return result
 }
 
+const MAX_MEDIA_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_MEDIA_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif',
+])
+
 export async function downloadMedia(mediaId: string): Promise<Buffer> {
-  // Step 1: get the media URL
+  // Step 1: get the media URL and metadata
   const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
     headers: { Authorization: `Bearer ${TOKEN()}` },
   })
   if (!metaRes.ok) throw new Error(`Failed to get media URL: ${metaRes.status}`)
-  const { url } = await metaRes.json()
+  const meta = await metaRes.json()
+  const { url, file_size, mime_type } = meta
+
+  // Validate file size from metadata
+  if (file_size && Number(file_size) > MAX_MEDIA_SIZE) {
+    throw new Error(`Media too large: ${file_size} bytes (max ${MAX_MEDIA_SIZE})`)
+  }
+
+  // Validate content type from metadata
+  if (mime_type && !ALLOWED_MEDIA_TYPES.has(mime_type)) {
+    throw new Error(`Unsupported media type: ${mime_type}`)
+  }
 
   // Step 2: download the binary
   const dataRes = await fetch(url, {
     headers: { Authorization: `Bearer ${TOKEN()}` },
   })
   if (!dataRes.ok) throw new Error(`Failed to download media: ${dataRes.status}`)
+
+  // Double-check content-length header
+  const contentLength = dataRes.headers.get('content-length')
+  if (contentLength && Number(contentLength) > MAX_MEDIA_SIZE) {
+    throw new Error(`Media too large: ${contentLength} bytes`)
+  }
+
   const arrayBuffer = await dataRes.arrayBuffer()
+  if (arrayBuffer.byteLength > MAX_MEDIA_SIZE) {
+    throw new Error(`Media too large: ${arrayBuffer.byteLength} bytes`)
+  }
+
   return Buffer.from(arrayBuffer)
 }
 

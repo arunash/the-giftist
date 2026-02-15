@@ -1,5 +1,37 @@
 import { prisma } from './db'
 
+const FREE_DAILY_MESSAGE_LIMIT = 10
+
+export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+  // Check if user has an active Gold subscription
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+    select: { status: true, currentPeriodEnd: true },
+  })
+
+  const isGold = subscription?.status === 'ACTIVE' &&
+    (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
+
+  if (isGold) {
+    return { allowed: true, remaining: Infinity }
+  }
+
+  // Count today's user messages
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const todayCount = await prisma.chatMessage.count({
+    where: {
+      userId,
+      role: 'USER',
+      createdAt: { gte: startOfDay },
+    },
+  })
+
+  const remaining = Math.max(0, FREE_DAILY_MESSAGE_LIMIT - todayCount)
+  return { allowed: todayCount < FREE_DAILY_MESSAGE_LIMIT, remaining }
+}
+
 export async function buildChatContext(userId: string): Promise<string> {
   const [items, events, wallet, user] = await Promise.all([
     prisma.item.findMany({
@@ -130,6 +162,9 @@ Rules for structured output:
 When the user discusses their preferences (interests, budget, age, style, etc.) and you want to save them, output:
 [PREFERENCES]{"interests":["..."],"giftBudget":"...","ageRange":"...","gender":"...","relationship":"..."}[/PREFERENCES]
 Only include fields the user explicitly mentioned. Do not guess or infer preference values.
+
+TOPIC GUARDRAIL:
+You MUST only discuss topics related to gifting, wishlists, events, celebrations, shopping, product recommendations, and personal preferences that help with gift selection. If a user asks about something unrelated (politics, coding, math homework, medical advice, legal questions, news, etc.), politely decline and redirect them back to gifting. Example response: "I'm your Gift Concierge, so I'm best at helping with gifts, wishlists, and events! Is there a gift or occasion I can help you with?"
 
 CONCIERGE GUIDELINES:
 - Be helpful, friendly, and concise — like a trusted personal shopper

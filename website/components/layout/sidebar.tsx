@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -10,6 +11,7 @@ import {
   Settings,
   Gift,
   LogOut,
+  Crown,
 } from 'lucide-react'
 import { cn, formatPrice } from '@/lib/utils'
 import { SidebarSummary } from './sidebar-summary'
@@ -28,6 +30,14 @@ interface SidebarProps {
 export function Sidebar({ walletBalance = 0 }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const [isGold, setIsGold] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/subscription')
+      .then((r) => r.json())
+      .then((data) => setIsGold(data.status === 'ACTIVE'))
+      .catch(() => {})
+  }, [])
 
   return (
     <aside className="hidden lg:flex flex-col w-80 h-screen fixed left-0 top-0 bg-surface border-r border-border">
@@ -76,9 +86,14 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {session?.user?.name || 'User'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-white truncate">
+                {session?.user?.name || 'User'}
+              </p>
+              {isGold && (
+                <span title="Gold member"><Crown className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" /></span>
+              )}
+            </div>
             <p className="text-xs text-muted truncate">
               {session?.user?.email || ''}
             </p>
