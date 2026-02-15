@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X, Gift } from 'lucide-react'
+import { ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X } from 'lucide-react'
 import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 
@@ -175,8 +175,8 @@ export default async function Home() {
             {/* Mock funding card */}
             <div className="flex justify-center">
               <div className="bg-white rounded-2xl border border-gray-200 p-6 w-full max-w-sm shadow-sm">
-                <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl mb-4 flex items-center justify-center">
-                  <Gift className="h-12 w-12 text-gray-300" />
+                <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl mb-4 overflow-hidden">
+                  <img src="/mock-sony-wh1000xm5.jpg" alt="Sony WH-1000XM5" className="w-full h-full object-cover" />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-1">Sony WH-1000XM5</h3>
                 <p className="text-sm text-gray-400 mb-4">$348.00</p>

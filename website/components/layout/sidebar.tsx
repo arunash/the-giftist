@@ -11,6 +11,9 @@ import {
   Settings,
   LogOut,
   Crown,
+  ArrowUpRight,
+  Gift,
+  Sparkles,
 } from 'lucide-react'
 import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
@@ -83,16 +86,31 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
         <SidebarSummary />
       </div>
 
-      {/* Wallet balance + received cards */}
+      {/* Funds cards */}
       <div className="mx-4 mb-4 space-y-2">
-        <a href="/wallet" className="block p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white hover:brightness-110 transition cursor-pointer">
-          <p className="text-xs text-white/80 mb-1">Funds Balance</p>
-          <p className="text-xl font-bold">{formatPrice(walletBalance)}</p>
+        <a href="/wallet" className="group relative block p-4 rounded-xl bg-white border border-gray-200 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden">
+          <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
+          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-0.5">Your Funds</p>
+          <p className="text-2xl font-bold text-gray-900">{formatPrice(walletBalance)}</p>
+          {walletBalance > 0 && (
+            <p className="text-[11px] text-primary font-medium mt-1 flex items-center gap-0.5">
+              Ready to send <ArrowUpRight className="h-3 w-3" />
+            </p>
+          )}
         </a>
         {fundsReceived > 0 && (
-          <a href="/wallet" className="block p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:brightness-110 transition cursor-pointer">
-            <p className="text-xs text-white/80 mb-1">Funds Received</p>
-            <p className="text-xl font-bold">{formatPrice(fundsReceived)}</p>
+          <a href="/wallet" className="group relative block p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer overflow-hidden">
+            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+              <Gift className="h-4 w-4 text-emerald-600" />
+            </div>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Sparkles className="h-3 w-3 text-emerald-500" />
+              <p className="text-[11px] font-medium text-emerald-600 uppercase tracking-wider">Gifted to you</p>
+            </div>
+            <p className="text-2xl font-bold text-emerald-700">{formatPrice(fundsReceived)}</p>
+            <p className="text-[11px] text-emerald-600/70 mt-1">from friends & family</p>
           </a>
         )}
       </div>
