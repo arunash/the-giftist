@@ -9,10 +9,10 @@ import {
   MessageCircle,
   Wallet,
   Settings,
-  Gift,
   LogOut,
   Crown,
 } from 'lucide-react'
+import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
 import { SidebarSummary } from './sidebar-summary'
 
@@ -44,8 +44,8 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
     <aside className="hidden lg:flex flex-col w-80 h-screen fixed left-0 top-0 bg-surface border-r border-border">
       {/* Logo */}
       <div className="p-6">
-        <Link href="/feed" className="flex items-center gap-2">
-          <Gift className="h-7 w-7 text-primary" />
+        <Link href="/feed" className="flex items-center gap-2.5">
+          <Image src="/logo-light.png" alt="Giftist" width={32} height={32} className="rounded-lg" />
           <span className="text-lg font-bold text-primary">The Giftist</span>
         </Link>
       </div>

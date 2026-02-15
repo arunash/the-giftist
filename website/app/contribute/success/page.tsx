@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Gift, CheckCircle, ArrowLeft } from 'lucide-react'
+import { CheckCircle, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import { formatPrice } from '@/lib/utils'
 
 interface ContributionData {
@@ -60,8 +61,8 @@ function SuccessContent() {
       <header className="bg-surface border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <Gift className="h-8 w-8 text-primary" />
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image src="/logo-light.png" alt="Giftist" width={34} height={34} className="rounded-lg" />
               <span className="text-xl font-bold text-primary">The Giftist</span>
             </Link>
           </div>

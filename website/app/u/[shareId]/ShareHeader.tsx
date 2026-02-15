@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Gift, Share2, Check } from 'lucide-react'
+import { Share2, Check } from 'lucide-react'
+import Image from 'next/image'
 import { shareOrCopy, giftistShareText } from '@/lib/utils'
 
 export default function ShareHeader({ shareId, ownerName }: { shareId: string; ownerName: string }) {
@@ -21,8 +22,8 @@ export default function ShareHeader({ shareId, ownerName }: { shareId: string; o
     <header className="bg-surface border-b border-border">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <Gift className="h-8 w-8 text-primary" />
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image src="/logo-light.png" alt="Giftist" width={34} height={34} className="rounded-lg" />
             <span className="text-xl font-bold text-primary">The Giftist</span>
           </Link>
           <div className="flex items-center gap-4">

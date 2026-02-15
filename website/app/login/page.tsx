@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Gift, Lock, MessageCircle } from 'lucide-react'
+import { Lock, MessageCircle } from 'lucide-react'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -90,8 +91,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-          <Gift className="h-10 w-10 text-primary" />
+        <Link href="/" className="flex items-center justify-center gap-3 mb-8">
+          <Image src="/logo-light.png" alt="Giftist" width={44} height={44} className="rounded-xl" />
           <span className="text-2xl font-bold text-primary">The Giftist</span>
         </Link>
 

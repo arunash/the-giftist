@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
 import { Gift, Calendar, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import ContributeButton from './ContributeButton'
 import EventContributeButton from './EventContributeButton'
 import AllocateFundsPanel from './AllocateFundsPanel'
@@ -145,7 +146,7 @@ export default async function EventPage({
               href="/"
               className="flex items-center gap-2"
             >
-              <Gift className="h-8 w-8 text-primary" />
+              <Image src="/logo-light.png" alt="Giftist" width={34} height={34} className="rounded-lg" />
               <span className="text-xl font-bold text-primary">The Giftist</span>
             </Link>
             <ShareEventButton shareUrl={shareUrl} eventName={event.name} />

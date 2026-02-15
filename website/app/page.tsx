@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { Gift, ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X } from 'lucide-react'
+import { ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X, Gift } from 'lucide-react'
+import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 
 export default async function Home() {
@@ -16,8 +17,8 @@ export default async function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50">
         <div className="max-w-6xl mx-auto px-6 pt-4">
           <div className="flex justify-between items-center h-14 px-6 bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/50 shadow-2xl shadow-black/5">
-            <Link href="/" className="flex items-center gap-2">
-              <Gift className="h-6 w-6 text-primary" />
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image src="/logo-light.png" alt="Giftist" width={28} height={28} className="rounded-lg" />
               <span className="text-lg font-bold text-gray-900 tracking-tight">The Giftist</span>
             </Link>
             <div className="flex items-center gap-3">
@@ -341,7 +342,7 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-primary" />
+              <Image src="/logo-light.png" alt="Giftist" width={22} height={22} className="rounded-md" />
               <span className="text-sm font-semibold text-gray-900">The Giftist</span>
             </div>
             <div className="flex items-center gap-6">
