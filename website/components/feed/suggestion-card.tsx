@@ -19,7 +19,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
           <p className="text-xs text-accent font-semibold uppercase tracking-wide mb-1">
             AI Suggestion
           </p>
-          <h3 className="font-medium text-white text-sm">{suggestion.title}</h3>
+          <h3 className="font-medium text-gray-900 text-sm">{suggestion.title}</h3>
           <p className="text-xs text-muted mt-1">{suggestion.description}</p>
         </div>
       </div>

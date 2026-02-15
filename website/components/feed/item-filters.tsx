@@ -24,7 +24,7 @@ export function ItemFilters({ filter, onFilterChange }: ItemFiltersProps) {
             'px-4 py-1.5 rounded-full text-sm font-medium transition-all',
             filter === f.value
               ? 'bg-primary text-white'
-              : 'bg-surface text-muted hover:text-white border border-border'
+              : 'bg-surface text-muted hover:text-gray-900 border border-border'
           )}
         >
           {f.label}

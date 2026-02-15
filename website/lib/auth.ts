@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
+import { createDefaultEventsForUser } from './default-events'
 import twilio from 'twilio'
 import { ADMIN_PHONES } from './admin'
 
@@ -53,7 +54,10 @@ const adapter = {
     } catch (e) {
       console.error('[Auth] createUser linking check failed:', e)
     }
-    return baseAdapter.createUser(user)
+    const created = await baseAdapter.createUser(user)
+    // Fire-and-forget: create default events for new user
+    createDefaultEventsForUser(created.id).catch(() => {})
+    return created
   },
 }
 
@@ -106,6 +110,8 @@ export const authOptions: NextAuthOptions = {
               name: `User ${normalized.slice(-4)}`,
             },
           })
+          // Fire-and-forget: create default events for new user
+          createDefaultEventsForUser(user.id).catch(() => {})
         }
 
         return {

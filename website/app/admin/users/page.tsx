@@ -58,7 +58,7 @@ export default function AdminUsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-9 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-white placeholder:text-muted focus:outline-none focus:border-primary w-72"
+              className="pl-9 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-gray-900 placeholder:text-muted focus:outline-none focus:border-primary w-72"
             />
           </div>
           <button

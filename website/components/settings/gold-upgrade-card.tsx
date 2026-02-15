@@ -78,7 +78,7 @@ export default function GoldUpgradeCard() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-white">Giftist Gold</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Giftist Gold</h2>
                 <span className="px-2 py-0.5 bg-yellow-500/10 text-yellow-500 text-xs font-semibold rounded-full">
                   ACTIVE
                 </span>
@@ -95,7 +95,7 @@ export default function GoldUpgradeCard() {
         <button
           onClick={handleManage}
           disabled={actionLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-surface-hover text-white rounded-lg text-sm font-medium hover:bg-surface-raised transition disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-surface-hover text-gray-900 rounded-lg text-sm font-medium hover:bg-surface-raised transition disabled:opacity-50"
         >
           <ExternalLink className="h-4 w-4" />
           {actionLoading ? 'Opening...' : 'Manage Subscription'}
@@ -108,7 +108,7 @@ export default function GoldUpgradeCard() {
     <div className="bg-surface rounded-xl border border-border p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Upgrade to Gold</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Upgrade to Gold</h2>
           <p className="text-sm text-muted">Unlock premium features</p>
         </div>
         <div className="p-2 bg-yellow-500/10 rounded-full">
@@ -132,7 +132,7 @@ export default function GoldUpgradeCard() {
       </div>
 
       <div className="flex items-baseline gap-1 mb-4">
-        <span className="text-2xl font-bold text-white">$4.99</span>
+        <span className="text-2xl font-bold text-gray-900">$4.99</span>
         <span className="text-sm text-muted">/month</span>
       </div>
 

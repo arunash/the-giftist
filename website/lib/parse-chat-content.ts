@@ -5,11 +5,21 @@ export interface EventData {
   description?: string
 }
 
+export interface AddToEventData {
+  itemId?: string
+  eventId: string
+  itemName: string
+  eventName: string
+  price?: string
+  url?: string
+}
+
 export type ChatSegment =
   | { type: 'text'; content: string }
   | { type: 'product'; data: ProductData }
   | { type: 'preferences'; data: Record<string, any> }
   | { type: 'event'; data: EventData }
+  | { type: 'add_to_event'; data: AddToEventData }
 
 export interface ProductData {
   name: string
@@ -22,13 +32,14 @@ export interface ProductData {
 const PRODUCT_REGEX = /\[PRODUCT\]([\s\S]*?)\[\/PRODUCT\]/g
 const PREFERENCES_REGEX = /\[PREFERENCES\]([\s\S]*?)\[\/PREFERENCES\]/g
 const EVENT_REGEX = /\[EVENT\]([\s\S]*?)\[\/EVENT\]/g
+const ADD_TO_EVENT_REGEX = /\[ADD_TO_EVENT\]([\s\S]*?)\[\/ADD_TO_EVENT\]/g
 
 export function parseChatContent(content: string): ChatSegment[] {
   const segments: ChatSegment[] = []
   let lastIndex = 0
 
   // Combine all special blocks with their positions
-  const blocks: { start: number; end: number; type: 'product' | 'preferences' | 'event'; raw: string }[] = []
+  const blocks: { start: number; end: number; type: 'product' | 'preferences' | 'event' | 'add_to_event'; raw: string }[] = []
 
   let match: RegExpExecArray | null
 
@@ -62,6 +73,16 @@ export function parseChatContent(content: string): ChatSegment[] {
     })
   }
 
+  const addToEventRegex = new RegExp(ADD_TO_EVENT_REGEX.source, 'g')
+  while ((match = addToEventRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'add_to_event',
+      raw: match[1],
+    })
+  }
+
   // Sort by position
   blocks.sort((a, b) => a.start - b.start)
 
@@ -80,6 +101,8 @@ export function parseChatContent(content: string): ChatSegment[] {
         segments.push({ type: 'product', data: parsed as ProductData })
       } else if (block.type === 'event') {
         segments.push({ type: 'event', data: parsed as EventData })
+      } else if (block.type === 'add_to_event') {
+        segments.push({ type: 'add_to_event', data: parsed as AddToEventData })
       } else {
         segments.push({ type: 'preferences', data: parsed })
       }
@@ -107,6 +130,7 @@ export function stripSpecialBlocks(content: string): string {
     .replace(PRODUCT_REGEX, '')
     .replace(PREFERENCES_REGEX, '')
     .replace(EVENT_REGEX, '')
+    .replace(ADD_TO_EVENT_REGEX, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

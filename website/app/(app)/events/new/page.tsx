@@ -71,7 +71,7 @@ export default function NewEventPage() {
     <div className="p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-surface rounded-xl border border-border p-6">
-          <h1 className="text-2xl font-bold text-white mb-6">Create Event</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Event</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Event Type */}
@@ -104,7 +104,7 @@ export default function NewEventPage() {
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Sarah's 30th Birthday"
-                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
               />
             </div>
@@ -116,7 +116,7 @@ export default function NewEventPage() {
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
               />
             </div>
@@ -129,7 +129,7 @@ export default function NewEventPage() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Add any notes about the event..."
                 rows={3}
-                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
               />
             </div>
 
@@ -164,7 +164,7 @@ export default function NewEventPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white text-sm line-clamp-1">{item.name}</p>
+                        <p className="font-medium text-gray-900 text-sm line-clamp-1">{item.name}</p>
                         <p className="text-primary text-sm">{item.price}</p>
                       </div>
                       {formData.itemIds.includes(item.id) && (

@@ -145,7 +145,7 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-white">Trending For You</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Trending For You</h3>
         </div>
         <span className="text-xs text-muted flex items-center gap-1">
           <span className="text-primary">✨</span> Curated by AI
@@ -155,9 +155,9 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
       <div className="relative group">
         <button
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface-raised border border-border rounded-full opacity-0 group-hover:opacity-100 transition -translate-x-2"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white shadow-md rounded-full opacity-0 group-hover:opacity-100 transition -translate-x-2"
         >
-          <ChevronLeft className="h-4 w-4 text-white" />
+          <ChevronLeft className="h-4 w-4 text-gray-900" />
         </button>
 
         <div
@@ -168,32 +168,32 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
           {visibleItems.map(({ item, originalIdx }) => (
             <div
               key={originalIdx}
-              className="flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] bg-surface rounded-2xl border border-border overflow-hidden hover:border-border-light transition-all duration-300 group/card"
+              className="flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] ig-card overflow-hidden group/card"
               style={{ scrollSnapAlign: 'start' }}
             >
-              <div className="relative aspect-square bg-surface-hover overflow-hidden">
+              <div className="ig-image-wrap aspect-square">
                 <img
                   src={item.image}
                   alt={item.name}
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02] group-hover/card:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover"
                   onError={() => handleImageError(originalIdx)}
                 />
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-medium text-white uppercase tracking-wide">
+                <div className="absolute top-2 left-2 ig-glass px-2.5 py-0.5 rounded-full text-[10px] font-medium text-white uppercase tracking-wide z-10">
                   {item.category}
                 </div>
                 {item.price && (
-                  <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur-md text-sm font-semibold text-white">
+                  <div className="absolute bottom-3 left-3 ig-glass px-3 py-1.5 rounded-full text-sm font-semibold text-white z-10">
                     {item.price}
                   </div>
                 )}
               </div>
               <div className="p-3">
-                <h4 className="text-sm font-medium text-white line-clamp-1 mb-1">{item.name}</h4>
+                <h4 className="text-sm font-semibold text-gray-900 line-clamp-1 mb-1.5">{item.name}</h4>
                 <button
                   onClick={() => handleAdd(item, originalIdx)}
                   disabled={addingIdx === originalIdx || addedSet.has(originalIdx)}
-                  className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg transition disabled:opacity-50 bg-primary/10 text-primary hover:bg-primary/20"
+                  className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-full transition disabled:opacity-50 bg-primary-light text-primary hover:bg-primary/20"
                 >
                   {addedSet.has(originalIdx) ? (
                     'Added!'
@@ -213,9 +213,9 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
 
         <button
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface-raised border border-border rounded-full opacity-0 group-hover:opacity-100 transition translate-x-2"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white shadow-md rounded-full opacity-0 group-hover:opacity-100 transition translate-x-2"
         >
-          <ChevronRight className="h-4 w-4 text-white" />
+          <ChevronRight className="h-4 w-4 text-gray-900" />
         </button>
       </div>
     </div>

@@ -7,9 +7,9 @@ interface BadgeProps {
 }
 
 const variantClasses = {
-  default: 'bg-surface-hover text-muted',
-  success: 'bg-green-500/10 text-green-400',
-  warning: 'bg-yellow-500/10 text-yellow-400',
+  default: 'bg-gray-100 text-gray-600',
+  success: 'bg-green-50 text-green-700',
+  warning: 'bg-yellow-50 text-yellow-700',
   primary: 'bg-primary-light text-primary',
   outline: 'border border-border text-muted',
 }

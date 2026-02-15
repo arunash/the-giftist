@@ -22,10 +22,23 @@ export default async function AppLayout({
 
   const userId = (session.user as any).id
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
-    select: { balance: true },
-  })
+  const [wallet, user] = await Promise.all([
+    prisma.wallet.findUnique({
+      where: { userId },
+      select: { balance: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { lifetimeContributionsReceived: true },
+    }),
+  ])
 
-  return <AppShell walletBalance={wallet?.balance ?? 0}>{children}</AppShell>
+  return (
+    <AppShell
+      walletBalance={wallet?.balance ?? 0}
+      fundsReceived={user?.lifetimeContributionsReceived ?? 0}
+    >
+      {children}
+    </AppShell>
+  )
 }

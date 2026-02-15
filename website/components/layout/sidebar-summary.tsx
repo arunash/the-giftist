@@ -60,7 +60,7 @@ export function SidebarSummary() {
     <div className="mx-4 mb-4">
       <div className="flex items-center gap-2 px-1 mb-2">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-semibold text-white">Giftist Ticker</span>
+        <span className="text-xs font-semibold text-gray-900">Giftist Ticker</span>
       </div>
       {timeLabel && (
         <p className="text-[10px] text-muted px-1 mb-2">Updated {timeLabel}</p>

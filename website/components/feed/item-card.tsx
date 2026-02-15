@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Gift, ExternalLink, Share2, Check, Trash2, Calendar } from 'lucide-react'
+import { Gift, ExternalLink, Share2, Check, Trash2, Calendar, Heart } from 'lucide-react'
 import { formatPrice, getProgressPercentage, shareOrCopy, giftistShareText } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
 
@@ -46,6 +46,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
   const hasFunding = item.fundedAmount > 0
   const [copied, setCopied] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState('')
+  const [imgBroken, setImgBroken] = useState(false)
 
   const itemShareLink = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to check out a gift from ${ownerName || 'your friend'}'s wishlist on The Giftist!\n\nitem ${item.id}`)}`
 
@@ -89,50 +90,47 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
 
   const itemEvent = item.eventItems?.[0]?.event
 
-  // Social proof badge
   const socialProof = isFullyFunded
     ? null
     : item.priceValue && item.priceValue < 30
       ? { emoji: '💫', text: 'Budget-friendly pick' }
       : hasFunding && progress >= 50
-        ? { emoji: '🔥', text: `${Math.min(progress, 99)}% funded — almost there!` }
+        ? { emoji: '🔥', text: `${Math.min(progress, 99)}% funded` }
         : null
 
   const affiliateUrl = applyAffiliateTag(item.url)
 
+  // Never show items without a working image
+  if (!item.image || imgBroken) return null
+
   return (
-    <div className="group relative block bg-surface rounded-2xl overflow-hidden border border-border hover:border-border-light transition-all duration-300 cursor-pointer">
+    <div className="ig-card group relative cursor-pointer overflow-hidden">
       <Link href={`/items/${item.id}`}>
         {/* Image */}
-        <div className="relative aspect-square bg-surface-hover overflow-hidden">
-          {item.image ? (
-            <img
-              src={item.image}
-              alt={item.name}
-              className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02] group-hover:saturate-[1.2] group-hover:contrast-[1.1] group-hover:scale-105 transition-all duration-500"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Gift className="h-16 w-16 text-[#333]" />
-            </div>
-          )}
+        <div className="ig-image-wrap aspect-square">
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgBroken(true)}
+          />
 
           {/* Glass price pill */}
           {item.price && (
-            <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur-md text-white text-sm font-semibold z-10">
+            <div className="absolute bottom-3 left-3 ig-glass px-3 py-1.5 rounded-full text-white text-sm font-semibold z-10">
               {item.price}
             </div>
           )}
 
           {/* FUNDED badge */}
           {isFullyFunded && (
-            <div className="absolute top-3 right-3 px-3 py-1 rounded-lg bg-red-500 text-xs font-bold text-white uppercase z-10">
+            <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-emerald-500 text-xs font-bold text-white uppercase tracking-wide z-10">
               Funded
             </div>
           )}
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 flex flex-col justify-end p-3">
+          <div className="ig-overlay absolute inset-0 z-20 flex flex-col justify-end p-3">
             {/* Store link */}
             <div className="flex items-center gap-1 text-white/80 text-xs mb-2">
               <ExternalLink className="h-3 w-3" />
@@ -143,7 +141,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs hover:bg-white/30 transition"
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs hover:bg-white/30 transition"
               >
                 {copied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
                 {copied ? 'Shared!' : 'Share'}
@@ -151,7 +149,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
               {onRemove && (
                 <button
                   onClick={handleRemove}
-                  className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs hover:bg-red-500/50 transition ml-auto"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs hover:bg-red-500/50 transition ml-auto"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -165,11 +163,11 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
                   value={selectedEvent}
                   onChange={handleEventChange}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full text-xs bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-lg px-2 py-1 outline-none appearance-none cursor-pointer"
+                  className="w-full text-xs bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full px-3 py-1.5 outline-none appearance-none cursor-pointer"
                 >
-                  <option value="" className="text-white bg-surface">No event</option>
+                  <option value="" className="text-gray-900 bg-white">No event</option>
                   {events.map((evt) => (
-                    <option key={evt.id} value={evt.id} className="text-white bg-surface">
+                    <option key={evt.id} value={evt.id} className="text-gray-900 bg-white">
                       {evt.name}
                     </option>
                   ))}
@@ -181,40 +179,40 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
 
         {/* Content */}
         <div className="p-3">
-          <h3 className="font-medium text-white text-sm line-clamp-1">
+          <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">
             {item.name}
           </h3>
-          <p className="text-xs text-muted mt-0.5">{item.domain}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{item.domain}</p>
 
           {/* Event label */}
           {itemEvent && (
             <Link
               href={`/events/${itemEvent.id}`}
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium rounded-full hover:bg-primary/20 transition"
+              className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-primary-light text-primary text-[10px] font-medium rounded-full hover:bg-primary/20 transition"
             >
               <Calendar className="h-2.5 w-2.5" />
               {itemEvent.name}
             </Link>
           )}
 
-          {/* Funding progress — always shown when there's a goal */}
-          {goal > 0 && !isFullyFunded && (
+          {/* Funding progress — only show when there's actual funding */}
+          {goal > 0 && hasFunding && !isFullyFunded && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-muted">
+                <span className="text-gray-400">
                   ${item.fundedAmount.toFixed(0)} funded
                 </span>
-                <span className="text-muted">
+                <span className="text-gray-400">
                   {progress}%
                 </span>
               </div>
-              <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
+              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
                     progress >= 50
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                      : 'bg-gradient-to-r from-red-500 to-orange-400'
+                      : 'bg-gradient-to-r from-primary to-orange-400'
                   }`}
                   style={{ width: `${Math.max(progress, 2)}%` }}
                 />
@@ -224,7 +222,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
 
           {/* Social proof */}
           {socialProof && (
-            <p className="mt-1.5 text-[11px] text-red-400">
+            <p className="mt-1.5 text-[11px] text-primary font-medium">
               {socialProof.emoji} {socialProof.text}
             </p>
           )}

@@ -66,8 +66,8 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Fund Item</h3>
-          <button onClick={onClose} className="text-muted hover:text-white transition">
+          <h3 className="text-lg font-semibold text-gray-900">Fund Item</h3>
+          <button onClick={onClose} className="text-muted hover:text-gray-900 transition">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -77,7 +77,7 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
             <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
           )}
           <div>
-            <p className="font-medium text-white">{item.name}</p>
+            <p className="font-medium text-gray-900">{item.name}</p>
             <p className="text-sm text-muted">{formatPrice(goal)} goal</p>
           </div>
         </div>
@@ -104,7 +104,7 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
               min="0.01"
               max={Math.min(walletBalance, remaining)}
               step="0.01"
-              className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <p className="text-xs text-muted mt-1">Balance: {formatPrice(walletBalance)}</p>
@@ -118,7 +118,7 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
             placeholder="Add a personal note..."
             maxLength={200}
             rows={2}
-            className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none text-sm"
+            className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none text-sm"
           />
         </div>
 
@@ -132,7 +132,7 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
           <span className="text-sm text-secondary">Contribute anonymously</span>
         </label>
 
-        {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
+        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
         <button
           onClick={handleFund}

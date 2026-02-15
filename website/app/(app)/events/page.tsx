@@ -35,7 +35,7 @@ export default async function EventsPage() {
     <div className="p-6 lg:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">Events</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <Link
             href="/events/new"
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition text-sm"
@@ -75,7 +75,7 @@ export default async function EventsPage() {
                       <span className="text-xs font-medium text-accent uppercase">
                         {eventTypeLabels[event.type] || 'Event'}
                       </span>
-                      <h3 className="font-semibold text-white mt-1 text-lg">{event.name}</h3>
+                      <h3 className="font-semibold text-gray-900 mt-1 text-lg">{event.name}</h3>
                       <p className="text-sm text-muted mt-1">
                         {new Date(event.date).toLocaleDateString('en-US', {
                           weekday: 'short',
@@ -96,7 +96,7 @@ export default async function EventsPage() {
                           ? 'bg-yellow-500/10 text-yellow-400'
                           : days < 0
                           ? 'bg-surface-hover text-muted'
-                          : 'bg-green-500/10 text-green-400'
+                          : 'bg-green-500/10 text-green-600'
                       }`}
                     >
                       {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : days < 0 ? 'Passed' : `${days} days`}

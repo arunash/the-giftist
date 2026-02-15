@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { sendTextMessage } from '@/lib/whatsapp'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -106,6 +107,15 @@ export async function PATCH(
         await prisma.eventItem.create({
           data: { eventId, itemId: id, priority: 0 },
         })
+        // Emit activity for item added to event
+        const event = await prisma.event.findUnique({ where: { id: eventId }, select: { name: true } })
+        createActivity({
+          userId,
+          type: 'EVENT_ITEM_ADDED',
+          visibility: 'PUBLIC',
+          itemId: id,
+          metadata: { itemName: existingItem.name, eventName: event?.name || '' },
+        }).catch(() => {})
       }
     }
 
@@ -121,7 +131,7 @@ export async function PATCH(
       },
     })
 
-    // Emit activity if marked as purchased
+    // Emit activity + notify contributors if marked as purchased
     if (data.isPurchased && !existingItem.isPurchased) {
       createActivity({
         userId,
@@ -130,6 +140,20 @@ export async function PATCH(
         itemId: id,
         metadata: { itemName: item.name },
       }).catch(() => {})
+
+      // Notify all contributors via WhatsApp
+      const contributions = await prisma.contribution.findMany({
+        where: { itemId: id, status: 'COMPLETED' },
+        include: { contributor: { select: { phone: true, name: true } } },
+      })
+      for (const c of contributions) {
+        if (c.contributor?.phone) {
+          sendTextMessage(
+            c.contributor.phone,
+            `🎉 Great news! "${item.name}" has been purchased. Thank you for contributing!`
+          ).catch((err) => console.error('Purchase notification failed:', err))
+        }
+      }
     }
 
     return NextResponse.json(item)

@@ -19,12 +19,12 @@ export default function ShareItemButton({ itemId, ownerName }: { itemId: string;
   return (
     <button
       onClick={handleShare}
-      className="flex-1 flex items-center justify-center gap-1 text-sm text-muted hover:text-white py-2 rounded-lg bg-surface-hover hover:bg-surface-raised transition"
+      className="flex-1 flex items-center justify-center gap-1 text-sm text-muted hover:text-gray-900 py-2 rounded-lg bg-surface-hover hover:bg-surface-raised transition"
     >
       {copied ? (
         <>
-          <Check className="h-4 w-4 text-green-400" />
-          <span className="text-green-400">Shared!</span>
+          <Check className="h-4 w-4 text-green-600" />
+          <span className="text-green-600">Shared!</span>
         </>
       ) : (
         <>

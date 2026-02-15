@@ -28,18 +28,18 @@ export default function ShareHeader({ shareId, ownerName }: { shareId: string; o
           <div className="flex items-center gap-4">
             <Link
               href={`/login?callbackUrl=/u/${shareId}`}
-              className="text-sm text-muted hover:text-white transition"
+              className="text-sm text-muted hover:text-gray-900 transition"
             >
               Sign in
             </Link>
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 text-muted hover:text-white transition"
+              className="flex items-center gap-2 text-muted hover:text-gray-900 transition"
             >
               {copied ? (
                 <>
-                  <Check className="h-5 w-5 text-green-400" />
-                  <span className="text-green-400 text-sm">Shared!</span>
+                  <Check className="h-5 w-5 text-green-600" />
+                  <span className="text-green-600 text-sm">Shared!</span>
                 </>
               ) : (
                 <>

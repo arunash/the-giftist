@@ -19,15 +19,16 @@ import { SidebarSummary } from './sidebar-summary'
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
   { href: '/chat', label: 'Concierge', icon: MessageCircle },
-  { href: '/wallet', label: 'Wallet', icon: Wallet },
+  { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 interface SidebarProps {
   walletBalance?: number
+  fundsReceived?: number
 }
 
-export function Sidebar({ walletBalance = 0 }: SidebarProps) {
+export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [isGold, setIsGold] = useState(false)
@@ -53,6 +54,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       <nav className="px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+          const showBadge = item.href === '/wallet' && fundsReceived > 0
           return (
             <Link
               key={item.href}
@@ -61,11 +63,16 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted hover:bg-surface-hover hover:text-white'
+                  : 'text-muted hover:bg-surface-hover hover:text-gray-900'
               )}
             >
               <item.icon className="h-5 w-5" />
               {item.label}
+              {showBadge && (
+                <span className="ml-auto text-[10px] font-bold text-white bg-emerald-500 px-1.5 py-0.5 rounded-full leading-none">
+                  {formatPrice(fundsReceived)}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -76,18 +83,26 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
         <SidebarSummary />
       </div>
 
-      {/* Wallet balance card */}
-      <a href="/wallet" className="block mx-4 mb-4 p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white hover:brightness-110 transition cursor-pointer">
-        <p className="text-xs text-white/70 mb-1">Wallet Balance</p>
-        <p className="text-xl font-bold">{formatPrice(walletBalance)}</p>
-      </a>
+      {/* Wallet balance + received cards */}
+      <div className="mx-4 mb-4 space-y-2">
+        <a href="/wallet" className="block p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white hover:brightness-110 transition cursor-pointer">
+          <p className="text-xs text-white/80 mb-1">Funds Balance</p>
+          <p className="text-xl font-bold">{formatPrice(walletBalance)}</p>
+        </a>
+        {fundsReceived > 0 && (
+          <a href="/wallet" className="block p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:brightness-110 transition cursor-pointer">
+            <p className="text-xs text-white/80 mb-1">Funds Received</p>
+            <p className="text-xl font-bold">{formatPrice(fundsReceived)}</p>
+          </a>
+        )}
+      </div>
 
       {/* User section */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium text-gray-900 truncate">
                 {session?.user?.name || 'User'}
               </p>
               {isGold && (
@@ -100,7 +115,7 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-muted hover:text-white p-1 transition"
+            className="text-muted hover:text-gray-900 p-1 transition"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />

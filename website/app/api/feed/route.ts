@@ -44,11 +44,16 @@ export async function GET(request: NextRequest) {
       where.addedAt = { lt: new Date(cursor) }
     }
 
-    // Build orderBy
-    let orderBy: any = { addedAt: 'desc' }
-    if (sort === 'oldest') orderBy = { addedAt: 'asc' }
-    else if (sort === 'price-high') orderBy = { priceValue: 'desc' }
-    else if (sort === 'price-low') orderBy = { priceValue: 'asc' }
+    // Build orderBy — funded items sort to top, then user's chosen sort
+    let secondarySort: any = { addedAt: 'desc' }
+    if (sort === 'oldest') secondarySort = { addedAt: 'asc' }
+    else if (sort === 'price-high') secondarySort = { priceValue: 'desc' }
+    else if (sort === 'price-low') secondarySort = { priceValue: 'asc' }
+
+    const orderBy: any[] = [
+      { fundedAmount: 'desc' },
+      secondarySort,
+    ]
 
     const items = await prisma.item.findMany({
       where,
@@ -81,9 +86,13 @@ export async function GET(request: NextRequest) {
       distinct: ['category'],
     })
 
+    // Filter out items with no images
+    const withImages = result.filter((item: any) => item.image)
+    const filteredNextCursor = hasMore ? result[result.length - 1].addedAt.toISOString() : null
+
     return NextResponse.json({
-      items: result,
-      nextCursor,
+      items: withImages,
+      nextCursor: filteredNextCursor,
       categories: categories.map((c) => c.category).filter(Boolean),
     })
   } catch (error) {

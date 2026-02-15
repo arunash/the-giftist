@@ -38,7 +38,7 @@ export function AdminNav() {
                       'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted hover:text-white hover:bg-surface-hover'
+                        : 'text-muted hover:text-gray-900 hover:bg-surface-hover'
                     )}
                   >
                     {tab.label}
@@ -49,7 +49,7 @@ export function AdminNav() {
           </div>
           <Link
             href="/feed"
-            className="flex items-center gap-1.5 text-sm text-muted hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to App

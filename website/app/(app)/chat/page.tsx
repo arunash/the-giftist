@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ChatBubble } from '@/components/chat/chat-bubble'
 import { ChatInput } from '@/components/chat/chat-input'
 import { SuggestionChip } from '@/components/chat/suggestion-chip'
@@ -18,6 +19,8 @@ export default function ChatPage() {
   const { messages, streaming, sendMessage, setInitialMessages } = useChatStream()
   const [loading, setLoading] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const searchParams = useSearchParams()
+  const pendingQuerySent = useRef(false)
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -25,7 +28,7 @@ export default function ChatPage() {
     }
   }, [])
 
-  // Load history on mount
+  // Load history on mount, then auto-send ?q= param if present
   useEffect(() => {
     fetch('/api/chat/history')
       .then((r) => r.json())
@@ -38,6 +41,16 @@ export default function ChatPage() {
       .finally(() => setLoading(false))
   }, [setInitialMessages])
 
+  // Auto-send the ?q= query param after history loads
+  useEffect(() => {
+    if (loading || pendingQuerySent.current) return
+    const q = searchParams.get('q')
+    if (q) {
+      pendingQuerySent.current = true
+      sendMessage(q)
+    }
+  }, [loading, searchParams, sendMessage])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
@@ -46,7 +59,7 @@ export default function ChatPage() {
     return (
       <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen">
         <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-bold text-white">Gift Concierge</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-pulse text-muted">Loading...</div>
@@ -59,7 +72,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen">
       {/* Header */}
       <div className="p-6 border-b border-border flex-shrink-0">
-        <h1 className="text-2xl font-bold text-white">Gift Concierge</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
         <p className="text-sm text-muted">Your personal shopping assistant — ask about gifts, trends, and your wishlist</p>
       </div>
 
@@ -68,7 +81,7 @@ export default function ChatPage() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <MessageCircle className="h-16 w-16 text-[#333] mb-4" />
-            <h2 className="text-lg font-medium text-white mb-2">Your Gift Concierge</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-2">Your Gift Concierge</h2>
             <p className="text-sm text-muted max-w-sm mb-6">
               I know your taste. Ask me for recommendations, help deciding, or what's trending in your world.
             </p>

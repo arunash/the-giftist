@@ -103,7 +103,7 @@ export default function FeedPage() {
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [walletBalance, setWalletBalance] = useState(0)
   const [useDummy, setUseDummy] = useState(false)
-  const [viewMode, setViewMode] = useState<'items' | 'events'>('items')
+  const [viewMode, setViewMode] = useState<'items' | 'events'>('events')
   const [events, setEvents] = useState<{ id: string; name: string; type: string; date: string; shareUrl: string | null; itemCount: number; itemImages: string[] }[]>([])
   const [eventFilter, setEventFilter] = useState<string | null>(null)
   const [eventShareCopied, setEventShareCopied] = useState<string | null>(null)
@@ -225,74 +225,16 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, loadingMore]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const upcomingEvents = events
+  const futureEvents = events
     .filter((e) => daysUntil(new Date(e.date)) >= 0)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 5)
+
+  const pastEvents = events
+    .filter((e) => daysUntil(new Date(e.date)) < 0)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const activityContent = (
     <>
-      {/* Upcoming Events */}
-      {upcomingEvents.length > 0 && (
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-primary" />
-              Upcoming Events
-            </h3>
-            <Link href="/events" className="text-xs text-primary hover:text-primary-hover transition">
-              View all
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {upcomingEvents.map((event) => {
-              const days = daysUntil(new Date(event.date))
-              return (
-                <button
-                  key={event.id}
-                  onClick={() => setEventFilter(eventFilter === event.id ? null : event.id)}
-                  className={`block w-full text-left rounded-xl p-3 border transition ${
-                    eventFilter === event.id
-                      ? 'bg-primary/10 border-primary/30'
-                      : 'bg-surface-hover/50 border-border hover:border-border-light'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
-                      <div className="min-w-0">
-                        <Link href={`/events/${event.id}`} className="text-sm font-medium text-white truncate hover:underline" onClick={(e) => e.stopPropagation()}>
-                          {event.name}
-                        </Link>
-                        <p className="text-xs text-muted">{event.itemCount} item{event.itemCount !== 1 ? 's' : ''}</p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        days <= 7
-                          ? 'bg-red-500/10 text-red-400'
-                          : days <= 30
-                          ? 'bg-yellow-500/10 text-yellow-400'
-                          : 'bg-green-500/10 text-green-400'
-                      }`}
-                    >
-                      {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days}d`}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-          <Link
-            href="/events/new"
-            className="flex items-center justify-center gap-1.5 w-full mt-2 py-2 text-xs font-medium text-muted hover:text-white border border-dashed border-border rounded-lg hover:border-border-light transition"
-          >
-            <Plus className="h-3 w-3" />
-            Create Event
-          </Link>
-        </div>
-      )}
-
       <div className="mb-4">
         <ActivityTabs activeTab={activityTab} onTabChange={setActivityTab} />
       </div>
@@ -322,7 +264,7 @@ export default function FeedPage() {
           {/* Left: Wishlist Feed */}
           <div className="min-w-0">
             <LinkAccountsBanner />
-            <h1 className="text-2xl font-bold text-white mb-6">Home</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Home</h1>
 
             <div className="mb-6">
               <HomeChatBar />
@@ -334,7 +276,7 @@ export default function FeedPage() {
 
             {/* Your Giftist section */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Your Giftist</h2>
+              <h2 className="text-lg font-bold text-gray-900">Your Giftist</h2>
               <div className="flex items-center gap-3">
                 {shareId && (
                   <button
@@ -346,13 +288,13 @@ export default function FeedPage() {
                         setTimeout(() => setShareCopied(false), 2000)
                       }
                     }}
-                    className="flex items-center gap-1.5 text-sm text-muted hover:text-white transition"
+                    className="flex items-center gap-1.5 text-sm text-muted hover:text-gray-900 transition"
                     title="Share your wishlist"
                   >
                     {shareCopied ? (
                       <>
-                        <Check className="h-4 w-4 text-green-400" />
-                        <span className="text-green-400">Shared!</span>
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-green-600">Shared!</span>
                       </>
                     ) : (
                       <>
@@ -366,7 +308,7 @@ export default function FeedPage() {
                 <button
                   onClick={() => { fetchFeed(true); fetchActivities(activityTab); }}
                   disabled={loading}
-                  className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-surface-hover transition disabled:opacity-50"
+                  className="p-1.5 rounded-lg text-muted hover:text-gray-900 hover:bg-surface-hover transition disabled:opacity-50"
                   title="Refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -377,30 +319,81 @@ export default function FeedPage() {
             {/* View mode toggle pills */}
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setViewMode('items')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
-                  viewMode === 'items'
-                    ? 'bg-primary text-white'
-                    : 'bg-surface text-muted hover:text-white border border-border'
-                )}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                By Item
-              </button>
-              <button
                 onClick={() => setViewMode('events')}
                 className={cn(
                   'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
                   viewMode === 'events'
                     ? 'bg-primary text-white'
-                    : 'bg-surface text-muted hover:text-white border border-border'
+                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
                 )}
               >
                 <ListTree className="h-3.5 w-3.5" />
                 By Event
               </button>
+              <button
+                onClick={() => setViewMode('items')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
+                  viewMode === 'items'
+                    ? 'bg-primary text-white'
+                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                By Item
+              </button>
             </div>
+
+            {/* Stories-style event circles — future events only */}
+            {futureEvents.length > 0 && (
+              <div className="mb-6 -mx-1 px-1">
+                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                  {futureEvents.map((event) => {
+                    const days = daysUntil(new Date(event.date))
+                    const firstImage = event.itemImages[0]
+                    const isActive = eventFilter === event.id
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={() => setEventFilter(isActive ? null : event.id)}
+                        className="flex flex-col items-center gap-1.5 flex-shrink-0 group/story"
+                      >
+                        <div className={isActive ? 'ig-stories-ring' : 'rounded-full p-[2.5px] bg-gray-200 group-hover/story:bg-gray-300 transition'}>
+                          <div className="ig-stories-ring-inner">
+                            <div className="w-16 h-16 rounded-full overflow-hidden ig-image-wrap">
+                              {firstImage ? (
+                                <img src={firstImage} alt={event.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                                  <span className="text-2xl">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-medium text-gray-900 max-w-[72px] truncate">{event.name}</span>
+                        <span className={`text-[10px] font-medium -mt-1 ${days <= 7 ? 'text-red-500' : days <= 30 ? 'text-amber-500' : 'text-gray-400'}`}>
+                          {days < 0 ? 'Passed' : days === 0 ? 'Today!' : `${days}d`}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  <Link
+                    href="/events/new"
+                    className="flex flex-col items-center gap-1.5 flex-shrink-0"
+                  >
+                    <div className="rounded-full p-[2.5px] bg-transparent">
+                      <div className="bg-white p-0.5 rounded-full">
+                        <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center hover:border-gray-300 transition">
+                          <Plus className="h-6 w-6 text-gray-300" />
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-medium text-gray-400">New</span>
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {viewMode === 'items' ? (
               <>
@@ -415,7 +408,7 @@ export default function FeedPage() {
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
                         {EVENT_TYPE_EMOJI[events.find((e) => e.id === eventFilter)?.type || ''] || '📅'}
                         {events.find((e) => e.id === eventFilter)?.name || 'Event'}
-                        <button onClick={() => setEventFilter(null)} className="ml-1 hover:text-white transition">
+                        <button onClick={() => setEventFilter(null)} className="ml-1 hover:text-gray-900 transition">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </span>
@@ -424,13 +417,13 @@ export default function FeedPage() {
                 </div>
 
                 {loading ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 animate-pulse">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 animate-pulse">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-surface rounded-2xl overflow-hidden border border-border">
-                        <div className="aspect-square bg-surface-hover" />
+                      <div key={i} className="ig-card overflow-hidden">
+                        <div className="aspect-square bg-gray-100" />
                         <div className="p-3 space-y-2">
-                          <div className="h-4 bg-surface-hover rounded w-3/4" />
-                          <div className="h-3 bg-surface-hover rounded w-1/2" />
+                          <div className="h-4 bg-gray-100 rounded-full w-3/4" />
+                          <div className="h-3 bg-gray-100 rounded-full w-1/2" />
                         </div>
                       </div>
                     ))}
@@ -443,7 +436,7 @@ export default function FeedPage() {
                   />
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                       {items.map((item) => (
                         <ItemCard
                           key={item.id}
@@ -464,13 +457,13 @@ export default function FeedPage() {
                 )}
               </>
             ) : (
-              /* By Event view */
-              <div className="space-y-4">
+              /* By Event view — Instagram-style card grid */
+              <>
                 {events.length === 0 ? (
-                  <div className="bg-surface rounded-2xl border border-border p-12 text-center">
-                    <Calendar className="h-16 w-16 text-[#333] mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-2">No event wishlists yet</h3>
-                    <p className="text-muted mb-4">Create an event to start building wishlists for birthdays, holidays, and more.</p>
+                  <div className="ig-card p-12 text-center">
+                    <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No event wishlists yet</h3>
+                    <p className="text-gray-400 mb-4">Create an event to start building wishlists for birthdays, holidays, and more.</p>
                     <Link
                       href="/events/new"
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-full font-medium hover:bg-primary-hover transition"
@@ -480,107 +473,163 @@ export default function FeedPage() {
                     </Link>
                   </div>
                 ) : (
-                  <>
-                    {events.map((event) => {
-                      const days = daysUntil(new Date(event.date))
-                      const eventUrl = `https://giftist.ai/events/${event.shareUrl || event.id}`
-                      const isShareCopied = eventShareCopied === event.id
+                  <div className="space-y-8">
+                    {/* Upcoming events */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      {futureEvents.map((event) => {
+                        const days = daysUntil(new Date(event.date))
+                        const eventUrl = `https://giftist.ai/events/${event.shareUrl || event.id}`
+                        const isShareCopied = eventShareCopied === event.id
+                        const images = event.itemImages
 
-                      return (
-                        <div
-                          key={event.id}
-                          className="bg-surface rounded-2xl border border-border p-4 hover:border-border-light transition"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <Link href={`/events/${event.id}`} className="flex items-center gap-3 min-w-0 group">
-                              <span className="text-2xl flex-shrink-0">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
-                              <div className="min-w-0">
-                                <h3 className="text-base font-semibold text-white group-hover:text-primary transition truncate">
+                        return (
+                          <div
+                            key={event.id}
+                            className="ig-card group relative overflow-hidden cursor-pointer"
+                          >
+                            <Link href={`/events/${event.id}`}>
+                              <div className="ig-image-wrap aspect-square">
+                                {images.length >= 4 ? (
+                                  <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-[1px] bg-white">
+                                    {images.slice(0, 4).map((img, i) => (
+                                      <img key={i} src={img} alt="" className="w-full h-full object-cover" />
+                                    ))}
+                                  </div>
+                                ) : images.length >= 1 ? (
+                                  <img
+                                    src={images[0]}
+                                    alt={event.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100">
+                                    <span className="text-6xl">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
+                                  </div>
+                                )}
+
+                                <div
+                                  className={`absolute bottom-3 left-3 ig-glass px-3 py-1.5 rounded-full text-sm font-semibold z-10 ${
+                                    days <= 7
+                                      ? '!bg-red-500/80 text-white'
+                                      : days <= 30
+                                      ? '!bg-amber-500/80 text-white'
+                                      : 'text-white'
+                                  }`}
+                                >
+                                  {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days} days`}
+                                </div>
+
+                                <div className="absolute top-3 right-3 ig-glass px-2.5 py-1 rounded-full text-white text-xs font-medium z-10">
+                                  {event.itemCount} item{event.itemCount !== 1 ? 's' : ''}
+                                </div>
+
+                                <div className="ig-overlay absolute inset-0 z-20 flex flex-col justify-end p-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={async (e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        const shareText = `Check out my ${event.name} wishlist on The Giftist!`
+                                        const didShare = await shareOrCopy(eventUrl, event.name, shareText)
+                                        if (didShare) {
+                                          setEventShareCopied(event.id)
+                                          setTimeout(() => setEventShareCopied(null), 2000)
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs hover:bg-white/30 transition"
+                                    >
+                                      {isShareCopied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+                                      {isShareCopied ? 'Shared!' : 'Share'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="p-3">
+                                <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">
                                   {event.name}
                                 </h3>
-                                <p className="text-xs text-muted">
-                                  {new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                                  {' · '}
-                                  {event.itemCount} item{event.itemCount !== 1 ? 's' : ''}
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </p>
                               </div>
                             </Link>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <button
-                                onClick={async () => {
-                                  const shareText = `Check out my ${event.name} wishlist on The Giftist!`
-                                  const didShare = await shareOrCopy(eventUrl, event.name, shareText)
-                                  if (didShare) {
-                                    setEventShareCopied(event.id)
-                                    setTimeout(() => setEventShareCopied(null), 2000)
-                                  }
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs text-muted hover:text-white transition rounded-lg hover:bg-surface-hover"
-                              >
-                                {isShareCopied ? (
-                                  <>
-                                    <Check className="h-3 w-3 text-green-400" />
-                                    <span className="text-green-400">Shared!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Share2 className="h-3 w-3" />
-                                    <span>Share</span>
-                                  </>
-                                )}
-                              </button>
-                              <span
-                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                  days < 0
-                                    ? 'bg-surface-hover text-muted'
-                                    : days <= 7
-                                    ? 'bg-red-500/10 text-red-400'
-                                    : days <= 30
-                                    ? 'bg-yellow-500/10 text-yellow-400'
-                                    : 'bg-green-500/10 text-green-400'
-                                }`}
-                              >
-                                {days < 0 ? 'Passed' : days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days}d`}
-                              </span>
-                            </div>
                           </div>
+                        )
+                      })}
 
-                          {/* Thumbnail strip */}
-                          {event.itemImages.length > 0 && (
-                            <Link href={`/events/${event.id}`} className="flex gap-2 mt-2">
-                              {event.itemImages.map((img, i) => (
-                                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-surface-hover flex-shrink-0">
-                                  <img src={img} alt="" className="w-full h-full object-cover" />
-                                </div>
-                              ))}
-                              {event.itemCount > event.itemImages.length && (
-                                <div className="w-16 h-16 rounded-lg bg-surface-hover flex items-center justify-center flex-shrink-0 text-xs text-muted">
-                                  +{event.itemCount - event.itemImages.length}
-                                </div>
-                              )}
-                            </Link>
-                          )}
+                      {/* Create event card */}
+                      <Link
+                        href="/events/new"
+                        className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 hover:border-gray-300 transition-all duration-300 aspect-[3/4]"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2 group-hover:bg-primary/10 transition">
+                          <Plus className="h-5 w-5 text-gray-300 group-hover:text-primary transition" />
                         </div>
-                      )
-                    })}
+                        <span className="text-sm font-medium text-gray-400 group-hover:text-gray-900 transition">New Event</span>
+                      </Link>
+                    </div>
 
-                    <Link
-                      href="/events/new"
-                      className="flex items-center justify-center gap-2 w-full py-3 text-sm font-medium text-muted hover:text-white border border-dashed border-border rounded-2xl hover:border-border-light transition"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create Event & Add Items
-                    </Link>
-                  </>
+                    {/* Completed (past) events */}
+                    {pastEvents.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Completed</h3>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          {pastEvents.map((event) => {
+                            const images = event.itemImages
+                            return (
+                              <div
+                                key={event.id}
+                                className="ig-card group relative overflow-hidden cursor-pointer opacity-60 hover:opacity-90 transition-opacity"
+                              >
+                                <Link href={`/events/${event.id}`}>
+                                  <div className="ig-image-wrap aspect-square grayscale group-hover:grayscale-0 transition-all duration-300">
+                                    {images.length >= 4 ? (
+                                      <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-[1px] bg-white">
+                                        {images.slice(0, 4).map((img, i) => (
+                                          <img key={i} src={img} alt="" className="w-full h-full object-cover" />
+                                        ))}
+                                      </div>
+                                    ) : images.length >= 1 ? (
+                                      <img src={images[0]} alt={event.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100">
+                                        <span className="text-6xl">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
+                                      </div>
+                                    )}
+
+                                    <div className="absolute bottom-3 left-3 ig-glass px-3 py-1.5 rounded-full text-sm font-semibold text-white/60 z-10">
+                                      Completed
+                                    </div>
+
+                                    <div className="absolute top-3 right-3 ig-glass px-2.5 py-1 rounded-full text-white text-xs font-medium z-10">
+                                      {event.itemCount} item{event.itemCount !== 1 ? 's' : ''}
+                                    </div>
+                                  </div>
+
+                                  <div className="p-3">
+                                    <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">{event.name}</h3>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </p>
+                                  </div>
+                                </Link>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
           {/* Right: Activity Feed (desktop only) */}
           <div className="hidden lg:block">
             <div className="sticky top-8">
-              <div className="bg-surface rounded-2xl border border-border p-5">
+              <div className="ig-card !transform-none p-5">
                 {activityContent}
               </div>
             </div>
@@ -589,7 +638,7 @@ export default function FeedPage() {
 
         {/* Mobile: Activity feed below items */}
         <div className="lg:hidden mt-8">
-          <div className="bg-surface rounded-2xl border border-border p-5">
+          <div className="ig-card !transform-none p-5">
             {activityContent}
           </div>
         </div>

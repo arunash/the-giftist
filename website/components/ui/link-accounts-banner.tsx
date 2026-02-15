@@ -105,11 +105,11 @@ export function LinkAccountsBanner() {
   if (success) {
     setTimeout(() => setDismissed(true), 3000)
     return (
-      <div className="mb-6 bg-green-900/30 border border-green-700/50 rounded-xl p-4 flex items-center justify-between">
-        <p className="text-sm text-green-300 font-medium">
+      <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+        <p className="text-sm text-green-700 font-medium">
           Accounts linked successfully! Your items are now synced.
         </p>
-        <button onClick={() => setDismissed(true)} className="text-green-400 hover:text-white transition ml-3 shrink-0">
+        <button onClick={() => setDismissed(true)} className="text-green-600 hover:text-gray-900 transition ml-3 shrink-0">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -122,11 +122,11 @@ export function LinkAccountsBanner() {
       <div className="mb-6 bg-surface rounded-xl border border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
-            <div className="p-2 bg-green-600/10 rounded-lg shrink-0 mt-0.5">
-              <MessageCircle className="h-5 w-5 text-green-400" />
+            <div className="p-2 bg-green-50 rounded-lg shrink-0 mt-0.5">
+              <MessageCircle className="h-5 w-5 text-green-600" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-white font-medium mb-1">
+              <p className="text-sm text-gray-900 font-medium mb-1">
                 Connect your WhatsApp number
               </p>
               <p className="text-xs text-muted">
@@ -134,7 +134,7 @@ export function LinkAccountsBanner() {
               </p>
             </div>
           </div>
-          <button onClick={handleDismiss} className="text-muted hover:text-white transition shrink-0">
+          <button onClick={handleDismiss} className="text-muted hover:text-gray-900 transition shrink-0">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -160,11 +160,11 @@ export function LinkAccountsBanner() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (555) 123-4567"
-                    className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition text-sm text-white placeholder-muted"
+                    className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition text-sm text-gray-900 placeholder-muted"
                     required
                   />
                 </div>
-                {error && <p className="text-red-400 text-xs">{error}</p>}
+                {error && <p className="text-red-600 text-xs">{error}</p>}
                 <button
                   type="submit"
                   disabled={loading || !phone}
@@ -177,7 +177,7 @@ export function LinkAccountsBanner() {
             ) : (
               <form onSubmit={handleVerifyAndLink} className="space-y-2">
                 <p className="text-xs text-muted">
-                  Code sent to <span className="text-white font-medium">{phone}</span>
+                  Code sent to <span className="text-gray-900 font-medium">{phone}</span>
                 </p>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
@@ -187,11 +187,11 @@ export function LinkAccountsBanner() {
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
                     maxLength={6}
-                    className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition text-sm text-white placeholder-muted"
+                    className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition text-sm text-gray-900 placeholder-muted"
                     required
                   />
                 </div>
-                {error && <p className="text-red-400 text-xs">{error}</p>}
+                {error && <p className="text-red-600 text-xs">{error}</p>}
                 <div className="flex items-center gap-2">
                   <button
                     type="submit"
@@ -203,7 +203,7 @@ export function LinkAccountsBanner() {
                   <button
                     type="button"
                     onClick={() => { setStep('phone'); setError(''); setCode('') }}
-                    className="text-xs text-muted hover:text-white transition"
+                    className="text-xs text-muted hover:text-gray-900 transition"
                   >
                     Change number
                   </button>
@@ -231,7 +231,7 @@ export function LinkAccountsBanner() {
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-white font-medium mb-1">
+              <p className="text-sm text-gray-900 font-medium mb-1">
                 Connect Google for a richer profile
               </p>
               <p className="text-xs text-muted">
@@ -239,7 +239,7 @@ export function LinkAccountsBanner() {
               </p>
             </div>
           </div>
-          <button onClick={handleDismiss} className="text-muted hover:text-white transition shrink-0">
+          <button onClick={handleDismiss} className="text-muted hover:text-gray-900 transition shrink-0">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -247,7 +247,7 @@ export function LinkAccountsBanner() {
           <button
             onClick={handleLinkGoogle}
             disabled={linkLoading}
-            className="flex items-center gap-2 bg-surface-hover border border-border text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-surface-raised transition disabled:opacity-50"
+            className="flex items-center gap-2 bg-surface-hover border border-border text-gray-900 py-2 px-4 rounded-lg text-sm font-medium hover:bg-surface-raised transition disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

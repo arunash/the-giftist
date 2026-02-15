@@ -53,7 +53,7 @@ export default function AdminWhatsAppPage() {
 
   const statusColor = (s: string) => {
     switch (s) {
-      case 'PROCESSED': return 'bg-green-500/20 text-green-400'
+      case 'PROCESSED': return 'bg-green-500/20 text-green-600'
       case 'FAILED': return 'bg-red-500/20 text-red-400'
       case 'RECEIVED': return 'bg-yellow-500/20 text-yellow-400'
       default: return 'bg-gray-500/20 text-gray-400'
@@ -71,12 +71,12 @@ export default function AdminWhatsAppPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handlePhoneSearch()}
-            className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-white placeholder:text-muted focus:outline-none focus:border-primary w-48"
+            className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-gray-900 placeholder:text-muted focus:outline-none focus:border-primary w-48"
           />
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1) }}
-            className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+            className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-primary"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>{s || 'All Statuses'}</option>

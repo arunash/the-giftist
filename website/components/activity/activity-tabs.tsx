@@ -15,8 +15,8 @@ export function ActivityTabs({ activeTab, onTabChange }: ActivityTabsProps) {
         className={cn(
           'flex-1 py-2 text-sm font-medium rounded-md transition',
           activeTab === 'mine'
-            ? 'bg-surface text-white'
-            : 'text-muted hover:text-white'
+            ? 'bg-surface text-gray-900'
+            : 'text-muted hover:text-gray-900'
         )}
       >
         My Activity
@@ -26,8 +26,8 @@ export function ActivityTabs({ activeTab, onTabChange }: ActivityTabsProps) {
         className={cn(
           'flex-1 py-2 text-sm font-medium rounded-md transition',
           activeTab === 'community'
-            ? 'bg-surface text-white'
-            : 'text-muted hover:text-white'
+            ? 'bg-surface text-gray-900'
+            : 'text-muted hover:text-gray-900'
         )}
       >
         Community

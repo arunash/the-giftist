@@ -73,7 +73,7 @@ export default function SettingsPage() {
     return (
       <div className="p-6 lg:p-8">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
           <div className="animate-pulse space-y-4">
             <div className="h-24 bg-surface rounded-xl" />
             <div className="h-48 bg-surface rounded-xl" />
@@ -86,26 +86,26 @@ export default function SettingsPage() {
   return (
     <div className="p-6 lg:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
 
         {/* Account Info */}
         <div className="bg-surface rounded-xl border border-border divide-y divide-border">
           <div className="p-6">
             <label className="block text-sm font-medium text-muted mb-1">Name</label>
-            <p className="text-white font-medium">{profile?.name || 'Not set'}</p>
+            <p className="text-gray-900 font-medium">{profile?.name || 'Not set'}</p>
           </div>
 
           {/* Phone — Primary Identity */}
           <div className="p-6">
             <div className="flex items-center gap-2 mb-1">
-              <Phone className="h-4 w-4 text-green-400" />
+              <Phone className="h-4 w-4 text-green-600" />
               <label className="text-sm font-medium text-muted">WhatsApp Phone</label>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">Primary</span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-green-600 bg-green-400/10 px-1.5 py-0.5 rounded">Primary</span>
             </div>
             {profile?.phone ? (
               <div className="flex items-center gap-2">
-                <p className="text-white font-medium">+{profile.phone}</p>
-                <Check className="h-4 w-4 text-green-400" />
+                <p className="text-gray-900 font-medium">+{profile.phone}</p>
+                <Check className="h-4 w-4 text-green-600" />
               </div>
             ) : (
               <div>
@@ -128,15 +128,15 @@ export default function SettingsPage() {
             </div>
             {profile?.email ? (
               <div className="flex items-center gap-2">
-                <p className="text-white font-medium">{profile.email}</p>
-                <Check className="h-4 w-4 text-green-400" />
+                <p className="text-gray-900 font-medium">{profile.email}</p>
+                <Check className="h-4 w-4 text-green-600" />
               </div>
             ) : (
               <div>
                 <p className="text-muted mb-3 text-sm">Connect Google for email notifications and a richer profile.</p>
                 <button
                   onClick={() => signIn('google', { callbackUrl: '/settings' })}
-                  className="inline-flex items-center gap-2 bg-surface-hover border border-border rounded-lg py-2 px-4 font-medium text-white hover:bg-surface-raised transition text-sm"
+                  className="inline-flex items-center gap-2 bg-surface-hover border border-border rounded-lg py-2 px-4 font-medium text-gray-900 hover:bg-surface-raised transition text-sm"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -158,7 +158,7 @@ export default function SettingsPage() {
         <div className="bg-surface rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-white">Your Profile</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Your Profile</h2>
               <p className="text-sm text-muted">Helps your Gift Concierge give better recommendations</p>
             </div>
             <div className="p-2 bg-primary/10 rounded-full">
@@ -185,25 +185,25 @@ export default function SettingsPage() {
                 {profile.giftBudget && (
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide">Budget</span>
-                    <p className="text-sm font-medium text-white mt-0.5">{BUDGET_LABELS[profile.giftBudget] || profile.giftBudget}</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{BUDGET_LABELS[profile.giftBudget] || profile.giftBudget}</p>
                   </div>
                 )}
                 {profile.ageRange && (
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide">Age Range</span>
-                    <p className="text-sm font-medium text-white mt-0.5">{profile.ageRange}</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{profile.ageRange}</p>
                   </div>
                 )}
                 {profile.gender && (
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide">Gender</span>
-                    <p className="text-sm font-medium text-white mt-0.5">{profile.gender.replace('_', ' ').toLowerCase()}</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{profile.gender.replace('_', ' ').toLowerCase()}</p>
                   </div>
                 )}
                 {profile.relationship && (
                   <div>
                     <span className="text-xs font-medium text-muted uppercase tracking-wide">Household</span>
-                    <p className="text-sm font-medium text-white mt-0.5">{profile.relationship.toLowerCase()}</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{profile.relationship.toLowerCase()}</p>
                   </div>
                 )}
               </div>
@@ -247,7 +247,7 @@ export default function SettingsPage() {
         {chatOpen && (
           <div className="bg-surface rounded-xl border border-border overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Preference Chat</h3>
+              <h3 className="text-sm font-semibold text-gray-900">Preference Chat</h3>
               <button
                 onClick={() => {
                   setChatOpen(false)
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                     .then((data) => setProfile(data))
                     .catch(() => {})
                 }}
-                className="text-xs text-muted hover:text-white transition"
+                className="text-xs text-muted hover:text-gray-900 transition"
               >
                 Done
               </button>
@@ -279,7 +279,7 @@ export default function SettingsPage() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
                   placeholder="Tell me about your preferences..."
-                  className="flex-1 text-sm text-white placeholder-muted outline-none bg-transparent px-3 py-2 border border-border rounded-lg"
+                  className="flex-1 text-sm text-gray-900 placeholder-muted outline-none bg-transparent px-3 py-2 border border-border rounded-lg"
                   disabled={streaming}
                 />
                 <button

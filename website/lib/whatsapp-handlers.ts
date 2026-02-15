@@ -4,9 +4,11 @@ import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
 import { downloadMedia, sendTextMessage, sendImageMessage } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { stripSpecialBlocks, parseChatContent, type EventData } from '@/lib/parse-chat-content'
+import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
+import { enrichItem } from '@/lib/enrich-item'
+import { createDefaultEventsForUser } from '@/lib/default-events'
 import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -26,6 +28,21 @@ interface PendingProduct {
 
 const CONFIRM_WORDS = new Set(['yes', 'yep', 'yeah', 'sure', 'ok', 'add', 'save', 'add it', 'save it', 'yes please', 'y'])
 const REJECT_WORDS = new Set(['no', 'nah', 'nope', 'skip', 'cancel', 'n', 'no thanks'])
+
+const WEB_CTAS = [
+  '\n\nSee your full visual wishlist at *giftist.ai*',
+  '\n\nBrowse trending gifts and manage events at *giftist.ai*',
+  '\n\nCreate event wishlists and share with friends at *giftist.ai*',
+]
+
+async function getWebCTA(userId: string): Promise<string> {
+  const count = await prisma.item.count({ where: { userId } })
+  // Show CTA on 3rd, 7th, 12th item, then every 10th
+  if (count === 3 || count === 7 || count === 12 || (count > 12 && count % 10 === 0)) {
+    return WEB_CTAS[count % WEB_CTAS.length]
+  }
+  return ''
+}
 
 async function savePendingProduct(
   userId: string,
@@ -68,17 +85,17 @@ async function savePendingProduct(
   }).catch(() => {})
 
   const priceStr = pending.price ? ` (${pending.price})` : ''
-
   const shareHint = `\n\nTo share your wishlist, reply *share*`
+  const webCta = await getWebCTA(userId)
 
   if (pending.image) {
     try {
-      await sendImageMessage(phone, pending.image, `Added: ${pending.name}${priceStr}${shareHint}`)
+      await sendImageMessage(phone, pending.image, `Added: ${pending.name}${priceStr}${shareHint}${webCta}`)
       return ''
     } catch {}
   }
 
-  return `Added: ${pending.name}${priceStr}${shareHint}`
+  return `Added: ${pending.name}${priceStr}${shareHint}${webCta}`
 }
 
 export async function resolveUserAndList(phone: string, profileName?: string) {
@@ -89,6 +106,8 @@ export async function resolveUserAndList(phone: string, profileName?: string) {
     user = await prisma.user.create({
       data: { phone, name: profileName || null },
     })
+    // Fire-and-forget: create default events for new WhatsApp user
+    createDefaultEventsForUser(user.id).catch(() => {})
   }
 
   // Find or create "WhatsApp Saves" list
@@ -171,7 +190,8 @@ export async function handleTextMessage(
       const sharerName = sharer.name || 'your friend'
       const prefill = encodeURIComponent(`👋 Tap send to view ${sharerName}'s wishlist on The Giftist!\n\nview ${sharer.shareId}`)
       const shareLink = `https://wa.me/15014438478?text=${prefill}`
-      return `Here's your shareable link:\n\n${shareLink}\n\nWhen someone opens this, they'll see a friendly message and just tap send to view your wishlist!`
+      const webUrl = `https://giftist.ai/u/${sharer.shareId}`
+      return `Here's your shareable link:\n\n${shareLink}\n\nOr share your web wishlist directly:\n${webUrl}\n\nFriends can view your list and contribute to any gift!`
     }
     return "Something went wrong generating your share link. Please try again."
   }
@@ -206,7 +226,7 @@ export async function handleTextMessage(
     const itemCount = owner.items.length
     const moreText = itemCount === 5 ? '\n\n...and more!' : ''
 
-    return `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.\n\n🎁 *${ownerName}'s Wishlist*\n\n${itemLines.join('\n')}${moreText}\n\nView the full list and contribute:\nhttps://giftist.ai/u/${targetShareId}`
+    return `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.\n\n🎁 *${ownerName}'s Wishlist*\n\n${itemLines.join('\n')}${moreText}\n\nView the full list and contribute:\nhttps://giftist.ai/u/${targetShareId}\n\nWant to create your own wishlist? Sign up free at *giftist.ai* — save gifts from any store, create event wishlists, and share with friends!`
   }
 
   // Command: item {itemId} — view a single item
@@ -239,6 +259,8 @@ export async function handleTextMessage(
       ? `\n\nContribute or see the full wishlist:\nhttps://giftist.ai/u/${item.user.shareId}`
       : ''
 
+    const signupCta = `\n\nCreate your own wishlist free at *giftist.ai*`
+
     const greeting = `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.\n\n`
 
     // Send with image if available
@@ -247,13 +269,13 @@ export async function handleTextMessage(
         await sendImageMessage(
           phone,
           item.image,
-          `${greeting}🎁 *${item.name}*${priceStr}${fundingStr}${webLink}`
+          `${greeting}🎁 *${item.name}*${priceStr}${fundingStr}${webLink}${signupCta}`
         )
         return ''
       } catch {}
     }
 
-    return `${greeting}🎁 *${item.name}*${priceStr}${fundingStr}${webLink}`
+    return `${greeting}🎁 *${item.name}*${priceStr}${fundingStr}${webLink}${signupCta}`
   }
 
   // Try to extract URLs
@@ -316,16 +338,17 @@ export async function handleTextMessage(
 
     const priceStr = product.price ? ` (${product.price})` : ''
     const shareHint = `\n\nTo share your wishlist, reply *share*`
+    const webCta = await getWebCTA(userId)
 
     // Reply with product image (guaranteed to exist by guardrails above)
     try {
-      await sendImageMessage(phone, product.image, `Added: ${product.name}${priceStr}${shareHint}`)
+      await sendImageMessage(phone, product.image, `Added: ${product.name}${priceStr}${shareHint}${webCta}`)
       return '' // empty string means we already sent a reply
     } catch {
       // fall through to text reply
     }
 
-    return `Added: ${product.name}${priceStr}${shareHint}`
+    return `Added: ${product.name}${priceStr}${shareHint}${webCta}`
   }
 
   // No URL and not a command — handle as conversational chat via Claude
@@ -523,7 +546,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 512,
+      max_tokens: 1024,
       system: systemPrompt,
       messages,
     })
@@ -550,31 +573,116 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       })
     }
 
-    // Auto-create events from [EVENT] blocks
+    // Auto-create events and add items to events from structured blocks
     const segments = parseChatContent(fullContent)
     const eventConfirmations: string[] = []
+    const addToEventConfirmations: string[] = []
+
     for (const seg of segments) {
       if (seg.type === 'event') {
         const eventData = seg.data as EventData
         try {
-          await prisma.event.create({
-            data: {
-              userId,
-              name: eventData.name,
-              type: eventData.type,
-              date: new Date(eventData.date),
-              isPublic: true,
-            },
+          // Dedup: check if event already exists
+          const existing = await prisma.event.findFirst({
+            where: { userId, name: eventData.name },
           })
-          const dateStr = new Date(eventData.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-          eventConfirmations.push(`\n\n📅 I've saved ${eventData.name} (${dateStr}) to your events!`)
+          if (!existing) {
+            await prisma.event.create({
+              data: {
+                userId,
+                name: eventData.name,
+                type: eventData.type,
+                date: new Date(eventData.date),
+                isPublic: true,
+              },
+            })
+            const dateStr = new Date(eventData.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+            eventConfirmations.push(`\n\n📅 I've saved ${eventData.name} (${dateStr}) to your events!`)
+          }
         } catch {}
+      }
+
+      if (seg.type === 'add_to_event') {
+        const ateData = seg.data as AddToEventData
+        try {
+          let itemId = ateData.itemId
+
+          // Create new item if no valid itemId
+          if (!itemId || itemId === 'TBD' || itemId === 'new') {
+            // Parse price
+            let priceValue: number | null = null
+            if (ateData.price) {
+              const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
+              if (match) priceValue = parseFloat(match[0])
+            }
+
+            const feeCalc = calculateGoalAmount(priceValue, 0)
+
+            const newItem = await prisma.item.create({
+              data: {
+                userId,
+                name: ateData.itemName,
+                price: ateData.price || null,
+                priceValue,
+                url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
+                domain: 'google.com',
+                source: 'WHATSAPP',
+                goalAmount: feeCalc.goalAmount,
+              },
+            })
+            itemId = newItem.id
+
+            // Fire-and-forget: enrich with real image
+            enrichItem(itemId, ateData.itemName).catch(() => {})
+
+            createActivity({
+              userId,
+              type: 'ITEM_ADDED',
+              visibility: 'PUBLIC',
+              itemId,
+              metadata: { itemName: ateData.itemName, source: 'WHATSAPP' },
+            }).catch(() => {})
+          }
+
+          // Link item to event
+          const eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })
+          if (eventExists && itemId) {
+            // Remove existing event mappings first
+            await prisma.eventItem.deleteMany({ where: { itemId } })
+            await prisma.eventItem.create({
+              data: { eventId: ateData.eventId, itemId, priority: 0 },
+            })
+
+            createActivity({
+              userId,
+              type: 'EVENT_ITEM_ADDED',
+              visibility: 'PUBLIC',
+              itemId,
+              metadata: { itemName: ateData.itemName, eventName: eventExists.name },
+            }).catch(() => {})
+
+            addToEventConfirmations.push(`✅ Added "${ateData.itemName}" to ${ateData.eventName}`)
+          }
+        } catch (err) {
+          console.error('WhatsApp ADD_TO_EVENT error:', err)
+        }
       }
     }
 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
     const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
-    return strippedContent + eventConfirmations.join('')
+
+    // Periodic web CTA after chat messages
+    const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
+    const chatWebCta = (msgCount > 0 && msgCount % 5 === 0)
+      ? '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
+      : ''
+
+    const ateSection = addToEventConfirmations.length > 0
+      ? '\n\n' + addToEventConfirmations.join('\n') + '\n\nCheck the list on *giftist.ai*'
+      : ''
+
+    return strippedContent + eventConfirmations.join('') + ateSection + chatWebCta
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
@@ -689,27 +797,29 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hi ${name}!` : 'Hi there!'
-  return `${greeting} I'm your Gift Concierge from The Giftist.
+  return `${greeting} Welcome to *The Giftist* — your personal gift concierge.
 
-I can help you:
-- Save products — just send me a *link* or *photo*
-- Find the perfect gift — ask me anything
-- Manage your wishlist — type *list* to see your saves
+Send me a *link* or *photo* of anything you love and I'll save it to your wishlist. I can also help you find the perfect gift — just ask!
 
-Think of me as your personal shopper who's always available. What are you looking for?`
+Quick commands: *list* · *share* · *help*
+
+For the full experience — trending gifts, event wishlists, and a visual feed — visit *giftist.ai*`
 }
 
 export function getHelpMessage(): string {
   return `*The Giftist* — Your Gift Concierge
 
-Here's what I can do:
-- *Send a link* — I'll save the product to your list
+*Commands:*
+- *Send a link* — I'll save it to your list
 - *Send a photo* — I'll identify it and add it
-- *Ask me anything* — Gift ideas, recommendations, trends
+- *Ask me anything* — Gift ideas, trends, recommendations
 - *list* — See your recent saves
 - *share* — Get a link to share your wishlist
 - *remove <number>* — Remove an item (e.g. "remove 3")
-- *help* — Show this message
 
-Your full wishlist is at giftist.ai`
+*On the web (giftist.ai):*
+- Visual wishlist feed with trending gifts
+- Create event wishlists (birthdays, holidays)
+- Let friends contribute to your gifts
+- AI-powered gift recommendations`
 }

@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { formatPrice } from '@/lib/utils'
-import { DollarSign, X } from 'lucide-react'
+import { DollarSign, X, Info } from 'lucide-react'
 
 interface ContributeButtonProps {
   itemId: string
   itemName: string
   remaining: number
   shareId: string
+  ownerName?: string
 }
 
 export default function ContributeButton({
@@ -16,32 +17,16 @@ export default function ContributeButton({
   itemName,
   remaining,
   shareId,
+  ownerName,
 }: ContributeButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(false)
+  const [contributorEmail, setContributorEmail] = useState('')
 
   const suggestedAmounts = [10, 25, 50, 100].filter((a) => a <= remaining)
-
-  const handleClick = async () => {
-    setCheckingAuth(true)
-    try {
-      const res = await fetch('/api/auth/session')
-      const session = await res.json()
-      if (session?.user) {
-        setIsOpen(true)
-      } else {
-        window.location.href = `/login?callbackUrl=/u/${shareId}`
-      }
-    } catch {
-      window.location.href = `/login?callbackUrl=/u/${shareId}`
-    } finally {
-      setCheckingAuth(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,6 +53,7 @@ export default function ContributeButton({
           amount: numAmount,
           message: message || null,
           isAnonymous,
+          contributorEmail: contributorEmail || null,
           returnUrl: `/u/${shareId}`,
         }),
       })
@@ -90,31 +76,40 @@ export default function ContributeButton({
   return (
     <>
       <button
-        onClick={handleClick}
-        disabled={checkingAuth}
-        className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50"
+        onClick={() => setIsOpen(true)}
+        className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg font-medium hover:bg-primary-hover transition"
       >
         <DollarSign className="h-4 w-4" />
-        {checkingAuth ? 'Checking...' : 'Contribute'}
+        Contribute
       </button>
 
       {/* Modal */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface rounded-2xl max-w-md w-full p-6 relative border border-border">
+          <div className="bg-surface rounded-2xl max-w-md w-full p-6 relative border border-border max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 text-muted hover:text-white transition"
+              className="absolute top-4 right-4 text-muted hover:text-gray-900 transition"
             >
               <X className="h-6 w-6" />
             </button>
 
-            <h2 className="text-xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
               Contribute to Gift
             </h2>
-            <p className="text-muted text-sm mb-6 line-clamp-2">
+            <p className="text-muted text-sm mb-4 line-clamp-2">
               {itemName}
             </p>
+
+            {/* Info box */}
+            <div className="flex gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-lg mb-5">
+              <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700">
+                You're contributing funds toward this gift.{' '}
+                {ownerName || 'The recipient'} will purchase it themselves.
+                You'll be notified when they do.
+              </p>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Suggested Amounts */}
@@ -131,7 +126,7 @@ export default function ContributeButton({
                       className={`py-2 rounded-lg font-medium transition ${
                         amount === String(a)
                           ? 'bg-primary text-white'
-                          : 'bg-surface-hover text-white hover:bg-surface-raised'
+                          : 'bg-surface-hover text-gray-900 hover:bg-surface-raised'
                       }`}
                     >
                       ${a}
@@ -150,7 +145,7 @@ export default function ContributeButton({
                     min="1"
                     max={remaining}
                     step="0.01"
-                    className="w-full pl-8 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                    className="w-full pl-8 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                     required
                   />
                 </div>
@@ -169,7 +164,21 @@ export default function ContributeButton({
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Add a personal message..."
                   rows={2}
-                  className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
+                  className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
+                />
+              </div>
+
+              {/* Email for notifications */}
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-2">
+                  Your email (optional, for updates)
+                </label>
+                <input
+                  type="email"
+                  value={contributorEmail}
+                  onChange={(e) => setContributorEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 />
               </div>
 

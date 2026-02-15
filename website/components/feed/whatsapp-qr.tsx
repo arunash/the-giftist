@@ -10,10 +10,10 @@ const WA_LINK = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(PREFI
 export function WhatsAppQRBlock() {
   return (
     <div className="bg-surface rounded-2xl border border-border p-6 flex flex-col items-center max-w-xs">
-      <div className="p-2 bg-green-500/10 rounded-full mb-3">
-        <MessageCircle className="h-5 w-5 text-green-400" />
+      <div className="p-2 bg-green-50 rounded-full mb-3">
+        <MessageCircle className="h-5 w-5 text-green-600" />
       </div>
-      <h3 className="text-sm font-semibold text-white mb-1">Start on WhatsApp</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Start on WhatsApp</h3>
       <p className="text-xs text-muted mb-4 text-center">
         Scan to create your Giftist instantly via WhatsApp
       </p>
@@ -21,8 +21,8 @@ export function WhatsAppQRBlock() {
         <QRCodeSVG
           value={WA_LINK}
           size={160}
-          bgColor="#141416"
-          fgColor="#ffffff"
+          bgColor="#FFFFFF"
+          fgColor="#111827"
           level="M"
           className="rounded-lg"
         />

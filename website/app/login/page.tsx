@@ -97,7 +97,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-surface rounded-2xl border border-border p-8">
-          <h1 className="text-2xl font-bold text-white text-center mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
             Sign in with WhatsApp
           </h1>
           <p className="text-muted text-center mb-8 text-sm">
@@ -115,7 +115,7 @@ export default function LoginPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (555) 123-4567"
-                    className="w-full pl-10 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition"
                     required
                   />
                 </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
               <form onSubmit={handleVerifyCode}>
                 <p className="text-sm text-muted mb-4">
                   We sent a code to your WhatsApp at{' '}
-                  <span className="font-medium text-white">{phone}</span>
+                  <span className="font-medium text-gray-900">{phone}</span>
                 </p>
                 {resendSuccess && (
                   <p className="text-green-400 text-sm mb-4">New code sent!</p>
@@ -151,7 +151,7 @@ export default function LoginPage() {
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
                     maxLength={6}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition"
                     required
                   />
                 </div>
@@ -205,7 +205,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => { setStep('phone'); setError(''); setCode('') }}
-                    className="text-sm text-muted hover:text-white transition"
+                    className="text-sm text-muted hover:text-gray-900 transition"
                   >
                     Use a different number
                   </button>
@@ -226,7 +226,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || phoneLoading}
-            className="w-full flex items-center justify-center gap-3 bg-surface-hover border border-border rounded-lg py-2.5 px-4 text-sm text-muted hover:text-white hover:bg-surface-raised transition disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-surface-hover border border-border rounded-lg py-2.5 px-4 text-sm text-muted hover:text-gray-900 hover:bg-surface-raised transition disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path

@@ -96,7 +96,7 @@ export default async function SharedWishlistPage({
                   Wishlist
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-white mb-1">
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">
                 {user.name || 'Someone'}&apos;s Giftist
               </h1>
               <p className="text-muted">
@@ -109,7 +109,7 @@ export default async function SharedWishlistPage({
           {totalGoal > 0 && (
             <div className="mt-6 p-4 bg-primary-light rounded-lg">
               <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium text-white">
+                <span className="font-medium text-gray-900">
                   Total Funded
                 </span>
                 <span className="text-primary font-semibold">
@@ -129,14 +129,14 @@ export default async function SharedWishlistPage({
         </div>
 
         {/* Items Grid */}
-        <h2 className="text-xl font-semibold text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Wishlist Items ({items.length})
         </h2>
 
         {items.length === 0 ? (
           <div className="bg-surface rounded-xl p-12 text-center border border-border">
             <Gift className="h-16 w-16 text-[#333] mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
               No items added yet
             </h3>
             <p className="text-muted">
@@ -199,7 +199,7 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-white line-clamp-2 mb-2">
+        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
           <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
             {item.name}
           </a>

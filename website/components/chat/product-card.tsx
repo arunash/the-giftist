@@ -49,7 +49,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h4 className="text-sm font-medium text-white line-clamp-1">{product.name}</h4>
+            <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{product.name}</h4>
             {product.price && (
               <p className="text-xs font-semibold text-primary mt-0.5">{product.price}</p>
             )}
@@ -57,7 +57,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
           {product.id && (
             <button
-              className="p-1 text-muted hover:text-white transition flex-shrink-0"
+              className="p-1 text-muted hover:text-gray-900 transition flex-shrink-0"
               onClick={async (e) => {
                 e.stopPropagation()
                 const url = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to check out a gift idea on The Giftist!\n\nitem ${product.id}`)}`
@@ -70,7 +70,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               title="Share this item"
             >
               {shareCopied ? (
-                <Check className="h-3.5 w-3.5 text-green-400" />
+                <Check className="h-3.5 w-3.5 text-green-600" />
               ) : (
                 <Share2 className="h-3.5 w-3.5" />
               )}
@@ -81,7 +81,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         {/* Action button */}
         <div className="mt-2">
           {added ? (
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium">
+            <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
               <Check className="h-3 w-3" />
               On your list
             </span>

@@ -28,13 +28,13 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
     <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
       <div
         className={`p-2 rounded-lg ${
-          isPositive ? 'bg-success-light text-green-400' : 'bg-primary-light text-primary'
+          isPositive ? 'bg-success-light text-green-600' : 'bg-primary-light text-primary'
         }`}
       >
         <Icon className="h-4 w-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">
+        <p className="text-sm font-medium text-gray-900 truncate">
           {transaction.description || transaction.type}
         </p>
         <p className="text-xs text-muted">
@@ -47,7 +47,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
         </p>
       </div>
       <div className="text-right">
-        <p className={`text-sm font-semibold ${isPositive ? 'text-green-400' : 'text-white'}`}>
+        <p className={`text-sm font-semibold ${isPositive ? 'text-green-600' : 'text-gray-900'}`}>
           {isPositive ? '+' : ''}{formatPrice(Math.abs(transaction.amount))}
         </p>
         {transaction.status === 'PENDING' && (

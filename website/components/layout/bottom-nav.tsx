@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
   { href: '/chat', label: 'Concierge', icon: MessageCircle },
-  { href: '/wallet', label: 'Wallet', icon: Wallet },
+  { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -33,7 +33,7 @@ export function BottomNav() {
               href={item.href}
               className={cn(
                 'flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors',
-                isActive ? 'text-primary' : 'text-muted hover:text-white'
+                isActive ? 'text-primary' : 'text-muted hover:text-gray-900'
               )}
             >
               <item.icon className="h-5 w-5" />

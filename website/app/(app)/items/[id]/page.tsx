@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users, Heart, ShoppingBag } from 'lucide-react'
 import { formatPrice, getProgressPercentage, formatDate, shareOrCopy } from '@/lib/utils'
 
 interface Contribution {
@@ -11,6 +11,8 @@ interface Contribution {
   message: string | null
   isAnonymous: boolean
   createdAt: string
+  thankYouMessage: string | null
+  thankYouSentAt: string | null
   contributor: { name: string | null } | null
 }
 
@@ -49,6 +51,10 @@ export default function ItemDetailPage() {
   const [retailersLoading, setRetailersLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [markingPurchased, setMarkingPurchased] = useState(false)
+  const [thankYouId, setThankYouId] = useState<string | null>(null)
+  const [thankYouMsg, setThankYouMsg] = useState('')
+  const [sendingThankYou, setSendingThankYou] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -89,6 +95,57 @@ export default function ItemDetailPage() {
     }
   }
 
+  const handleMarkPurchased = async () => {
+    if (!item || markingPurchased) return
+    setMarkingPurchased(true)
+    try {
+      const res = await fetch(`/api/items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPurchased: true }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setItem((prev) => prev ? { ...prev, isPurchased: true } : prev)
+      }
+    } catch (err) {
+      console.error('Failed to mark as purchased:', err)
+    } finally {
+      setMarkingPurchased(false)
+    }
+  }
+
+  const handleSendThankYou = async (contributionId: string) => {
+    if (!thankYouMsg.trim() || sendingThankYou) return
+    setSendingThankYou(true)
+    try {
+      const res = await fetch('/api/thank-you', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributionId, message: thankYouMsg }),
+      })
+      if (res.ok) {
+        setItem((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            contributions: prev.contributions.map((c) =>
+              c.id === contributionId
+                ? { ...c, thankYouMessage: thankYouMsg, thankYouSentAt: new Date().toISOString() }
+                : c
+            ),
+          }
+        })
+        setThankYouId(null)
+        setThankYouMsg('')
+      }
+    } catch (err) {
+      console.error('Failed to send thank-you:', err)
+    } finally {
+      setSendingThankYou(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -118,13 +175,14 @@ export default function ItemDetailPage() {
   const visibleContributions = item.contributions.filter(
     (c) => (c as any).status !== 'FAILED' && (c as any).status !== 'REFUNDED'
   )
+  const hasFunding = item.fundedAmount > 0
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
       {/* Back button */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-sm text-muted hover:text-white mb-6 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-muted hover:text-gray-900 mb-6 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
@@ -157,17 +215,17 @@ export default function ItemDetailPage() {
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <h1 className="text-xl font-semibold text-white">{item.name}</h1>
+              <h1 className="text-xl font-semibold text-gray-900">{item.name}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted">{item.domain}</span>
                 {item.price && (
-                  <span className="text-sm font-semibold text-white">{item.price}</span>
+                  <span className="text-sm font-semibold text-gray-900">{item.price}</span>
                 )}
               </div>
             </div>
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-2 bg-surface-hover rounded-lg text-sm text-muted hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-surface-hover rounded-lg text-sm text-muted hover:text-gray-900 transition-colors"
             >
               {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
               {copied ? 'Copied!' : 'Share'}
@@ -178,7 +236,7 @@ export default function ItemDetailPage() {
           {goal > 0 && (
             <div className="mt-5">
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-white font-medium">
+                <span className="text-gray-900 font-medium">
                   {formatPrice(item.fundedAmount)} of {formatPrice(goal)} funded
                 </span>
                 <span className="text-muted">{progress}%</span>
@@ -202,6 +260,18 @@ export default function ItemDetailPage() {
               )}
             </div>
           )}
+
+          {/* Mark as Purchased button */}
+          {hasFunding && !item.isPurchased && (
+            <button
+              onClick={handleMarkPurchased}
+              disabled={markingPurchased}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-500 transition disabled:opacity-50"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              {markingPurchased ? 'Marking...' : 'Mark as Purchased'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -210,25 +280,70 @@ export default function ItemDetailPage() {
         <div className="mt-6 rounded-2xl bg-surface border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Users className="h-4 w-4 text-muted" />
-            <h2 className="text-sm font-semibold text-white">
+            <h2 className="text-sm font-semibold text-gray-900">
               Contributors ({visibleContributions.length})
             </h2>
           </div>
           <div className="space-y-3">
             {visibleContributions.map((c) => (
-              <div key={c.id} className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-white">
-                    {c.isAnonymous ? 'Anonymous' : c.contributor?.name || 'Someone'}
-                  </p>
-                  {c.message && (
-                    <p className="text-xs text-muted mt-0.5 italic">"{c.message}"</p>
-                  )}
+              <div key={c.id}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-gray-900">
+                      {c.isAnonymous ? 'Anonymous' : c.contributor?.name || 'Someone'}
+                    </p>
+                    {c.message && (
+                      <p className="text-xs text-muted mt-0.5 italic">"{c.message}"</p>
+                    )}
+                  </div>
+                  <div className="text-right flex items-start gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{formatPrice(c.amount)}</p>
+                      <p className="text-xs text-muted">{formatDate(c.createdAt)}</p>
+                    </div>
+                    {!c.thankYouSentAt && (
+                      <button
+                        onClick={() => {
+                          setThankYouId(thankYouId === c.id ? null : c.id)
+                          setThankYouMsg('')
+                        }}
+                        className="text-xs flex items-center gap-1 px-2 py-1 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                        title="Send thank you"
+                      >
+                        <Heart className="h-3 w-3" />
+                        Thank
+                      </button>
+                    )}
+                    {c.thankYouSentAt && (
+                      <span className="text-xs text-emerald-600 flex items-center gap-1 px-2 py-1">
+                        <Check className="h-3 w-3" />
+                        Thanked
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-white">{formatPrice(c.amount)}</p>
-                  <p className="text-xs text-muted">{formatDate(c.createdAt)}</p>
-                </div>
+                {/* Thank-you input */}
+                {thankYouId === c.id && (
+                  <div className="mt-2 ml-0 flex gap-2">
+                    <input
+                      type="text"
+                      value={thankYouMsg}
+                      onChange={(e) => setThankYouMsg(e.target.value)}
+                      placeholder="Write a thank-you message..."
+                      className="flex-1 px-3 py-2 text-sm bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted outline-none focus:border-primary"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSendThankYou(c.id)
+                      }}
+                    />
+                    <button
+                      onClick={() => handleSendThankYou(c.id)}
+                      disabled={!thankYouMsg.trim() || sendingThankYou}
+                      className="px-3 py-2 bg-primary text-white text-sm rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                    >
+                      {sendingThankYou ? '...' : 'Send'}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -239,7 +354,7 @@ export default function ItemDetailPage() {
       <div className="mt-6 rounded-2xl bg-surface border border-border p-5">
         <div className="flex items-center gap-2 mb-4">
           <ExternalLink className="h-4 w-4 text-muted" />
-          <h2 className="text-sm font-semibold text-white">Where to buy</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Where to buy</h2>
         </div>
 
         {retailersLoading ? (
@@ -259,7 +374,7 @@ export default function ItemDetailPage() {
                 className="flex items-center justify-between p-3 bg-surface-hover rounded-xl hover:bg-border transition-colors group"
               >
                 <div>
-                  <p className="text-sm text-white font-medium">
+                  <p className="text-sm text-gray-900 font-medium">
                     {r.retailer}
                     {r.isOriginal && (
                       <span className="ml-2 text-xs text-muted">(original)</span>
@@ -283,7 +398,7 @@ export default function ItemDetailPage() {
             rel="noopener noreferrer"
             className="flex items-center justify-between p-3 bg-surface-hover rounded-xl hover:bg-border transition-colors"
           >
-            <p className="text-sm text-white">{item.domain}</p>
+            <p className="text-sm text-gray-900">{item.domain}</p>
             <span className="text-xs text-red-400 flex items-center gap-1">
               Visit store
               <ExternalLink className="h-3 w-3" />
@@ -298,7 +413,6 @@ export default function ItemDetailPage() {
           <div className="max-w-2xl mx-auto">
             <button
               onClick={() => {
-                // Trigger the contribute flow — dispatch a custom event the feed can listen for
                 window.dispatchEvent(
                   new CustomEvent('giftist:contribute', { detail: { itemId: item.id } })
                 )

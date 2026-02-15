@@ -105,7 +105,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
           type="date"
           value={birthday}
           onChange={(e) => { setBirthday(e.target.value); setSaved(false) }}
-          className="w-full sm:w-auto px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-hover focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+          className="w-full sm:w-auto px-3 py-2 border border-border rounded-lg text-sm text-gray-900 bg-surface-hover focus:ring-2 focus:ring-primary focus:border-primary outline-none"
         />
       </div>
 

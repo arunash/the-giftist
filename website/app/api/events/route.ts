@@ -15,6 +15,14 @@ const eventSchema = z.object({
   itemIds: z.array(z.string()).optional().default([]),
 })
 
+// Compute the next future occurrence of a month/day
+function getNextOccurrence(date: Date): Date {
+  const now = new Date()
+  const thisYear = new Date(now.getFullYear(), date.getMonth(), date.getDate())
+  if (thisYear > now) return thisYear
+  return new Date(now.getFullYear() + 1, date.getMonth(), date.getDate())
+}
+
 // GET all events for the authenticated user
 export async function GET(request: NextRequest) {
   try {
@@ -42,6 +50,26 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Auto-advance past events to next year (all events repeat annually)
+    const now = new Date()
+    const advancePromises = events
+      .filter((e) => new Date(e.date) < now)
+      .map((e) => {
+        const nextDate = getNextOccurrence(new Date(e.date))
+        e.date = nextDate
+        return prisma.event.update({
+          where: { id: e.id },
+          data: { date: nextDate },
+        })
+      })
+
+    if (advancePromises.length > 0) {
+      await Promise.all(advancePromises)
+    }
+
+    // Re-sort after date changes
+    events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
     return NextResponse.json(events)
   } catch (error) {
     console.error('Error fetching events:', error)
@@ -65,6 +93,15 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id
     const body = await request.json()
     const data = eventSchema.parse(body)
+
+    // Dedup: if an event with the same name already exists for this user, return it
+    const existing = await prisma.event.findFirst({
+      where: { userId, name: data.name },
+      include: { items: { include: { item: true } } },
+    })
+    if (existing) {
+      return NextResponse.json(existing, { status: 200 })
+    }
 
     const event = await prisma.event.create({
       data: {

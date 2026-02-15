@@ -82,7 +82,7 @@ export function AddProductBar({ onAdded }: AddProductBarProps) {
             }
           }}
           placeholder="Paste any URL..."
-          className="flex-1 text-sm text-white placeholder-muted outline-none bg-transparent"
+          className="flex-1 text-sm text-gray-900 placeholder-muted outline-none bg-transparent"
           autoFocus
           disabled={loading}
         />
@@ -104,7 +104,7 @@ export function AddProductBar({ onAdded }: AddProductBarProps) {
                   setUrl('')
                   setError('')
                 }}
-                className="p-1.5 text-muted hover:text-white transition"
+                className="p-1.5 text-muted hover:text-gray-900 transition"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -112,7 +112,7 @@ export function AddProductBar({ onAdded }: AddProductBarProps) {
           )}
         </div>
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
 }

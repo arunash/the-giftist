@@ -8,6 +8,10 @@ export type ActivityType =
   | 'CONTRIBUTION_RECEIVED'
   | 'EVENT_CREATED'
   | 'EVENT_ITEM_ADDED'
+  | 'EVENT_FUNDED'
+  | 'EVENT_CONTRIBUTION_RECEIVED'
+  | 'THANK_YOU_SENT'
+  | 'FUNDS_ALLOCATED'
 
 export async function createActivity({
   userId,

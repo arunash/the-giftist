@@ -49,7 +49,7 @@ export default function AdminErrorsPage() {
         <select
           value={source}
           onChange={(e) => { setSource(e.target.value); setPage(1) }}
-          className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+          className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-primary"
         >
           {SOURCES.map((s) => (
             <option key={s} value={s}>{s || 'All Sources'}</option>

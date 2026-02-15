@@ -1,11 +1,15 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
 import { Gift, Calendar, ArrowLeft } from 'lucide-react'
 import ContributeButton from './ContributeButton'
+import EventContributeButton from './EventContributeButton'
+import AllocateFundsPanel from './AllocateFundsPanel'
 import ShareItemButton from './ShareItemButton'
 import ShareEventButton from './ShareEventButton'
 
@@ -115,6 +119,9 @@ export default async function EventPage({
     notFound()
   }
 
+  const session = await getServerSession(authOptions)
+  const isOwner = (session?.user as any)?.id === event.userId
+
   const days = daysUntil(event.date)
   const typeInfo = eventTypeLabels[event.type] || eventTypeLabels.OTHER
   const shareUrl = `https://giftist.ai/events/${event.shareUrl}`
@@ -157,7 +164,7 @@ export default async function EventPage({
                   {typeInfo.label}
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-white mb-1">
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">
                 {event.name}
               </h1>
               <p className="text-muted">
@@ -181,7 +188,7 @@ export default async function EventPage({
                     ? 'bg-red-500/10 text-red-400'
                     : days <= 30
                     ? 'bg-yellow-500/10 text-yellow-400'
-                    : 'bg-green-500/10 text-green-400'
+                    : 'bg-green-500/10 text-green-600'
                 }`}
               >
                 {days === 0
@@ -204,7 +211,7 @@ export default async function EventPage({
           {/* Overall Progress */}
           <div className="mt-6 p-4 bg-primary-light rounded-lg">
             <div className="flex justify-between text-sm mb-2">
-              <span className="font-medium text-white">
+              <span className="font-medium text-gray-900">
                 Total Funded
               </span>
               <span className="text-primary font-semibold">
@@ -220,17 +227,42 @@ export default async function EventPage({
               />
             </div>
           </div>
+
+          {/* Event-level contribute button */}
+          <div className="mt-5">
+            <EventContributeButton
+              eventId={event.id}
+              eventName={event.name}
+              ownerName={event.user.name || 'Someone'}
+            />
+          </div>
         </div>
 
+        {/* Fund Allocation (owner only) */}
+        {isOwner && (
+          <AllocateFundsPanel
+            eventId={event.id}
+            fundedAmount={event.fundedAmount}
+            items={event.items.map((ei) => ({
+              id: ei.item.id,
+              name: ei.item.name,
+              image: ei.item.image,
+              fundedAmount: ei.item.fundedAmount,
+              goalAmount: ei.item.goalAmount,
+              priceValue: ei.item.priceValue,
+            }))}
+          />
+        )}
+
         {/* Items Grid */}
-        <h2 className="text-xl font-semibold text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Wishlist Items ({event.items.length})
         </h2>
 
         {event.items.length === 0 ? (
           <div className="bg-surface rounded-xl p-12 text-center border border-border">
             <Gift className="h-16 w-16 text-[#333] mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
               No items added yet
             </h3>
             <p className="text-muted">
@@ -292,7 +324,7 @@ function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-white line-clamp-2 mb-2">
+        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
           {item.name}
         </h3>
         <p className="text-xl font-bold text-primary mb-3">
@@ -349,6 +381,7 @@ function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
               itemId={item.id}
               itemName={item.name}
               remaining={remaining}
+              ownerName={ownerName}
             />
           )}
           <ShareItemButton itemId={item.id} ownerName={ownerName} />

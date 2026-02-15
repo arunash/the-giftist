@@ -147,10 +147,14 @@ model Event {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Event-level funding
+  fundedAmount Float    @default(0)
+
   // Relations
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     EventItem[]
-  giftLists GiftList[]
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          EventItem[]
+  giftLists      GiftList[]
+  contributions  Contribution[]
 
   @@index([userId])
 }
@@ -170,8 +174,10 @@ model EventItem {
 
 model Contribution {
   id            String   @id @default(cuid())
-  itemId        String
+  itemId        String?  // null for event-level contributions
+  eventId       String?  // for event-level contributions
   contributorId String?  // null if anonymous
+  contributorEmail String? // for non-logged-in gifter notifications
   amount        Float
   message       String?
   isAnonymous   Boolean  @default(false)
@@ -179,12 +185,16 @@ model Contribution {
   status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   platformFeeRate   Float @default(0)
   platformFeeAmount Float @default(0)
+  thankYouMessage   String?
+  thankYouSentAt    DateTime?
   createdAt     DateTime @default(now())
 
-  item        Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  contributor User? @relation(fields: [contributorId], references: [id])
+  item        Item?  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  event       Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contributor User?  @relation(fields: [contributorId], references: [id])
 
   @@index([itemId])
+  @@index([eventId])
 }
 
 model GiftList {

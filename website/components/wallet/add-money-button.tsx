@@ -37,7 +37,7 @@ export function AddMoneyButton() {
         className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-hover transition"
       >
         <Plus className="h-4 w-4" />
-        Add Money
+        Add Funds
       </button>
     )
   }
@@ -45,8 +45,8 @@ export function AddMoneyButton() {
   return (
     <div className="bg-surface rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-white">Add Money</h3>
-        <button onClick={() => setIsOpen(false)} className="text-muted hover:text-white transition">
+        <h3 className="font-semibold text-gray-900">Add Funds</h3>
+        <button onClick={() => setIsOpen(false)} className="text-muted hover:text-gray-900 transition">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -57,7 +57,7 @@ export function AddMoneyButton() {
             onClick={() => handleDeposit(amount)}
             disabled={loading}
             className={cn(
-              'py-3 rounded-lg font-semibold text-lg transition text-white',
+              'py-3 rounded-lg font-semibold text-lg transition text-gray-900',
               'border-2 border-border hover:border-primary hover:text-primary',
               loading && 'opacity-50 cursor-not-allowed'
             )}
@@ -76,7 +76,7 @@ export function AddMoneyButton() {
             placeholder="Custom"
             min="1"
             max="10000"
-            className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-gray-900 placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
         <button

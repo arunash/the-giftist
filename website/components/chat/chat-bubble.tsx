@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { parseChatContent, type ProductData, type EventData } from '@/lib/parse-chat-content'
+import { parseChatContent, type ProductData, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
 import { ProductCard } from './product-card'
-import { Check, Calendar } from 'lucide-react'
+import { Check, Calendar, Gift } from 'lucide-react'
 import Link from 'next/link'
 
 interface ChatBubbleProps {
@@ -63,13 +63,100 @@ async function createEvent(data: EventData): Promise<{ id: string; name: string 
   }
 }
 
+function parsePriceValue(price?: string): number | null {
+  if (!price) return null
+  const match = price.replace(/,/g, '').match(/[\d.]+/)
+  return match ? parseFloat(match[0]) : null
+}
+
+async function addItemToEvent(data: AddToEventData): Promise<boolean> {
+  try {
+    let itemId = data.itemId
+
+    // If no itemId or it's a placeholder, create the item first
+    if (!itemId || itemId === 'TBD' || itemId === 'new') {
+      const priceValue = parsePriceValue(data.price)
+      const createRes = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.itemName,
+          price: data.price || null,
+          priceValue,
+          url: `https://www.google.com/search?q=${encodeURIComponent(data.itemName)}`,
+          source: 'CHAT',
+        }),
+      })
+      if (!createRes.ok) return false
+      const newItem = await createRes.json()
+      itemId = newItem.id
+
+      // Fire-and-forget: enrich item with real image in background
+      fetch(`/api/items/${itemId}/enrich`, { method: 'POST' }).catch(() => {})
+    }
+
+    // Link item to event
+    const res = await fetch(`/api/items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: data.eventId }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+function AddToEventConfirmation({ data }: { data: AddToEventData }) {
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false)
+  const didRun = useRef(false)
+
+  useEffect(() => {
+    if (didRun.current || added || adding) return
+    didRun.current = true
+    setAdding(true)
+    addItemToEvent(data).then((ok) => {
+      setAdding(false)
+      if (ok) setAdded(true)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (adding) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl my-2 text-xs text-purple-600">
+        <Gift className="h-3.5 w-3.5 animate-pulse" />
+        Adding to event...
+      </div>
+    )
+  }
+
+  if (added) {
+    return (
+      <div className="flex items-center justify-between px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl my-2 text-xs text-purple-600">
+        <div className="flex items-center gap-2">
+          <Gift className="h-3.5 w-3.5" />
+          Added "{data.itemName}" to {data.eventName}
+        </div>
+        <Link href={`/events/${data.eventId}`} className="text-primary hover:text-primary-hover font-medium ml-2">
+          View event &rarr;
+        </Link>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function EventConfirmation({ data }: { data: EventData }) {
   const [event, setEvent] = useState<{ id: string; name: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const [created, setCreated] = useState(false)
+  const didRun = useRef(false)
 
-  useState(() => {
-    if (created || creating) return
+  useEffect(() => {
+    if (didRun.current || created || creating) return
+    didRun.current = true
     setCreating(true)
     createEvent(data).then((result) => {
       setCreating(false)
@@ -78,13 +165,13 @@ function EventConfirmation({ data }: { data: EventData }) {
         setCreated(true)
       }
     })
-  })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dateStr = new Date(data.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
   if (creating) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl my-2 text-xs text-blue-400">
+      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl my-2 text-xs text-blue-600">
         <Calendar className="h-3.5 w-3.5 animate-pulse" />
         Creating event...
       </div>
@@ -93,7 +180,7 @@ function EventConfirmation({ data }: { data: EventData }) {
 
   if (created && event) {
     return (
-      <div className="flex items-center justify-between px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl my-2 text-xs text-blue-400">
+      <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl my-2 text-xs text-blue-600">
         <div className="flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5" />
           Event created: {data.name} ({dateStr})
@@ -151,7 +238,7 @@ export function ChatBubble({ role, content }: ChatBubbleProps) {
             // Auto-save preferences
             savePreferences(segment.data).catch(() => {})
             return (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl my-2 text-xs text-emerald-400">
+              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl my-2 text-xs text-green-600">
                 <Check className="h-3.5 w-3.5" />
                 Preferences updated!
               </div>
@@ -159,6 +246,9 @@ export function ChatBubble({ role, content }: ChatBubbleProps) {
           }
           if (segment.type === 'event') {
             return <EventConfirmation key={i} data={segment.data} />
+          }
+          if (segment.type === 'add_to_event') {
+            return <AddToEventConfirmation key={i} data={segment.data} />
           }
           return null
         })}

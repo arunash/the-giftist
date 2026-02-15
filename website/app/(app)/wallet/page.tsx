@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { BalanceCard } from '@/components/wallet/balance-card'
 import { AddMoneyButton } from '@/components/wallet/add-money-button'
 import { TransactionRow } from '@/components/wallet/transaction-row'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 export default function WalletPage() {
@@ -20,22 +19,27 @@ export default function WalletPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawError, setWithdrawError] = useState('')
+  const [lifetimeReceived, setLifetimeReceived] = useState(0)
+  const [receivedContributions, setReceivedContributions] = useState<any[]>([])
   const searchParams = useSearchParams()
 
   const fetchData = useCallback(async () => {
     try {
-      const [walletRes, itemsRes, connectRes] = await Promise.all([
+      const [walletRes, itemsRes, connectRes, contribRes] = await Promise.all([
         fetch('/api/wallet'),
         fetch('/api/items'),
         fetch('/api/stripe/connect/status'),
+        fetch('/api/wallet/received'),
       ])
       const walletData = await walletRes.json()
       const itemsData = await itemsRes.json()
       const connectData = await connectRes.json()
+      const contribData = await contribRes.json()
 
       setWallet(walletData)
       setConnectStatus(connectData)
-      // Get top 3 unfunded items
+      setLifetimeReceived(contribData?.lifetime || 0)
+      setReceivedContributions(contribData?.contributions || [])
       const unfunded = (Array.isArray(itemsData) ? itemsData : [])
         .filter((item: any) => {
           const goal = item.goalAmount || item.priceValue || 0
@@ -54,7 +58,6 @@ export default function WalletPage() {
     fetchData()
   }, [fetchData])
 
-  // Re-check connect status when returning from Stripe onboarding
   useEffect(() => {
     if (searchParams.get('connect') === 'complete') {
       fetch('/api/stripe/connect/status')
@@ -108,10 +111,16 @@ export default function WalletPage() {
   if (loading) {
     return (
       <div className="p-6 lg:p-8">
-        <div className="max-w-2xl mx-auto animate-pulse space-y-6">
-          <div className="h-32 bg-surface rounded-2xl" />
-          <div className="h-12 bg-surface rounded-xl" />
-          <div className="h-64 bg-surface rounded-xl" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Funds</h1>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0 animate-pulse">
+          <div className="space-y-4">
+            <div className="h-36 bg-gray-100 rounded-2xl" />
+            <div className="h-48 bg-gray-100 rounded-2xl" />
+          </div>
+          <div className="space-y-4">
+            <div className="h-36 bg-gray-100 rounded-2xl" />
+            <div className="h-48 bg-gray-100 rounded-2xl" />
+          </div>
         </div>
       </div>
     )
@@ -121,133 +130,202 @@ export default function WalletPage() {
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-white">Wallet</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Funds</h1>
 
-        <BalanceCard balance={balance} />
+      {/* Two-panel layout */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
 
-        <AddMoneyButton />
-
-        {/* Stripe Connect / Withdraw Section */}
-        <div className="bg-surface rounded-xl border border-border p-5">
-          {!connectStatus?.onboarded ? (
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Building2 className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-white">Withdraw to Bank</h3>
+        {/* ═══ LEFT PANEL: Funds Balance ═══ */}
+        <div className="space-y-5">
+          {/* Balance hero card */}
+          <div className="ig-card !transform-none overflow-hidden">
+            <div className="bg-gradient-to-br from-primary to-primary-hover p-6 text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowUpRight className="h-5 w-5 text-white/70" />
+                <span className="text-sm font-medium text-white/70">Funds Balance</span>
               </div>
-              <p className="text-sm text-muted mb-4">
-                Connect your bank account to withdraw funded money.
-              </p>
-              <button
-                onClick={handleConnectBank}
-                disabled={connectLoading}
-                className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
-              >
-                {connectLoading ? 'Connecting...' : 'Connect Bank Account'}
-              </button>
+              <p className="text-4xl font-bold tracking-tight">{formatPrice(balance)}</p>
+              <p className="text-sm text-white/60 mt-1">Available to send toward gifts</p>
             </div>
-          ) : (
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <ArrowDownToLine className="h-5 w-5 text-emerald-400" />
-                <h3 className="font-semibold text-white">Withdraw to Bank</h3>
-              </div>
-              {balance > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
-                      <input
-                        type="number"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder="0.00"
-                        max={balance}
-                        step="0.01"
-                        className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-xl text-white placeholder-muted outline-none focus:border-primary"
-                      />
+            <div className="p-4">
+              <AddMoneyButton />
+            </div>
+          </div>
+
+          {/* Quick Fund */}
+          {unfundedItems.length > 0 && (
+            <div className="ig-card !transform-none p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Quick Fund</h3>
+              <div className="space-y-3">
+                {unfundedItems.map((item) => {
+                  const goal = item.goalAmount || item.priceValue || 0
+                  const remaining = Math.max(0, goal - item.fundedAmount)
+                  return (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 ig-image-wrap">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <Gift className="h-4 w-4 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400">{formatPrice(remaining)} left</p>
+                      </div>
+                      <button
+                        onClick={() => setFundingItem(item)}
+                        className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/10 transition"
+                      >
+                        Fund
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setWithdrawAmount(balance.toFixed(2))}
-                      className="px-3 py-2.5 text-xs font-medium text-primary border border-primary/20 rounded-xl hover:bg-primary/10 transition"
-                    >
-                      Max
-                    </button>
-                  </div>
-                  <button
-                    onClick={handleWithdraw}
-                    disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
-                  >
-                    {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''}`}
-                  </button>
-                  {withdrawError && (
-                    <p className="text-sm text-red-400">{withdrawError}</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted">
-                  Bank connected. Add funds to your wallet to withdraw.
-                </p>
-              )}
+                  )
+                })}
+              </div>
             </div>
           )}
+
+          {/* Transaction History */}
+          <div className="ig-card !transform-none p-5">
+            <h3 className="font-semibold text-gray-900 mb-4">Transaction History</h3>
+            {wallet?.transactions?.length > 0 ? (
+              <div>
+                {wallet.transactions.map((tx: any) => (
+                  <TransactionRow key={tx.id} transaction={tx} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Wallet className="h-12 w-12" />}
+                title="No transactions yet"
+                description="Add funds to start funding items"
+                className="py-8"
+              />
+            )}
+          </div>
         </div>
 
-        {/* Quick Fund Section */}
-        {unfundedItems.length > 0 && (
-          <div className="bg-surface rounded-xl border border-border p-5">
-            <h3 className="font-semibold text-white mb-4">Quick Fund</h3>
-            <div className="space-y-3">
-              {unfundedItems.map((item) => {
-                const goal = item.goalAmount || item.priceValue || 0
-                const remaining = Math.max(0, goal - item.fundedAmount)
-                return (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-surface-hover overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+        {/* ═══ RIGHT PANEL: Funds Received ═══ */}
+        <div className="space-y-5">
+          {/* Received hero card */}
+          <div className="ig-card !transform-none overflow-hidden">
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowDownLeft className="h-5 w-5 text-white/70" />
+                <span className="text-sm font-medium text-white/70">Funds Received</span>
+              </div>
+              <p className="text-4xl font-bold tracking-tight">{formatPrice(lifetimeReceived)}</p>
+              <p className="text-sm text-white/60 mt-1">
+                {receivedContributions.length > 0
+                  ? `From ${receivedContributions.length} contribution${receivedContributions.length !== 1 ? 's' : ''}`
+                  : 'Contributions from friends & family'}
+              </p>
+            </div>
+          </div>
+
+          {/* Recent contributions list */}
+          <div className="ig-card !transform-none p-5">
+            <h3 className="font-semibold text-gray-900 mb-4">Recent Contributions</h3>
+            {receivedContributions.length > 0 ? (
+              <div className="space-y-3">
+                {receivedContributions.map((c: any) => (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 ig-image-wrap">
+                      {c.itemImage ? (
+                        <img src={c.itemImage} alt={c.itemName || ''} className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex items-center justify-center h-full">
-                          <Gift className="h-4 w-4 text-[#333]" />
+                          <Heart className="h-4 w-4 text-gray-300" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{item.name}</p>
-                      <p className="text-xs text-muted">{formatPrice(remaining)} left</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{c.itemName || c.eventName || 'Contribution'}</p>
+                      <p className="text-xs text-gray-400">{c.contributorName || 'Anonymous'} &middot; {new Date(c.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-emerald-600 flex-shrink-0">+{formatPrice(c.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Heart className="h-12 w-12" />}
+                title="No contributions yet"
+                description="Share your wishlist so friends can contribute toward your gifts"
+                className="py-8"
+              />
+            )}
+          </div>
+
+          {/* Withdraw to Bank */}
+          <div className="ig-card !transform-none p-5">
+            {!connectStatus?.onboarded ? (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">
+                  Connect your bank account to withdraw funded money.
+                </p>
+                <button
+                  onClick={handleConnectBank}
+                  disabled={connectLoading}
+                  className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                >
+                  {connectLoading ? 'Connecting...' : 'Connect Bank Account'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
+                  <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
+                </div>
+                {balance > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input
+                          type="number"
+                          value={withdrawAmount}
+                          onChange={(e) => setWithdrawAmount(e.target.value)}
+                          placeholder="0.00"
+                          max={balance}
+                          step="0.01"
+                          className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500/30"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setWithdrawAmount(balance.toFixed(2))}
+                        className="px-3 py-2.5 text-xs font-medium text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition"
+                      >
+                        Max
+                      </button>
                     </div>
                     <button
-                      onClick={() => setFundingItem(item)}
-                      className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/10 transition"
+                      onClick={handleWithdraw}
+                      disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
                     >
-                      Fund
+                      {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''}`}
                     </button>
+                    {withdrawError && (
+                      <p className="text-sm text-red-500">{withdrawError}</p>
+                    )}
                   </div>
-                )
-              })}
-            </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    Bank connected. Funds will appear here when friends contribute.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Transaction History */}
-        <div className="bg-surface rounded-xl border border-border p-5">
-          <h3 className="font-semibold text-white mb-4">Transaction History</h3>
-          {wallet?.transactions?.length > 0 ? (
-            <div>
-              {wallet.transactions.map((tx: any) => (
-                <TransactionRow key={tx.id} transaction={tx} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<Wallet className="h-12 w-12" />}
-              title="No transactions yet"
-              description="Add money to your wallet to start funding items"
-              className="py-8"
-            />
-          )}
         </div>
       </div>
 

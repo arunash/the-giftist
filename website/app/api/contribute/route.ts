@@ -7,11 +7,15 @@ import { logApiCall, logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const contributionSchema = z.object({
-  itemId: z.string(),
+  itemId: z.string().optional(),
+  eventId: z.string().optional(),
   amount: z.number().positive(),
   message: z.string().optional().nullable(),
   isAnonymous: z.boolean().optional().default(false),
+  contributorEmail: z.string().email().optional().nullable(),
   returnUrl: z.string().optional(),
+}).refine(data => data.itemId || data.eventId, {
+  message: 'Either itemId or eventId is required',
 })
 
 // POST create a contribution via Stripe Checkout
@@ -23,38 +27,59 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = contributionSchema.parse(body)
 
-    // Verify item exists
-    const item = await prisma.item.findUnique({
-      where: { id: data.itemId },
-    })
+    let productName: string
+    let productDescription: string
 
-    if (!item) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
-    }
+    if (data.itemId) {
+      // Item-level contribution
+      const item = await prisma.item.findUnique({
+        where: { id: data.itemId },
+      })
 
-    // Check if item is already fully funded or purchased
-    if (item.isPurchased) {
-      return NextResponse.json(
-        { error: 'This item has already been purchased' },
-        { status: 400 }
-      )
-    }
+      if (!item) {
+        return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+      }
 
-    const goalAmount = item.goalAmount || item.priceValue || 0
-    const remaining = goalAmount - item.fundedAmount
+      if (item.isPurchased) {
+        return NextResponse.json(
+          { error: 'This item has already been purchased' },
+          { status: 400 }
+        )
+      }
 
-    if (data.amount > remaining && remaining > 0) {
-      return NextResponse.json(
-        { error: `Maximum contribution is $${remaining.toFixed(2)}` },
-        { status: 400 }
-      )
+      const goalAmount = item.goalAmount || item.priceValue || 0
+      const remaining = goalAmount - item.fundedAmount
+
+      if (data.amount > remaining && remaining > 0) {
+        return NextResponse.json(
+          { error: `Maximum contribution is $${remaining.toFixed(2)}` },
+          { status: 400 }
+        )
+      }
+
+      productName = `Contribution: ${item.name}`
+      productDescription = data.message || `Gift contribution for ${item.name}`
+    } else {
+      // Event-level contribution
+      const event = await prisma.event.findUnique({
+        where: { id: data.eventId! },
+      })
+
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      }
+
+      productName = `Contribution: ${event.name}`
+      productDescription = data.message || `Gift fund contribution for ${event.name}`
     }
 
     // Create a PENDING contribution
     const contribution = await prisma.contribution.create({
       data: {
-        itemId: data.itemId,
+        itemId: data.itemId || null,
+        eventId: data.eventId || null,
         contributorId: data.isAnonymous ? null : contributorId,
+        contributorEmail: data.contributorEmail || null,
         amount: data.amount,
         message: data.message,
         isAnonymous: data.isAnonymous,
@@ -73,8 +98,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Contribution: ${item.name}`,
-              description: data.message || `Gift contribution for ${item.name}`,
+              name: productName,
+              description: productDescription,
             },
             unit_amount: Math.round(data.amount * 100),
           },
@@ -84,9 +109,10 @@ export async function POST(request: NextRequest) {
       metadata: {
         type: 'contribution',
         contributionId: contribution.id,
-        itemId: data.itemId,
+        itemId: data.itemId || '',
+        eventId: data.eventId || '',
       },
-      success_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}contribute=success`,
+      success_url: `${baseUrl}/contribute/success?id=${contribution.id}&returnUrl=${encodeURIComponent(returnPath)}`,
       cancel_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}contribute=cancelled`,
     })
 

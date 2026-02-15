@@ -72,7 +72,7 @@ export default function LinkPhoneForm() {
 
   if (success) {
     return (
-      <p className="text-green-400 font-medium">Phone linked successfully!</p>
+      <p className="text-green-600 font-medium">Phone linked successfully!</p>
     )
   }
 
@@ -86,7 +86,7 @@ export default function LinkPhoneForm() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+1 (555) 123-4567"
-            className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-white placeholder-muted"
+            className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-gray-900 placeholder-muted"
             required
           />
         </div>
@@ -106,7 +106,7 @@ export default function LinkPhoneForm() {
   return (
     <form onSubmit={handleVerifyAndLink} className="space-y-3">
       <p className="text-sm text-muted">
-        Code sent to <span className="font-medium text-white">{phone}</span>
+        Code sent to <span className="font-medium text-gray-900">{phone}</span>
       </p>
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
@@ -116,7 +116,7 @@ export default function LinkPhoneForm() {
           onChange={(e) => setCode(e.target.value)}
           placeholder="123456"
           maxLength={6}
-          className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-white placeholder-muted"
+          className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-gray-900 placeholder-muted"
           required
         />
       </div>
@@ -132,7 +132,7 @@ export default function LinkPhoneForm() {
         <button
           type="button"
           onClick={() => { setStep('phone'); setError('') }}
-          className="text-muted text-sm hover:text-white transition"
+          className="text-muted text-sm hover:text-gray-900 transition"
         >
           Change number
         </button>

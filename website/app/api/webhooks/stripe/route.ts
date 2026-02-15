@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logError } from '@/lib/api-logger'
+import { sendTextMessage } from '@/lib/whatsapp'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -63,68 +64,150 @@ export async function POST(request: NextRequest) {
 
           const contribution = await prisma.contribution.findUnique({
             where: { id: contributionId },
-            include: { item: true },
+            include: {
+              item: true,
+              event: { include: { user: true } },
+              contributor: { select: { name: true, phone: true } },
+            },
           })
 
           if (contribution && contribution.status === 'PENDING') {
-            const item = contribution.item
+            if (contribution.itemId && contribution.item) {
+              // Item-level contribution
+              const item = contribution.item
 
-            // Calculate platform fee from the goal/price ratio
-            const fee = calculateFeeFromContribution(
-              contribution.amount,
-              item.goalAmount,
-              item.priceValue
-            )
+              const fee = calculateFeeFromContribution(
+                contribution.amount,
+                item.goalAmount,
+                item.priceValue
+              )
 
-            // Mark contribution completed with fee info
-            await prisma.contribution.update({
-              where: { id: contributionId },
-              data: {
-                status: 'COMPLETED',
-                stripePaymentId: session.payment_intent as string,
-                platformFeeRate: fee.feeRate,
-                platformFeeAmount: fee.feeAmount,
-              },
-            })
-
-            // Update item funded amount
-            const newFundedAmount = item.fundedAmount + contribution.amount
-
-            await prisma.item.update({
-              where: { id: item.id },
-              data: { fundedAmount: newFundedAmount },
-            })
-
-            // Increment item owner's lifetime contributions received (net of fees)
-            await prisma.user.update({
-              where: { id: item.userId },
-              data: {
-                lifetimeContributionsReceived: { increment: fee.netAmount },
-              },
-            })
-
-            // Activity: contributor funded item
-            if (contribution.contributorId) {
-              await createActivity({
-                userId: contribution.contributorId,
-                type: 'ITEM_FUNDED',
-                visibility: 'PUBLIC',
-                itemId: item.id,
-                metadata: { amount: contribution.amount, itemName: item.name },
+              await prisma.contribution.update({
+                where: { id: contributionId },
+                data: {
+                  status: 'COMPLETED',
+                  stripePaymentId: session.payment_intent as string,
+                  platformFeeRate: fee.feeRate,
+                  platformFeeAmount: fee.feeAmount,
+                },
               })
-            }
 
-            // Activity: item owner received contribution
-            await createActivity({
-              userId: item.userId,
-              type: 'CONTRIBUTION_RECEIVED',
-              visibility: 'PRIVATE',
-              itemId: item.id,
-              metadata: {
-                amount: contribution.amount,
-                contributorName: contribution.isAnonymous ? 'Anonymous' : 'Someone',
-              },
-            })
+              const newFundedAmount = item.fundedAmount + contribution.amount
+              await prisma.item.update({
+                where: { id: item.id },
+                data: { fundedAmount: newFundedAmount },
+              })
+
+              await prisma.user.update({
+                where: { id: item.userId },
+                data: {
+                  lifetimeContributionsReceived: { increment: fee.netAmount },
+                },
+              })
+
+              // Activity: contributor funded item
+              if (contribution.contributorId) {
+                await createActivity({
+                  userId: contribution.contributorId,
+                  type: 'ITEM_FUNDED',
+                  visibility: 'PUBLIC',
+                  itemId: item.id,
+                  metadata: { amount: contribution.amount, itemName: item.name },
+                })
+              }
+
+              // Activity: item owner received contribution
+              await createActivity({
+                userId: item.userId,
+                type: 'CONTRIBUTION_RECEIVED',
+                visibility: 'PRIVATE',
+                itemId: item.id,
+                metadata: {
+                  amount: contribution.amount,
+                  contributorName: contribution.isAnonymous ? 'Anonymous' : (contribution.contributor?.name || 'Someone'),
+                },
+              })
+
+              // WhatsApp notification to giftee
+              const giftee = await prisma.user.findUnique({
+                where: { id: item.userId },
+                select: { phone: true, name: true },
+              })
+              if (giftee?.phone) {
+                const contributorName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
+                const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+                sendTextMessage(
+                  giftee.phone,
+                  `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward "${item.name}"! Purchase it yourself and withdraw the funds: ${baseUrl}/items/${item.id}`
+                ).catch((err) => console.error('WhatsApp notification failed:', err))
+              }
+            } else if (contribution.eventId && contribution.event) {
+              // Event-level contribution
+              const evt = contribution.event
+
+              const fee = calculateFeeFromContribution(
+                contribution.amount,
+                null,
+                null
+              )
+
+              await prisma.contribution.update({
+                where: { id: contributionId },
+                data: {
+                  status: 'COMPLETED',
+                  stripePaymentId: session.payment_intent as string,
+                  platformFeeRate: fee.feeRate,
+                  platformFeeAmount: fee.feeAmount,
+                },
+              })
+
+              // Increment event fundedAmount
+              await prisma.event.update({
+                where: { id: evt.id },
+                data: { fundedAmount: { increment: contribution.amount } },
+              })
+
+              // Increment event owner's lifetime contributions received
+              await prisma.user.update({
+                where: { id: evt.userId },
+                data: {
+                  lifetimeContributionsReceived: { increment: fee.netAmount },
+                },
+              })
+
+              // Activity: contributor funded event
+              if (contribution.contributorId) {
+                await createActivity({
+                  userId: contribution.contributorId,
+                  type: 'EVENT_FUNDED',
+                  visibility: 'PUBLIC',
+                  metadata: { amount: contribution.amount, eventName: evt.name },
+                })
+              }
+
+              // Activity: event owner received contribution
+              await createActivity({
+                userId: evt.userId,
+                type: 'EVENT_CONTRIBUTION_RECEIVED',
+                visibility: 'PRIVATE',
+                metadata: {
+                  amount: contribution.amount,
+                  eventName: evt.name,
+                  contributorName: contribution.isAnonymous ? 'Anonymous' : (contribution.contributor?.name || 'Someone'),
+                },
+              })
+
+              // WhatsApp notification to giftee
+              const giftee = evt.user
+              if (giftee?.phone) {
+                const contributorName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
+                const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+                sendTextMessage(
+                  giftee.phone,
+                  `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward your "${evt.name}" gift fund! Allocate the funds to specific items: ${baseUrl}/events/${evt.id}`
+                ).catch((err) => console.error('WhatsApp notification failed:', err))
+              }
+            }
           }
         }
 
