@@ -672,15 +672,18 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
     const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
 
-    // Periodic web CTA after chat messages
-    const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
-    const chatWebCta = (msgCount > 0 && msgCount % 5 === 0)
-      ? '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
-      : ''
-
     const ateSection = addToEventConfirmations.length > 0
       ? '\n\n' + addToEventConfirmations.join('\n') + '\n\nCheck the list on *giftist.ai*'
       : ''
+
+    // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection
+    let chatWebCta = ''
+    if (!ateSection) {
+      const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
+      if (msgCount > 0 && msgCount % 5 === 0) {
+        chatWebCta = '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
+      }
+    }
 
     return strippedContent + eventConfirmations.join('') + ateSection + chatWebCta
   } catch (error) {
