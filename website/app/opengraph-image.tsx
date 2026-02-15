@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'The Giftist - Your Personal Gift Curator'
+export const alt = 'The Giftist - Your Personal Gift Concierge'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -46,7 +46,7 @@ export default async function Image() {
             textAlign: 'center',
           }}
         >
-          Your Personal Gift Curator
+          Your Personal Gift Concierge
         </div>
       </div>
     ),

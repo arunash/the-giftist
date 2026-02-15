@@ -22,17 +22,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const userId = (session.user as any).id
     const { id } = params
 
     const item = await prisma.item.findFirst({
-      where: { id, userId },
+      where: { id },
       include: {
         priceHistory: {
           orderBy: { recordedAt: 'asc' },

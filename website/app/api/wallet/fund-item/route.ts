@@ -10,6 +10,8 @@ import { logError } from '@/lib/api-logger'
 const fundSchema = z.object({
   itemId: z.string(),
   amount: z.number().positive(),
+  message: z.string().max(200).optional(),
+  isAnonymous: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id
     const body = await request.json()
-    const { itemId, amount } = fundSchema.parse(body)
+    const { itemId, amount, message, isAnonymous } = fundSchema.parse(body)
 
     // Use a transaction for atomicity
     const result = await prisma.$transaction(async (tx) => {
@@ -62,6 +64,8 @@ export async function POST(request: NextRequest) {
           itemId,
           contributorId: userId,
           amount,
+          message: message || null,
+          isAnonymous: isAnonymous || false,
           status: 'COMPLETED',
           platformFeeRate: fee.feeRate,
           platformFeeAmount: fee.feeAmount,

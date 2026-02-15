@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
+import { applyAffiliateTag } from '@/lib/affiliate'
 import { Gift, Calendar, ArrowLeft, Share2 } from 'lucide-react'
 import ContributeButton from './ContributeButton'
 import ShareItemButton from './ShareItemButton'
@@ -263,11 +264,12 @@ function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
   const remaining = Math.max(0, goalAmount - item.fundedAmount)
   const isFullyFunded = item.fundedAmount >= goalAmount
   const isPurchased = item.isPurchased
+  const affiliateUrl = applyAffiliateTag(item.url)
 
   return (
     <div className="bg-surface rounded-xl overflow-hidden border border-border">
       {/* Image */}
-      <div className="relative h-48 bg-surface-hover">
+      <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="block relative h-48 bg-surface-hover">
         {item.image ? (
           <img
             src={item.image}
@@ -291,7 +293,7 @@ function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
             Fully Funded!
           </div>
         )}
-      </div>
+      </a>
 
       {/* Content */}
       <div className="p-4">

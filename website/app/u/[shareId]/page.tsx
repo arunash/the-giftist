@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatPrice, getProgressPercentage } from '@/lib/utils'
+import { applyAffiliateTag } from '@/lib/affiliate'
 import { Gift } from 'lucide-react'
 import ContributeButton from './ContributeButton'
 import ShareHeader from './ShareHeader'
@@ -165,11 +166,12 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
   const remaining = Math.max(0, goalAmount - item.fundedAmount)
   const isFullyFunded = goalAmount > 0 && item.fundedAmount >= goalAmount
   const isPurchased = item.isPurchased
+  const affiliateUrl = applyAffiliateTag(item.url)
 
   return (
     <div className="bg-surface rounded-xl overflow-hidden border border-border">
       {/* Image */}
-      <div className="relative h-48 bg-surface-hover">
+      <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="block relative h-48 bg-surface-hover">
         {item.image ? (
           <img
             src={item.image}
@@ -193,12 +195,14 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
             Fully Funded!
           </div>
         )}
-      </div>
+      </a>
 
       {/* Content */}
       <div className="p-4">
         <h3 className="font-semibold text-white line-clamp-2 mb-2">
-          {item.name}
+          <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            {item.name}
+          </a>
         </h3>
         {goalAmount > 0 && (
           <p className="text-xl font-bold text-primary mb-3">

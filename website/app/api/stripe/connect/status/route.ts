@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { stripe } from '@/lib/stripe'
+import { logError } from '@/lib/api-logger'
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = (session.user as any).id
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeConnectAccountId: true, stripeConnectOnboarded: true },
+    })
+
+    if (!user?.stripeConnectAccountId) {
+      return NextResponse.json({ connected: false, onboarded: false })
+    }
+
+    // Check current status with Stripe
+    const account = await stripe.accounts.retrieve(user.stripeConnectAccountId)
+    const onboarded = account.details_submitted && account.charges_enabled
+
+    // Update local state if changed
+    if (onboarded && !user.stripeConnectOnboarded) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { stripeConnectOnboarded: true },
+      })
+    }
+
+    return NextResponse.json({
+      connected: true,
+      onboarded: !!onboarded,
+      payoutsEnabled: account.payouts_enabled,
+    })
+  } catch (error) {
+    console.error('Error checking Connect status:', error)
+    logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
+    return NextResponse.json({ error: 'Failed to check status' }, { status: 500 })
+  }
+}

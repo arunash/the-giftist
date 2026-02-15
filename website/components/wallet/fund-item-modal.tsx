@@ -20,6 +20,8 @@ interface FundItemModalProps {
 
 export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundItemModalProps) {
   const [amount, setAmount] = useState('')
+  const [message, setMessage] = useState('')
+  const [anonymous, setAnonymous] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -45,7 +47,7 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
       const res = await fetch('/api/wallet/fund-item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id, amount: amt }),
+        body: JSON.stringify({ itemId: item.id, amount: amt, message: message.trim() || undefined, isAnonymous: anonymous }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -107,6 +109,28 @@ export function FundItemModal({ item, walletBalance, onClose, onFunded }: FundIt
           </div>
           <p className="text-xs text-muted mt-1">Balance: {formatPrice(walletBalance)}</p>
         </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-secondary mb-1">Message <span className="text-muted font-normal">(optional)</span></label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Add a personal note..."
+            maxLength={200}
+            rows={2}
+            className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none text-sm"
+          />
+        </div>
+
+        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={anonymous}
+            onChange={(e) => setAnonymous(e.target.checked)}
+            className="w-4 h-4 rounded border-border bg-surface-hover text-primary focus:ring-primary/20 cursor-pointer"
+          />
+          <span className="text-sm text-secondary">Contribute anonymously</span>
+        </label>
 
         {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
 

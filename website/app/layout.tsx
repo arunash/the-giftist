@@ -7,22 +7,22 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: {
-    default: 'The Giftist - Your Personal Gift Curator',
+    default: 'The Giftist - Your Personal Gift Concierge',
     template: '%s | The Giftist',
   },
   description: 'Create wishlists, organize events, and let friends contribute to your gifts. AI-powered gift recommendations tailored to you.',
-  keywords: ['wishlist', 'gift registry', 'gift ideas', 'gift recommendations', 'wishlists', 'gift curator', 'crowdfunding gifts'],
+  keywords: ['wishlist', 'gift registry', 'gift ideas', 'gift recommendations', 'wishlists', 'gift concierge', 'crowdfunding gifts'],
   metadataBase: new URL('https://giftist.ai'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
     siteName: 'The Giftist',
-    title: 'The Giftist - Your Personal Gift Curator',
+    title: 'The Giftist - Your Personal Gift Concierge',
     description: 'Create wishlists, organize events, and let friends contribute to your gifts.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The Giftist - Your Personal Gift Curator',
+    title: 'The Giftist - Your Personal Gift Concierge',
     description: 'Create wishlists, organize events, and let friends contribute to your gifts.',
   },
   robots: {

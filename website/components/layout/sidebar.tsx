@@ -67,10 +67,10 @@ export function Sidebar({ walletBalance = 0 }: SidebarProps) {
       </div>
 
       {/* Wallet balance card */}
-      <div className="mx-4 mb-4 p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white">
+      <a href="/wallet" className="block mx-4 mb-4 p-4 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-white hover:brightness-110 transition cursor-pointer">
         <p className="text-xs text-white/70 mb-1">Wallet Balance</p>
         <p className="text-xl font-bold">{formatPrice(walletBalance)}</p>
-      </div>
+      </a>
 
       {/* User section */}
       <div className="p-4 border-t border-border">

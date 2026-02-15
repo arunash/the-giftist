@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Gift, ExternalLink, Share2, Check, Trash2 } from 'lucide-react'
 import { formatPrice, getProgressPercentage, shareOrCopy, giftistShareText } from '@/lib/utils'
+import { applyAffiliateTag } from '@/lib/affiliate'
 
 interface EventOption {
   id: string
@@ -89,9 +91,11 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
         ? { emoji: '🔥', text: `${Math.min(progress, 99)}% funded — almost there!` }
         : null
 
+  const affiliateUrl = applyAffiliateTag(item.url)
+
   return (
     <div className="group relative block bg-surface rounded-2xl overflow-hidden border border-border hover:border-border-light transition-all duration-300 cursor-pointer">
-      <a href={item.url} target="_blank" rel="noopener noreferrer">
+      <Link href={`/items/${item.id}`}>
         {/* Image */}
         <div className="relative aspect-square bg-surface-hover overflow-hidden">
           {item.image ? (
@@ -206,7 +210,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
             </p>
           )}
         </div>
-      </a>
+      </Link>
     </div>
   )
 }
