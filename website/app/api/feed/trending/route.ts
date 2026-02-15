@@ -87,19 +87,18 @@ Return ONLY a JSON array, no other text:
     }
 
     const rawItems = JSON.parse(jsonMatch[0])
-      .filter((item: any) => item.name)
+      .filter((item: any) => item.name && item.url && !item.url.includes('google.com/search'))
       .map((item: any) => ({
         name: item.name,
         price: item.price || '',
         category: item.category || 'Other',
         image: '',
-        url: item.url || `https://www.google.com/search?q=${encodeURIComponent(item.name)}`,
+        url: item.url,
       }))
 
-    // Scrape real product images from URLs (parallel)
+    // Scrape real product images and prices from retailer URLs (parallel)
     const enriched = await Promise.all(
       rawItems.map(async (item: any) => {
-        if (!item.url || item.url.includes('google.com/search')) return item
         try {
           const scraped = await extractProductFromUrl(item.url)
           return {
@@ -113,7 +112,7 @@ Return ONLY a JSON array, no other text:
       })
     )
 
-    return NextResponse.json(enriched)
+    return NextResponse.json(enriched.filter((item: any) => item.image))
   } catch (error) {
     console.error('Error fetching trending:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
