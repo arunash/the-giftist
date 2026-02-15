@@ -48,9 +48,9 @@ export default function WalletPage() {
     return (
       <div className="p-6 lg:p-8">
         <div className="max-w-2xl mx-auto animate-pulse space-y-6">
-          <div className="h-32 bg-gray-200 rounded-2xl" />
-          <div className="h-12 bg-gray-200 rounded-xl" />
-          <div className="h-64 bg-gray-200 rounded-xl" />
+          <div className="h-32 bg-surface rounded-2xl" />
+          <div className="h-12 bg-surface rounded-xl" />
+          <div className="h-64 bg-surface rounded-xl" />
         </div>
       </div>
     )
@@ -59,7 +59,7 @@ export default function WalletPage() {
   return (
     <div className="p-6 lg:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-secondary">Wallet</h1>
+        <h1 className="text-2xl font-bold text-white">Wallet</h1>
 
         <BalanceCard balance={wallet?.balance || 0} />
 
@@ -67,30 +67,30 @@ export default function WalletPage() {
 
         {/* Quick Fund Section */}
         {unfundedItems.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Fund</h3>
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <h3 className="font-semibold text-white mb-4">Quick Fund</h3>
             <div className="space-y-3">
               {unfundedItems.map((item) => {
                 const goal = item.goalAmount || item.priceValue || 0
                 const remaining = Math.max(0, goal - item.fundedAmount)
                 return (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-surface-hover overflow-hidden flex-shrink-0">
                       {item.image ? (
                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex items-center justify-center h-full">
-                          <Gift className="h-4 w-4 text-gray-300" />
+                          <Gift className="h-4 w-4 text-[#333]" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-500">{formatPrice(remaining)} left</p>
+                      <p className="text-sm font-medium text-white truncate">{item.name}</p>
+                      <p className="text-xs text-muted">{formatPrice(remaining)} left</p>
                     </div>
                     <button
                       onClick={() => setFundingItem(item)}
-                      className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/5 transition"
+                      className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/10 transition"
                     >
                       Fund
                     </button>
@@ -102,8 +102,8 @@ export default function WalletPage() {
         )}
 
         {/* Transaction History */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Transaction History</h3>
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="font-semibold text-white mb-4">Transaction History</h3>
           {wallet?.transactions?.length > 0 ? (
             <div>
               {wallet.transactions.map((tx: any) => (

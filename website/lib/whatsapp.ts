@@ -62,9 +62,8 @@ export async function markAsRead(messageId: string) {
 
 export function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '')
-  // Already has country code (10+ digits)
-  if (digits.length >= 10) return digits
-  // US number without country code
+  // US number without country code (exactly 10 digits)
   if (digits.length === 10) return '1' + digits
+  // Already has country code (11+ digits)
   return digits
 }

@@ -1,13 +1,12 @@
 /**
  * The Giftist - Authentication Module
- * Handles Google and Phone authentication
+ * Handles authentication via the portal (giftist.ai)
  */
 
 (function() {
   'use strict';
 
-  // Auth state
-  let verificationId = null;
+  let authCheckInterval = null;
 
   /**
    * Initialize auth event listeners
@@ -15,166 +14,103 @@
   function initAuth() {
     const googleAuthBtn = document.getElementById('googleAuthBtn');
     const sendCodeBtn = document.getElementById('sendCodeBtn');
-    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
-    const phoneInput = document.getElementById('phoneInput');
-    const codeInput = document.getElementById('codeInput');
-    const verifyCodeSection = document.getElementById('verifyCode');
+    const skipAuthBtn = document.getElementById('skipAuthBtn');
 
-    // Google Sign-In
-    googleAuthBtn?.addEventListener('click', handleGoogleAuth);
+    // Both buttons open the portal login page
+    googleAuthBtn?.addEventListener('click', handlePortalLogin);
+    sendCodeBtn?.addEventListener('click', handlePortalLogin);
 
-    // Phone Auth - Send Code
-    sendCodeBtn?.addEventListener('click', async () => {
-      const phone = phoneInput?.value?.trim();
-
-      if (!isValidPhone(phone)) {
-        showAuthToast('Please enter a valid phone number', 'error');
-        return;
-      }
-
-      sendCodeBtn.disabled = true;
-      sendCodeBtn.textContent = 'Sending...';
-
-      try {
-        // In production, this would call your backend to send SMS
-        // For now, we simulate the flow
-        verificationId = await sendVerificationCode(phone);
-
-        verifyCodeSection.hidden = false;
-        sendCodeBtn.textContent = 'Code Sent!';
-        showAuthToast('Verification code sent!', 'success');
-      } catch (error) {
-        showAuthToast('Failed to send code. Try again.', 'error');
-        sendCodeBtn.disabled = false;
-        sendCodeBtn.textContent = 'Send Code';
-      }
+    // Skip auth
+    skipAuthBtn?.addEventListener('click', () => {
+      closeAuthModal();
     });
 
-    // Phone Auth - Verify Code
-    verifyCodeBtn?.addEventListener('click', async () => {
-      const code = codeInput?.value?.trim();
-
-      if (!code || code.length !== 6) {
-        showAuthToast('Please enter the 6-digit code', 'error');
-        return;
-      }
-
-      verifyCodeBtn.disabled = true;
-      verifyCodeBtn.textContent = 'Verifying...';
-
-      try {
-        const phone = phoneInput?.value?.trim();
-        const verified = await verifyCode(verificationId, code);
-
-        if (verified) {
-          await GiftistStorage.saveAccount({
-            phone: phone,
-            googleId: null,
-            verified: true
-          });
-
-          showAuthToast('Account created successfully!', 'success');
-          closeAuthModal();
-        } else {
-          showAuthToast('Invalid code. Please try again.', 'error');
-          verifyCodeBtn.disabled = false;
-          verifyCodeBtn.textContent = 'Verify';
-        }
-      } catch (error) {
-        showAuthToast('Verification failed. Try again.', 'error');
-        verifyCodeBtn.disabled = false;
-        verifyCodeBtn.textContent = 'Verify';
-      }
-    });
+    // Check auth status on load
+    updateAuthStatus();
   }
 
   /**
-   * Handle Google authentication using Chrome Identity API
+   * Open portal login page and poll for session cookie
    */
-  async function handleGoogleAuth() {
-    const googleAuthBtn = document.getElementById('googleAuthBtn');
-    googleAuthBtn.disabled = true;
+  async function handlePortalLogin() {
+    GiftistAPI.openLoginPage();
 
-    try {
-      // Use Chrome Identity API for Google Sign-In
-      // Note: This requires oauth2 configuration in manifest.json for production
-      const token = await new Promise((resolve, reject) => {
-        // Check if chrome.identity is available
-        if (chrome.identity && chrome.identity.getAuthToken) {
-          chrome.identity.getAuthToken({ interactive: true }, (token) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(token);
-            }
-          });
-        } else {
-          // Fallback: Simulate Google auth for development
-          // In production, you'd use the actual Identity API
-          setTimeout(() => {
-            resolve('simulated-token-' + Date.now());
-          }, 1000);
-        }
-      });
+    showAuthToast('Sign in on the portal tab, then come back here', 'success');
 
-      if (token) {
-        // Get user info from token (in production)
-        // For now, create account with simulated data
+    // Poll for auth completion every 2 seconds for up to 5 minutes
+    let attempts = 0;
+    if (authCheckInterval) clearInterval(authCheckInterval);
+
+    authCheckInterval = setInterval(async () => {
+      attempts++;
+      const session = await GiftistAPI.checkAuth();
+
+      if (session) {
+        clearInterval(authCheckInterval);
+        authCheckInterval = null;
+
         await GiftistStorage.saveAccount({
-          phone: null,
-          googleId: 'google-user-' + Date.now(),
-          verified: true
+          phone: session.user.phone || null,
+          googleId: session.user.email || null,
+          name: session.user.name || null,
+          verified: true,
         });
 
-        showAuthToast('Signed in with Google!', 'success');
         closeAuthModal();
+        updateAuthStatus();
+
+        // Bulk sync existing local items to backend
+        showAuthToast('Syncing your items to the portal...', 'success');
+        try {
+          const result = await GiftistAPI.syncAllItems();
+          if (result.synced > 0) {
+            showAuthToast(`Synced ${result.synced} item${result.synced !== 1 ? 's' : ''} to portal!`, 'success');
+          } else {
+            showAuthToast('Signed in! Items will sync automatically.', 'success');
+          }
+        } catch (e) {
+          showAuthToast('Signed in! Some items failed to sync.', 'error');
+        }
       }
-    } catch (error) {
-      console.error('Google auth error:', error);
-      showAuthToast('Google sign-in failed. Try phone instead.', 'error');
-      googleAuthBtn.disabled = false;
+
+      if (attempts >= 150) {
+        clearInterval(authCheckInterval);
+        authCheckInterval = null;
+      }
+    }, 2000);
+  }
+
+  /**
+   * Update UI based on auth status, and sync any unsynced items
+   */
+  async function updateAuthStatus() {
+    const session = await GiftistAPI.checkAuth();
+
+    // If authenticated, quietly sync any items not yet on the backend
+    if (session) {
+      GiftistAPI.syncAllItems().catch(() => {});
     }
-  }
+    const headerEl = document.querySelector('.header');
 
-  /**
-   * Send verification code to phone number
-   * In production, this calls your backend which uses Twilio/similar
-   */
-  async function sendVerificationCode(phone) {
-    // Simulate API call to send SMS
-    // In production: POST to your backend
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Return a mock verification ID
-        resolve('verify-' + Date.now());
-      }, 1500);
-    });
-  }
+    // Remove existing status indicator
+    const existing = document.getElementById('syncStatus');
+    if (existing) existing.remove();
 
-  /**
-   * Verify the code entered by user
-   * In production, this verifies with your backend
-   */
-  async function verifyCode(verificationId, code) {
-    // Simulate verification
-    // In production: POST to your backend to verify
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Accept any 6-digit code for demo purposes
-        // In production, validate against stored code
-        resolve(code.length === 6);
-      }, 1000);
-    });
-  }
+    const statusEl = document.createElement('div');
+    statusEl.id = 'syncStatus';
+    statusEl.style.cssText = 'font-size: 11px; display: flex; align-items: center; gap: 4px;';
 
-  /**
-   * Validate phone number format
-   */
-  function isValidPhone(phone) {
-    if (!phone) return false;
-    // Basic validation - accepts various formats
-    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
-    return /^\+?[0-9]{10,15}$/.test(cleaned);
+    if (session) {
+      statusEl.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#00B894;display:inline-block;"></span> <span style="color:#666;">${session.user.name || 'Synced'}</span>`;
+    } else {
+      statusEl.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#ccc;display:inline-block;"></span> <a href="#" id="loginLink" style="color:#E17055;font-size:11px;">Sign in to sync</a>`;
+      statusEl.querySelector('#loginLink')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        handlePortalLogin();
+      });
+    }
+
+    headerEl?.appendChild(statusEl);
   }
 
   /**
@@ -209,6 +145,9 @@
    * Check if user should see account prompt
    */
   async function checkAccountPrompt() {
+    const session = await GiftistAPI.checkAuth();
+    if (session) return; // Already logged in
+
     const shouldShow = await GiftistStorage.shouldShowAccountPrompt();
     if (shouldShow) {
       const modal = document.getElementById('accountModal');
@@ -224,8 +163,9 @@
   // Expose for use in popup.js
   window.GiftistAuth = {
     initAuth,
-    handleGoogleAuth,
-    checkAccountPrompt
+    handlePortalLogin,
+    checkAccountPrompt,
+    updateAuthStatus,
   };
 
 })();

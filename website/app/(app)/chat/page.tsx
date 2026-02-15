@@ -8,10 +8,10 @@ import { useChatStream } from '@/lib/hooks/use-chat-stream'
 import { MessageCircle } from 'lucide-react'
 
 const defaultSuggestions = [
-  'What should I buy next?',
+  'What should I get next?',
   'Show my unfunded items',
   'Gift ideas for upcoming events',
-  'What are my most expensive items?',
+  'What\'s trending right now?',
 ]
 
 export default function ChatPage() {
@@ -45,11 +45,11 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-secondary">Chat</h1>
+        <div className="p-6 border-b border-border">
+          <h1 className="text-2xl font-bold text-white">Gift Concierge</h1>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Loading...</div>
+          <div className="animate-pulse text-muted">Loading...</div>
         </div>
       </div>
     )
@@ -58,19 +58,19 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-secondary">Chat</h1>
-        <p className="text-sm text-gray-500">Ask about your wishlist, get gift ideas, and more</p>
+      <div className="p-6 border-b border-border flex-shrink-0">
+        <h1 className="text-2xl font-bold text-white">Gift Concierge</h1>
+        <p className="text-sm text-muted">Your personal shopping assistant — ask about gifts, trends, and your wishlist</p>
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageCircle className="h-16 w-16 text-gray-200 mb-4" />
-            <h2 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h2>
-            <p className="text-sm text-gray-500 max-w-sm mb-6">
-              Ask me about your wishlist, get gift recommendations, or help deciding what to buy.
+            <MessageCircle className="h-16 w-16 text-[#333] mb-4" />
+            <h2 className="text-lg font-medium text-white mb-2">Your Gift Concierge</h2>
+            <p className="text-sm text-muted max-w-sm mb-6">
+              I know your taste. Ask me for recommendations, help deciding, or what's trending in your world.
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-md">
               {defaultSuggestions.map((s) => (

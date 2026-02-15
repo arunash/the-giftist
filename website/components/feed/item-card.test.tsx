@@ -26,7 +26,8 @@ describe('ItemCard', () => {
 
   it('renders domain', () => {
     render(<ItemCard item={baseItem} />)
-    expect(screen.getByText('example.com')).toBeInTheDocument()
+    const domains = screen.getAllByText('example.com')
+    expect(domains.length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders price pill', () => {

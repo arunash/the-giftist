@@ -35,7 +35,7 @@ export default async function EventsPage() {
     <div className="p-6 lg:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-secondary">Events</h1>
+          <h1 className="text-2xl font-bold text-white">Events</h1>
           <Link
             href="/events/new"
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition text-sm"
@@ -68,15 +68,15 @@ export default async function EventsPage() {
                 <Link
                   key={event.id}
                   href={`/events/${event.id}`}
-                  className="block bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition"
+                  className="block bg-surface rounded-xl p-5 border border-border hover:border-border-light transition"
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-xs font-medium text-accent uppercase">
                         {eventTypeLabels[event.type] || 'Event'}
                       </span>
-                      <h3 className="font-semibold text-secondary mt-1 text-lg">{event.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <h3 className="font-semibold text-white mt-1 text-lg">{event.name}</h3>
+                      <p className="text-sm text-muted mt-1">
                         {new Date(event.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
@@ -84,19 +84,19 @@ export default async function EventsPage() {
                           year: 'numeric',
                         })}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-muted mt-1">
                         {event.items.length} item{event.items.length !== 1 ? 's' : ''}
                       </p>
                     </div>
                     <span
                       className={`text-sm font-medium px-3 py-1 rounded-full ${
                         days <= 7
-                          ? 'bg-red-100 text-red-700'
+                          ? 'bg-red-500/10 text-red-400'
                           : days <= 30
-                          ? 'bg-yellow-100 text-yellow-700'
+                          ? 'bg-yellow-500/10 text-yellow-400'
                           : days < 0
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-green-100 text-green-700'
+                          ? 'bg-surface-hover text-muted'
+                          : 'bg-green-500/10 text-green-400'
                       }`}
                     >
                       {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : days < 0 ? 'Passed' : `${days} days`}

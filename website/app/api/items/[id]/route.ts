@@ -12,6 +12,7 @@ const updateSchema = z.object({
   image: z.string().url().optional().nullable(),
   category: z.string().optional().nullable(),
   isPurchased: z.boolean().optional(),
+  eventId: z.string().optional().nullable(),
 })
 
 // GET single item
@@ -95,10 +96,23 @@ export async function PATCH(
           }
         : undefined
 
+    // Handle event mapping
+    const { eventId, ...updateData } = data
+    if (eventId !== undefined) {
+      // Remove existing event mappings for this item
+      await prisma.eventItem.deleteMany({ where: { itemId: id } })
+      // Add new mapping if eventId is provided
+      if (eventId) {
+        await prisma.eventItem.create({
+          data: { eventId, itemId: id, priority: 0 },
+        })
+      }
+    }
+
     const item = await prisma.item.update({
       where: { id },
       data: {
-        ...data,
+        ...updateData,
         purchasedAt: data.isPurchased ? new Date() : undefined,
         priceHistory: priceHistoryCreate,
       },

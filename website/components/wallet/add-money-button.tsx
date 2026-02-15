@@ -43,10 +43,10 @@ export function AddMoneyButton() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-surface rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Add Money</h3>
-        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+        <h3 className="font-semibold text-white">Add Money</h3>
+        <button onClick={() => setIsOpen(false)} className="text-muted hover:text-white transition">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -57,8 +57,8 @@ export function AddMoneyButton() {
             onClick={() => handleDeposit(amount)}
             disabled={loading}
             className={cn(
-              'py-3 rounded-lg font-semibold text-lg transition',
-              'border-2 border-gray-200 hover:border-primary hover:text-primary',
+              'py-3 rounded-lg font-semibold text-lg transition text-white',
+              'border-2 border-border hover:border-primary hover:text-primary',
               loading && 'opacity-50 cursor-not-allowed'
             )}
           >
@@ -68,7 +68,7 @@ export function AddMoneyButton() {
       </div>
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
           <input
             type="number"
             value={customAmount}
@@ -76,7 +76,7 @@ export function AddMoneyButton() {
             placeholder="Custom"
             min="1"
             max="10000"
-            className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
         <button

@@ -68,6 +68,7 @@ async function addItem(item) {
 
   const newItem = {
     id: generateId(),
+    backendId: item.backendId || null,
     name: item.name || 'Unknown Product',
     price: item.price || null,
     priceValue: item.priceValue || null,
@@ -209,6 +210,86 @@ async function deleteCategory(category) {
 }
 
 /**
+ * Update a local item with its backend ID (for syncing deletes)
+ */
+async function updateItemBackendId(localId, backendId) {
+  const storage = await getStorage();
+  const items = storage.giftist || [];
+  const index = items.findIndex(item => item.id === localId);
+
+  if (index !== -1) {
+    items[index].backendId = backendId;
+    await setStorage({ giftist: items });
+    return items[index];
+  }
+
+  return null;
+}
+
+/**
+ * Update a local item with server-extracted data (better name, price, image)
+ */
+async function updateItemFromBackend(localId, backendItem) {
+  const storage = await getStorage();
+  const items = storage.giftist || [];
+  const index = items.findIndex(item => item.id === localId);
+
+  if (index !== -1) {
+    items[index] = {
+      ...items[index],
+      backendId: backendItem.id,
+      name: backendItem.name || items[index].name,
+      price: backendItem.price || items[index].price,
+      priceValue: backendItem.priceValue || items[index].priceValue,
+      image: backendItem.image || items[index].image,
+    };
+    await setStorage({ giftist: items });
+    return items[index];
+  }
+
+  return null;
+}
+
+/**
+ * Merge backend items into local storage (for refresh/sync).
+ * Adds new items from backend that aren't already stored locally.
+ */
+async function mergeBackendItems(backendItems) {
+  const storage = await getStorage();
+  const localItems = storage.giftist || [];
+  const localBackendIds = new Set(localItems.map(i => i.backendId).filter(Boolean));
+  const localUrls = new Set(localItems.map(i => i.url).filter(Boolean));
+
+  let added = 0;
+  for (const bi of backendItems) {
+    // Skip if already tracked locally
+    if (localBackendIds.has(bi.id)) continue;
+    if (bi.url && localUrls.has(bi.url)) continue;
+
+    localItems.unshift({
+      id: generateId(),
+      backendId: bi.id,
+      name: bi.name || 'Unknown Product',
+      price: bi.price || null,
+      priceValue: bi.priceValue || null,
+      priceHistory: bi.priceValue ? [{ price: bi.priceValue, date: new Date().toISOString().split('T')[0] }] : [],
+      image: bi.image || null,
+      url: bi.url || '',
+      domain: bi.domain || '',
+      category: bi.category || null,
+      addedAt: bi.createdAt || new Date().toISOString(),
+    });
+    added++;
+  }
+
+  if (added > 0) {
+    await setStorage({ giftist: localItems, itemCount: localItems.length });
+  }
+
+  return added;
+}
+
+/**
  * Get or create share ID
  */
 async function getShareId() {
@@ -283,6 +364,9 @@ if (typeof window !== 'undefined') {
     updateItem,
     deleteItem,
     updateItemPrice,
+    updateItemBackendId,
+    updateItemFromBackend,
+    mergeBackendItems,
     getItemsWithPriceDrops,
     getCategories,
     addCategory,

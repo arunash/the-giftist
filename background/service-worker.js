@@ -3,6 +3,9 @@
  * Handles background tasks: context menu, price checking, notifications
  */
 
+// Import API utilities
+importScripts('../utils/api.js');
+
 // Default storage values
 const DEFAULT_STORAGE = {
   giftist: [],
@@ -65,8 +68,45 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'getProductInfo' });
 
       if (response && response.name) {
-        await addItemToGiftist(response);
+        const newItem = await addItemToGiftist(response);
         showNotification('Added to Giftist', response.name);
+
+        // Sync to backend if authenticated — use server-side extraction
+        // for consistency with portal and WhatsApp flows
+        try {
+          if (self.GiftistAPI) {
+            const backendItem = await self.GiftistAPI.syncItemByUrl(response.url);
+            // Store backend ID on local item for delete sync
+            const storage = await chrome.storage.sync.get(['giftist']);
+            const items = storage.giftist || [];
+            const idx = items.findIndex(i => i.id === newItem.id);
+            if (idx !== -1) {
+              items[idx].backendId = backendItem.id;
+              // Update with server-extracted data if better
+              if (backendItem.name) items[idx].name = backendItem.name;
+              if (backendItem.price) items[idx].price = backendItem.price;
+              if (backendItem.priceValue) items[idx].priceValue = backendItem.priceValue;
+              if (backendItem.image) items[idx].image = backendItem.image;
+              await chrome.storage.sync.set({ giftist: items });
+            }
+          }
+        } catch (e) {
+          // Fallback to raw sync
+          try {
+            if (self.GiftistAPI) {
+              const backendItem = await self.GiftistAPI.syncItem(newItem);
+              const storage = await chrome.storage.sync.get(['giftist']);
+              const items = storage.giftist || [];
+              const idx = items.findIndex(i => i.id === newItem.id);
+              if (idx !== -1) {
+                items[idx].backendId = backendItem.id;
+                await chrome.storage.sync.set({ giftist: items });
+              }
+            }
+          } catch (e2) {
+            console.log('Backend sync skipped:', e2.message);
+          }
+        }
       } else {
         showNotification('Could not detect product', 'Try clicking the extension icon on a product page.');
       }
@@ -86,6 +126,7 @@ async function addItemToGiftist(productInfo) {
 
   const newItem = {
     id: generateId(),
+    backendId: null,
     name: productInfo.name || 'Unknown Product',
     price: productInfo.price || null,
     priceValue: productInfo.priceValue || null,

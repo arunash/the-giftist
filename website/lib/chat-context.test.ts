@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('buildChatContext', () => {
   it('returns context with empty data', async () => {
     const ctx = await buildChatContext('user-1')
-    expect(ctx).toContain('The Giftist AI assistant')
+    expect(ctx).toContain('Giftist Gift Concierge')
     expect(ctx).toContain('Wallet balance: $0.00')
     expect(ctx).toContain('Total items: 0')
     expect(ctx).toContain('(no items yet)')
@@ -91,7 +91,7 @@ describe('buildChatContext', () => {
     } as any)
 
     const ctx = await buildChatContext('user-1')
-    expect(ctx).toContain('USER DEMOGRAPHICS')
+    expect(ctx).toContain('USER PROFILE & PREFERENCES')
     expect(ctx).toContain('Name: Jane')
     expect(ctx).toContain('Gender: female')
     expect(ctx).toContain('Age range: 25-34')
@@ -112,6 +112,6 @@ describe('buildChatContext', () => {
     } as any)
 
     const ctx = await buildChatContext('user-1')
-    expect(ctx).not.toContain('USER DEMOGRAPHICS')
+    expect(ctx).not.toContain('USER PROFILE & PREFERENCES')
   })
 })

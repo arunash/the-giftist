@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createActivity } from '@/lib/activity'
+import { stripe } from '@/lib/stripe'
 import { z } from 'zod'
 
 const contributionSchema = z.object({
@@ -10,9 +10,10 @@ const contributionSchema = z.object({
   amount: z.number().positive(),
   message: z.string().optional().nullable(),
   isAnonymous: z.boolean().optional().default(false),
+  returnUrl: z.string().optional(),
 })
 
-// POST create a contribution
+// POST create a contribution via Stripe Checkout
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -48,12 +49,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In production, you would:
-    // 1. Create a Stripe PaymentIntent
-    // 2. Return the client secret for frontend to complete payment
-    // 3. Use webhooks to confirm payment and create contribution
-
-    // For now, simulate successful payment
+    // Create a PENDING contribution
     const contribution = await prisma.contribution.create({
       data: {
         itemId: data.itemId,
@@ -61,48 +57,39 @@ export async function POST(request: NextRequest) {
         amount: data.amount,
         message: data.message,
         isAnonymous: data.isAnonymous,
-        status: 'COMPLETED',
-        stripePaymentId: `sim_${Date.now()}`, // Simulated
+        status: 'PENDING',
       },
     })
 
-    // Update item's funded amount
-    const newFundedAmount = item.fundedAmount + data.amount
-    const isFullyFunded = newFundedAmount >= goalAmount
+    // Create Stripe Checkout Session
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+    const returnPath = data.returnUrl || '/'
 
-    await prisma.item.update({
-      where: { id: data.itemId },
-      data: {
-        fundedAmount: newFundedAmount,
-        // Don't auto-mark as purchased, let owner do that
-      },
-    })
-
-    // Emit activity events (fire-and-forget)
-    if (contributorId) {
-      createActivity({
-        userId: contributorId,
-        type: 'ITEM_FUNDED',
-        visibility: 'PUBLIC',
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Contribution: ${item.name}`,
+              description: data.message || `Gift contribution for ${item.name}`,
+            },
+            unit_amount: Math.round(data.amount * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        type: 'contribution',
+        contributionId: contribution.id,
         itemId: data.itemId,
-        metadata: { amount: data.amount, itemName: item.name },
-      }).catch(() => {})
-    }
+      },
+      success_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}contribute=success`,
+      cancel_url: `${baseUrl}${returnPath}${returnPath.includes('?') ? '&' : '?'}contribute=cancelled`,
+    })
 
-    // Notify item owner
-    createActivity({
-      userId: item.userId,
-      type: 'CONTRIBUTION_RECEIVED',
-      visibility: 'PRIVATE',
-      itemId: data.itemId,
-      metadata: { amount: data.amount, contributorName: data.isAnonymous ? 'Anonymous' : 'Someone' },
-    }).catch(() => {})
-
-    return NextResponse.json({
-      contribution,
-      newFundedAmount,
-      isFullyFunded,
-    }, { status: 201 })
+    return NextResponse.json({ url: checkoutSession.url }, { status: 200 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

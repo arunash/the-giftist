@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Use a module-level holder to avoid hoisting issues
 const mocks = { create: vi.fn() }
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: function Anthropic() {
-    return { messages: { create: (...args: any[]) => mocks.create(...args) } }
+vi.mock('openai', () => ({
+  default: function OpenAI() {
+    return { chat: { completions: { create: (...args: any[]) => mocks.create(...args) } } }
   },
 }))
 
@@ -13,9 +13,10 @@ import { extractProductFromImage } from './extract-image'
 
 beforeEach(() => {
   mocks.create.mockResolvedValue({
-    content: [{
-      type: 'text',
-      text: '{"name": "Nike Air Max", "price": "$129.99", "priceValue": 129.99, "brand": "Nike", "description": "Running shoes"}',
+    choices: [{
+      message: {
+        content: '{"name": "Nike Air Max", "price": "$129.99", "priceValue": 129.99, "brand": "Nike", "description": "Running shoes"}',
+      },
     }],
   })
 })
@@ -34,7 +35,7 @@ describe('extractProductFromImage', () => {
     expect(result!.brand).toBe('Nike')
   })
 
-  it('passes caption to Claude', async () => {
+  it('passes caption to OpenAI', async () => {
     await extractProductFromImage(
       Buffer.from('fake-image'),
       'image/jpeg',
@@ -57,9 +58,9 @@ describe('extractProductFromImage', () => {
     )
   })
 
-  it('returns null when Claude returns name: null', async () => {
+  it('returns null when model returns name: null', async () => {
     mocks.create.mockResolvedValue({
-      content: [{ type: 'text', text: '{"name": null}' }],
+      choices: [{ message: { content: '{"name": null}' } }],
     })
 
     const result = await extractProductFromImage(Buffer.from('x'), 'image/jpeg')
@@ -68,7 +69,7 @@ describe('extractProductFromImage', () => {
 
   it('returns null for invalid JSON response', async () => {
     mocks.create.mockResolvedValue({
-      content: [{ type: 'text', text: 'Sorry, I cannot identify this image.' }],
+      choices: [{ message: { content: 'Sorry, I cannot identify this image.' } }],
     })
 
     const result = await extractProductFromImage(Buffer.from('x'), 'image/jpeg')
@@ -77,7 +78,7 @@ describe('extractProductFromImage', () => {
 
   it('handles missing optional fields', async () => {
     mocks.create.mockResolvedValue({
-      content: [{ type: 'text', text: '{"name": "Mystery Item"}' }],
+      choices: [{ message: { content: '{"name": "Mystery Item"}' } }],
     })
 
     const result = await extractProductFromImage(Buffer.from('x'), 'image/jpeg')

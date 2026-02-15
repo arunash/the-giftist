@@ -9,7 +9,7 @@ export function SuggestionChip({ label, onClick }: SuggestionChipProps) {
   return (
     <button
       onClick={() => onClick(label)}
-      className="px-3 py-1.5 text-sm text-primary border border-primary/20 rounded-full hover:bg-primary/5 transition whitespace-nowrap"
+      className="px-3 py-1.5 text-sm text-primary border border-primary/20 rounded-full hover:bg-primary/10 transition whitespace-nowrap"
     >
       {label}
     </button>

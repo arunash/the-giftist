@@ -23,42 +23,155 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as any
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as any
+        const type = session.metadata?.type
 
-    if (session.metadata?.type === 'wallet_deposit') {
-      const { walletId, userId } = session.metadata
-      const amountPaid = (session.amount_total || 0) / 100
+        if (type === 'wallet_deposit') {
+          const { walletId, userId } = session.metadata
+          const amountPaid = (session.amount_total || 0) / 100
 
-      try {
-        // Credit wallet
-        await prisma.wallet.update({
-          where: { id: walletId },
-          data: { balance: { increment: amountPaid } },
-        })
+          await prisma.wallet.update({
+            where: { id: walletId },
+            data: { balance: { increment: amountPaid } },
+          })
 
-        // Mark transaction as completed
-        await prisma.walletTransaction.updateMany({
-          where: {
-            walletId,
-            stripeSessionId: session.id,
-            status: 'PENDING',
+          await prisma.walletTransaction.updateMany({
+            where: {
+              walletId,
+              stripeSessionId: session.id,
+              status: 'PENDING',
+            },
+            data: { status: 'COMPLETED' },
+          })
+
+          await createActivity({
+            userId,
+            type: 'WALLET_DEPOSIT',
+            visibility: 'PRIVATE',
+            metadata: { amount: amountPaid },
+          })
+        }
+
+        if (type === 'contribution') {
+          const { contributionId } = session.metadata
+
+          const contribution = await prisma.contribution.findUnique({
+            where: { id: contributionId },
+            include: { item: true },
+          })
+
+          if (contribution && contribution.status === 'PENDING') {
+            // Mark contribution completed
+            await prisma.contribution.update({
+              where: { id: contributionId },
+              data: {
+                status: 'COMPLETED',
+                stripePaymentId: session.payment_intent as string,
+              },
+            })
+
+            // Update item funded amount
+            const item = contribution.item
+            const newFundedAmount = item.fundedAmount + contribution.amount
+
+            await prisma.item.update({
+              where: { id: item.id },
+              data: { fundedAmount: newFundedAmount },
+            })
+
+            // Activity: contributor funded item
+            if (contribution.contributorId) {
+              await createActivity({
+                userId: contribution.contributorId,
+                type: 'ITEM_FUNDED',
+                visibility: 'PUBLIC',
+                itemId: item.id,
+                metadata: { amount: contribution.amount, itemName: item.name },
+              })
+            }
+
+            // Activity: item owner received contribution
+            await createActivity({
+              userId: item.userId,
+              type: 'CONTRIBUTION_RECEIVED',
+              visibility: 'PRIVATE',
+              itemId: item.id,
+              metadata: {
+                amount: contribution.amount,
+                contributorName: contribution.isAnonymous ? 'Anonymous' : 'Someone',
+              },
+            })
+          }
+        }
+
+        if (type === 'gold_subscription') {
+          const { userId } = session.metadata
+          const subscriptionId = session.subscription as string
+
+          await prisma.subscription.update({
+            where: { userId },
+            data: {
+              stripeSubscriptionId: subscriptionId,
+              status: 'ACTIVE',
+            },
+          })
+        }
+
+        break
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as any
+        const stripeSubId = subscription.id
+
+        const statusMap: Record<string, string> = {
+          active: 'ACTIVE',
+          past_due: 'PAST_DUE',
+          canceled: 'CANCELED',
+          unpaid: 'PAST_DUE',
+          incomplete: 'INACTIVE',
+          incomplete_expired: 'CANCELED',
+          trialing: 'ACTIVE',
+          paused: 'INACTIVE',
+        }
+
+        await prisma.subscription.updateMany({
+          where: { stripeSubscriptionId: stripeSubId },
+          data: {
+            status: statusMap[subscription.status] || 'INACTIVE',
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            stripePriceId: subscription.items?.data?.[0]?.price?.id || undefined,
           },
-          data: { status: 'COMPLETED' },
         })
+        break
+      }
 
-        // Emit activity event
-        await createActivity({
-          userId,
-          type: 'WALLET_DEPOSIT',
-          visibility: 'PRIVATE',
-          metadata: { amount: amountPaid },
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as any
+        await prisma.subscription.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: { status: 'CANCELED' },
         })
-      } catch (error) {
-        console.error('Error processing wallet deposit:', error)
-        return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as any
+        if (invoice.subscription) {
+          await prisma.subscription.updateMany({
+            where: { stripeSubscriptionId: invoice.subscription as string },
+            data: { status: 'PAST_DUE' },
+          })
+        }
+        break
       }
     }
+  } catch (error) {
+    console.error('Error processing webhook:', error)
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })

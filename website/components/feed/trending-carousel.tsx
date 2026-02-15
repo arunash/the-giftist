@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, TrendingUp, Plus, Loader2 } from 'lucide-react'
 
 interface TrendingItem {
@@ -15,23 +15,65 @@ interface TrendingCarouselProps {
   onAdd?: (item: TrendingItem) => void
 }
 
+const CACHE_KEY = 'giftist_trending_cache'
+
+function loadCache(): TrendingItem[] {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return []
+}
+
+function saveCache(items: TrendingItem[]) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(items))
+  } catch {}
+}
+
 export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
   const [items, setItems] = useState<TrendingItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set())
   const [addingIdx, setAddingIdx] = useState<number | null>(null)
   const [addedSet, setAddedSet] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const handleImageError = useCallback((idx: number) => {
+    setFailedImages((prev) => new Set(prev).add(idx))
+  }, [])
+
+  // Save only items with working images to cache after render settles
   useEffect(() => {
-    fetch('/api/feed/trending')
-      .then((r) => r.json())
-      .then((data) => {
+    if (items.length === 0 || loading) return
+    const timer = setTimeout(() => {
+      const good = items.filter((_, i) => !failedImages.has(i))
+      if (good.length > 0) saveCache(good)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [items, failedImages, loading])
+
+  useEffect(() => {
+    const cached = loadCache()
+    if (cached.length > 0) {
+      setItems(cached)
+      setLoading(false)
+    }
+
+    async function fetchTrending() {
+      try {
+        const res = await fetch('/api/feed/trending')
+        const data = await res.json()
         if (Array.isArray(data) && data.length > 0) {
           setItems(data)
+          setFailedImages(new Set())
+          return
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      } catch {}
+      if (cached.length > 0) setItems(cached)
+    }
+
+    fetchTrending().finally(() => setLoading(false))
   }, [])
 
   const scroll = (direction: 'left' | 'right') => {
@@ -119,18 +161,16 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
           {items.map((item, i) => (
             <div
               key={i}
-              className="flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] bg-surface rounded-2xl border border-border overflow-hidden hover:border-border-light transition-all duration-300 group/card"
+              className={`flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] bg-surface rounded-2xl border border-border overflow-hidden hover:border-border-light transition-all duration-300 group/card ${failedImages.has(i) ? 'hidden' : ''}`}
               style={{ scrollSnapAlign: 'start' }}
             >
               {/* Product image */}
-              <div className="relative aspect-[4/5] bg-surface-hover overflow-hidden">
+              <div className="relative aspect-square bg-surface-hover overflow-hidden">
                 <img
                   src={item.image}
                   alt={item.name}
                   className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02] group-hover/card:scale-105 transition-transform duration-500"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none'
-                  }}
+                  onError={() => handleImageError(i)}
                 />
                 {/* Category pill */}
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-medium text-white uppercase tracking-wide">

@@ -58,10 +58,10 @@ export default function ActivityPage() {
           <div className="space-y-4 animate-pulse">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex gap-3">
-                <div className="w-8 h-8 bg-gray-200 rounded-full" />
+                <div className="w-8 h-8 bg-surface-hover rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-1/4" />
+                  <div className="h-4 bg-surface-hover rounded w-3/4" />
+                  <div className="h-3 bg-surface-hover rounded w-1/4" />
                 </div>
               </div>
             ))}
@@ -77,7 +77,7 @@ export default function ActivityPage() {
             }
           />
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-surface rounded-xl border border-border p-4">
             {activities.map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}

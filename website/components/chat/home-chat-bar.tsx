@@ -104,17 +104,17 @@ export function HomeChatBar() {
         {/* Search Bar */}
         <div className={`bg-surface rounded-2xl border border-border transition-all ${active ? 'rounded-b-none border-b-0' : ''}`}>
           {/* Header */}
-          <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
+          <div className="flex items-center gap-3 px-4 pt-5 pb-2">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white leading-tight">Gift Concierge</h3>
-              <p className="text-[11px] text-muted">AI-powered assistant</p>
+              <p className="text-xs text-muted mt-0.5">AI-powered assistant</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-2.5">
+          <div className="flex items-center gap-3 px-4 py-3">
             <input
               ref={inputRef}
               type="text"
@@ -155,14 +155,14 @@ export function HomeChatBar() {
 
           {/* Proactive greeting from concierge */}
           {!hasMessages && proactiveGreeting && (
-            <div className="mx-4 mb-2 px-3 py-2.5 bg-primary/5 border border-primary/10 rounded-xl">
+            <div className="mx-4 mb-3 px-3 py-3 bg-primary/5 border border-primary/10 rounded-xl">
               <p className="text-xs text-secondary leading-relaxed">{proactiveGreeting}</p>
             </div>
           )}
 
           {/* Suggestions (when not active with messages) */}
           {!hasMessages && (
-            <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
+            <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
               {quickSuggestions.map((s) => (
                 <button
                   key={s}

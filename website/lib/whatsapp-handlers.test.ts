@@ -29,6 +29,26 @@ vi.mock('@/lib/whatsapp', () => ({
   downloadMedia: vi.fn().mockResolvedValue(Buffer.from('fake-image')),
 }))
 
+vi.mock('@/lib/chat-context', () => ({
+  buildChatContext: vi.fn().mockResolvedValue('System prompt'),
+}))
+
+vi.mock('@/lib/parse-chat-content', () => ({
+  stripSpecialBlocks: vi.fn((text: string) => text),
+}))
+
+vi.mock('@anthropic-ai/sdk', () => {
+  return {
+    default: class MockAnthropic {
+      messages = {
+        create: vi.fn().mockResolvedValue({
+          content: [{ type: 'text', text: 'As your Gift Concierge, here are some great picks for you!' }],
+        }),
+      }
+    },
+  }
+})
+
 import { resolveUserAndList, handleTextMessage, handleImageMessage, getHelpMessage, getWelcomeMessage } from './whatsapp-handlers'
 import { extractProductFromUrl } from '@/lib/extract'
 import { extractProductFromImage } from '@/lib/extract-image'
@@ -37,6 +57,8 @@ import { downloadMedia, sendImageMessage } from '@/lib/whatsapp'
 beforeEach(() => {
   prismaMock.item.create.mockResolvedValue({ id: 'item-new', name: 'Test' } as any)
   prismaMock.giftListItem.create.mockResolvedValue({} as any)
+  prismaMock.chatMessage.create.mockResolvedValue({} as any)
+  prismaMock.chatMessage.findMany.mockResolvedValue([])
 })
 
 describe('resolveUserAndList', () => {
@@ -71,9 +93,15 @@ describe('handleTextMessage', () => {
     expect(reply).toContain('The Giftist')
   })
 
-  it('returns help for "hello"', async () => {
+  it('routes "hello" to Claude chat', async () => {
+    prismaMock.chatMessage.create.mockResolvedValue({} as any)
+    prismaMock.chatMessage.findMany.mockResolvedValue([
+      { role: 'USER', content: 'hello', createdAt: new Date() },
+    ] as any)
+
     const reply = await handleTextMessage('user-1', 'list-1', 'hello', '15551234567')
-    expect(reply).toContain('The Giftist')
+    expect(reply).toBeTruthy()
+    // hello now goes to Claude chat instead of static help
   })
 
   it('returns list of items for "list"', async () => {
@@ -111,9 +139,14 @@ describe('handleTextMessage', () => {
     expect(reply).toContain('already saved')
   })
 
-  it('returns fallback for plain text without URL', async () => {
+  it('routes plain text to Claude chat', async () => {
+    prismaMock.chatMessage.create.mockResolvedValue({} as any)
+    prismaMock.chatMessage.findMany.mockResolvedValue([
+      { role: 'USER', content: 'just some random text', createdAt: new Date() },
+    ] as any)
+
     const reply = await handleTextMessage('user-1', 'list-1', 'just some random text', '15551234567')
-    expect(reply).toContain("didn't find a link")
+    expect(reply).toContain('Gift Concierge')
   })
 })
 
@@ -173,8 +206,8 @@ describe('getWelcomeMessage', () => {
 describe('getHelpMessage', () => {
   it('includes instructions', () => {
     const msg = getHelpMessage()
-    expect(msg).toContain('Product URL')
-    expect(msg).toContain('Product photo')
+    expect(msg).toContain('Send a link')
+    expect(msg).toContain('Send a photo')
     expect(msg).toContain('list')
     expect(msg).toContain('remove')
   })

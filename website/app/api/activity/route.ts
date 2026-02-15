@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       take: limit + 1,
       include: {
         user: { select: { name: true, image: true } },
-        item: { select: { name: true, image: true, priceValue: true } },
+        item: { select: { name: true, image: true, price: true, priceValue: true, url: true, domain: true, fundedAmount: true, goalAmount: true } },
       },
     })
 

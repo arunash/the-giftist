@@ -12,18 +12,28 @@ const config: Config = {
         primary: {
           DEFAULT: '#E85D4C',
           hover: '#d14d3d',
-          light: '#f8e8e6',
+          light: '#2a1a17',
         },
-        secondary: '#2D3436',
+        secondary: '#E5E5E5',
         accent: {
           DEFAULT: '#F8B500',
-          light: '#fef3cd',
+          light: '#2a2410',
         },
         success: {
           DEFAULT: '#00B894',
-          light: '#d4edda',
+          light: '#0d2920',
         },
-        background: '#FAFAFA',
+        background: '#0A0A0B',
+        surface: {
+          DEFAULT: '#141416',
+          hover: '#1A1A1D',
+          raised: '#1E1E21',
+        },
+        border: {
+          DEFAULT: '#222225',
+          light: '#2A2A2E',
+        },
+        muted: '#71717A',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

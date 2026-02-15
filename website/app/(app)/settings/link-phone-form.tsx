@@ -72,7 +72,7 @@ export default function LinkPhoneForm() {
 
   if (success) {
     return (
-      <p className="text-green-600 font-medium">Phone linked successfully!</p>
+      <p className="text-green-400 font-medium">Phone linked successfully!</p>
     )
   }
 
@@ -80,17 +80,17 @@ export default function LinkPhoneForm() {
     return (
       <form onSubmit={handleSendCode} className="space-y-3">
         <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+1 (555) 123-4567"
-            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm"
+            className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-white placeholder-muted"
             required
           />
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-red-400 text-sm">{error}</p>}
         <button
           type="submit"
           disabled={loading || !phone}
@@ -105,22 +105,22 @@ export default function LinkPhoneForm() {
 
   return (
     <form onSubmit={handleVerifyAndLink} className="space-y-3">
-      <p className="text-sm text-gray-600">
-        Code sent to <span className="font-medium">{phone}</span>
+      <p className="text-sm text-muted">
+        Code sent to <span className="font-medium text-white">{phone}</span>
       </p>
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
         <input
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="123456"
           maxLength={6}
-          className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm"
+          className="w-full pl-9 pr-4 py-2 border border-border bg-surface-hover rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm text-white placeholder-muted"
           required
         />
       </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex items-center gap-3">
         <button
           type="submit"
@@ -132,7 +132,7 @@ export default function LinkPhoneForm() {
         <button
           type="button"
           onClick={() => { setStep('phone'); setError('') }}
-          className="text-gray-600 text-sm hover:text-gray-900 transition"
+          className="text-muted text-sm hover:text-white transition"
         >
           Change number
         </button>

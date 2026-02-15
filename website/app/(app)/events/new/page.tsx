@@ -70,13 +70,13 @@ export default function NewEventPage() {
   return (
     <div className="p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h1 className="text-2xl font-bold text-secondary mb-6">Create Event</h1>
+        <div className="bg-surface rounded-xl border border-border p-6">
+          <h1 className="text-2xl font-bold text-white mb-6">Create Event</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Event Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Event Type</label>
+              <label className="block text-sm font-medium text-secondary mb-3">Event Type</label>
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                 {eventTypes.map((type) => (
                   <button
@@ -86,11 +86,11 @@ export default function NewEventPage() {
                     className={`flex flex-col items-center p-3 rounded-lg border-2 transition ${
                       formData.type === type.value
                         ? 'border-primary bg-primary-light'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-border hover:border-border-light'
                     }`}
                   >
                     <span className="text-2xl mb-1">{type.emoji}</span>
-                    <span className="text-xs text-gray-600">{type.label}</span>
+                    <span className="text-xs text-muted">{type.label}</span>
                   </button>
                 ))}
               </div>
@@ -98,48 +98,48 @@ export default function NewEventPage() {
 
             {/* Event Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Event Name</label>
+              <label className="block text-sm font-medium text-secondary mb-2">Event Name</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Sarah's 30th Birthday"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
               />
             </div>
 
             {/* Event Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+              <label className="block text-sm font-medium text-secondary mb-2">Date</label>
               <input
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 required
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+              <label className="block text-sm font-medium text-secondary mb-2">Description (optional)</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Add any notes about the event..."
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
+                className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-white placeholder-muted focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
               />
             </div>
 
             {/* Select Items */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Add Items to This Event</label>
+              <label className="block text-sm font-medium text-secondary mb-3">Add Items to This Event</label>
               {items.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <Gift className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-600">No items in your Giftist yet.</p>
+                <div className="text-center py-8 bg-surface-hover rounded-lg">
+                  <Gift className="h-12 w-12 text-[#333] mx-auto mb-2" />
+                  <p className="text-muted">No items in your Giftist yet.</p>
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
@@ -151,20 +151,20 @@ export default function NewEventPage() {
                       className={`flex items-center gap-3 p-3 rounded-lg border-2 text-left transition ${
                         formData.itemIds.includes(item.id)
                           ? 'border-primary bg-primary-light'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border-light'
                       }`}
                     >
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="w-12 h-12 bg-surface-hover rounded-lg overflow-hidden flex-shrink-0">
                         {item.image ? (
                           <img src={item.image} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
-                            <Gift className="h-6 w-6 text-gray-300" />
+                            <Gift className="h-6 w-6 text-[#333]" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-secondary text-sm line-clamp-1">{item.name}</p>
+                        <p className="font-medium text-white text-sm line-clamp-1">{item.name}</p>
                         <p className="text-primary text-sm">{item.price}</p>
                       </div>
                       {formData.itemIds.includes(item.id) && (
@@ -174,7 +174,7 @@ export default function NewEventPage() {
                   ))}
                 </div>
               )}
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-muted mt-2">
                 {formData.itemIds.length} item{formData.itemIds.length !== 1 ? 's' : ''} selected
               </p>
             </div>

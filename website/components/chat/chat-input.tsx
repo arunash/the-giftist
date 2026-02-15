@@ -27,7 +27,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }
 
   return (
-    <div className="flex items-end gap-2 p-4 bg-white border-t border-gray-200">
+    <div className="flex items-end gap-2 p-4 bg-surface border-t border-border">
       <textarea
         ref={textareaRef}
         value={value}
@@ -41,7 +41,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         placeholder="Ask about your wishlist..."
         disabled={disabled}
         rows={1}
-        className="flex-1 resize-none bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+        className="flex-1 resize-none bg-surface-hover rounded-xl px-4 py-2.5 text-sm text-white placeholder-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
       />
       <button
         onClick={handleSubmit}

@@ -9,14 +9,14 @@ interface ActivityTabsProps {
 
 export function ActivityTabs({ activeTab, onTabChange }: ActivityTabsProps) {
   return (
-    <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+    <div className="flex gap-1 bg-surface-hover rounded-lg p-1">
       <button
         onClick={() => onTabChange('mine')}
         className={cn(
           'flex-1 py-2 text-sm font-medium rounded-md transition',
           activeTab === 'mine'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-surface text-white'
+            : 'text-muted hover:text-white'
         )}
       >
         My Activity
@@ -26,8 +26,8 @@ export function ActivityTabs({ activeTab, onTabChange }: ActivityTabsProps) {
         className={cn(
           'flex-1 py-2 text-sm font-medium rounded-md transition',
           activeTab === 'community'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-surface text-white'
+            : 'text-muted hover:text-white'
         )}
       >
         Community

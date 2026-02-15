@@ -93,7 +93,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
     <div className="group relative block bg-surface rounded-2xl overflow-hidden border border-border hover:border-border-light transition-all duration-300 cursor-pointer">
       <a href={item.url} target="_blank" rel="noopener noreferrer">
         {/* Image */}
-        <div className="relative aspect-[4/5] bg-surface-hover overflow-hidden">
+        <div className="relative aspect-square bg-surface-hover overflow-hidden">
           {item.image ? (
             <img
               src={item.image}

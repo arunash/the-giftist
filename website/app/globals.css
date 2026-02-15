@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAFAFA;
-  --foreground: #2D3436;
+  --background: #0A0A0B;
+  --foreground: #E5E5E5;
+  --surface: #141416;
+  --surface-hover: #1A1A1D;
+  --border: #222225;
+  --border-light: #2A2A2E;
+  --muted: #71717A;
 }
 
 html {
@@ -23,6 +28,23 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Floating animation for hero pills */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); opacity: 0.95; }
+  50% { transform: translateY(-8px); opacity: 1; }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
 /* Modern focus styles */
@@ -43,12 +65,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #333;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #555;
 }
 
 /* Safe area for mobile bottom nav */

@@ -100,18 +100,18 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
     <div className="space-y-6">
       {/* Birthday */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-1">Birthday</label>
+        <label className="block text-sm font-medium text-muted mb-1">Birthday</label>
         <input
           type="date"
           value={birthday}
           onChange={(e) => { setBirthday(e.target.value); setSaved(false) }}
-          className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+          className="w-full sm:w-auto px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-hover focus:ring-2 focus:ring-primary focus:border-primary outline-none"
         />
       </div>
 
       {/* Gender */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-2">Gender</label>
+        <label className="block text-sm font-medium text-muted mb-2">Gender</label>
         <div className="flex flex-wrap gap-2">
           {GENDER_OPTIONS.map((opt) => (
             <button
@@ -121,7 +121,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                 gender === opt.value
                   ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-surface-hover text-muted hover:bg-surface-raised'
               }`}
             >
               {opt.label}
@@ -132,7 +132,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
 
       {/* Age Range */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-2">Age Range</label>
+        <label className="block text-sm font-medium text-muted mb-2">Age Range</label>
         <div className="flex flex-wrap gap-2">
           {AGE_RANGE_OPTIONS.map((opt) => (
             <button
@@ -142,7 +142,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                 ageRange === opt.value
                   ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-surface-hover text-muted hover:bg-surface-raised'
               }`}
             >
               {opt.label}
@@ -153,7 +153,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
 
       {/* Interests */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-2">Interests</label>
+        <label className="block text-sm font-medium text-muted mb-2">Interests</label>
         <div className="flex flex-wrap gap-2">
           {INTEREST_OPTIONS.map((interest) => (
             <button
@@ -163,7 +163,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                 interests.includes(interest)
                   ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-surface-hover text-muted hover:bg-surface-raised'
               }`}
             >
               {interest}
@@ -174,7 +174,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
 
       {/* Gift Budget */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-2">Typical Gift Budget</label>
+        <label className="block text-sm font-medium text-muted mb-2">Typical Gift Budget</label>
         <div className="flex flex-wrap gap-2">
           {BUDGET_OPTIONS.map((opt) => (
             <button
@@ -184,7 +184,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                 giftBudget === opt.value
                   ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-surface-hover text-muted hover:bg-surface-raised'
               }`}
             >
               {opt.label}
@@ -195,7 +195,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
 
       {/* Relationship Status */}
       <div>
-        <label className="block text-sm font-medium text-gray-500 mb-2">Household</label>
+        <label className="block text-sm font-medium text-muted mb-2">Household</label>
         <div className="flex flex-wrap gap-2">
           {RELATIONSHIP_OPTIONS.map((opt) => (
             <button
@@ -205,7 +205,7 @@ export default function DemographicsForm({ initialData }: DemographicsFormProps)
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
                 relationship === opt.value
                   ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-surface-hover text-muted hover:bg-surface-raised'
               }`}
             >
               {opt.label}

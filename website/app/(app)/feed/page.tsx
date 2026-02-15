@@ -286,7 +286,7 @@ export default function FeedPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 animate-pulse">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="bg-surface rounded-2xl overflow-hidden border border-border">
-                    <div className="aspect-[4/5] bg-surface-hover" />
+                    <div className="aspect-square bg-surface-hover" />
                     <div className="p-3 space-y-2">
                       <div className="h-4 bg-surface-hover rounded w-3/4" />
                       <div className="h-3 bg-surface-hover rounded w-1/2" />

@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { normalizePhone } from '@/lib/whatsapp'
-import { sendTextMessage } from '@/lib/whatsapp'
-import { generateCode } from '@/lib/verification-codes'
+import twilio from 'twilio'
+
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+)
+
+const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || 'VA4d084fd13308242b810892d8bf45f4a0'
 
 export async function POST(request: Request) {
   try {
@@ -23,22 +29,26 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = generateCode(normalized)
-
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 429 })
-    }
-
-    await sendTextMessage(
-      normalized,
-      `Your Giftist code: *${result.code}*\nExpires in 5 minutes.`
-    )
+    await twilioClient.verify.v2
+      .services(VERIFY_SERVICE_SID)
+      .verifications.create({
+        to: `+${normalized}`,
+        channel: 'whatsapp',
+      })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Failed to send verification code:', error)
+  } catch (error: any) {
+    console.error('Failed to send verification code:', error?.message, error?.code, error?.status, error?.moreInfo)
+
+    if (error?.code === 60203) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Please wait 5 minutes before trying again.' },
+        { status: 429 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Failed to send verification code. Please try again.' },
+      { error: error?.message || 'Failed to send verification code. Please try again.' },
       { status: 500 }
     )
   }

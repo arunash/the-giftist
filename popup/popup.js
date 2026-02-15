@@ -36,6 +36,9 @@
     copyLinkBtn: document.getElementById('copyLinkBtn'),
     shareHint: document.getElementById('shareHint'),
 
+    // Refresh
+    refreshBtn: document.getElementById('refreshBtn'),
+
     // Modal & Toast
     accountModal: document.getElementById('accountModal'),
     skipAuthBtn: document.getElementById('skipAuthBtn'),
@@ -215,9 +218,19 @@
 
       // Delete item
       card.querySelector('.item-btn-delete')?.addEventListener('click', async () => {
+        const item = items.find(i => i.id === id);
         await GiftistStorage.deleteItem(id);
         await loadItems();
         showToast('Item removed');
+
+        // Sync delete to backend if item was synced
+        if (item?.backendId) {
+          try {
+            await GiftistAPI.deleteItem(item.backendId);
+          } catch (e) {
+            console.log('Backend delete skipped:', e.message);
+          }
+        }
       });
     });
   }
@@ -288,7 +301,7 @@
    */
   async function loadShareLink() {
     const shareId = await GiftistStorage.getShareId();
-    const shareUrl = `https://mygiftlist.app/share/${shareId}`;
+    const shareUrl = `https://giftist.ai/share/${shareId}`;
     elements.shareLink.value = shareUrl;
   }
 
@@ -308,6 +321,9 @@
     // Copy share link
     elements.copyLinkBtn.addEventListener('click', handleCopyLink);
 
+    // Refresh / sync
+    elements.refreshBtn.addEventListener('click', handleRefresh);
+
     // Skip auth
     elements.skipAuthBtn.addEventListener('click', () => {
       elements.accountModal.hidden = true;
@@ -325,6 +341,7 @@
 
     const category = elements.categorySelect.value || null;
 
+    // Save locally first (instant feedback)
     const { item, itemCount } = await GiftistStorage.addItem({
       ...currentProductData,
       category
@@ -333,10 +350,27 @@
     showToast('Added to your Giftist!', 'success');
     await loadItems();
 
+    // Sync to backend if authenticated — use server-side extraction for consistency
+    // with portal (AddProductBar) and WhatsApp flows
+    try {
+      const backendItem = await GiftistAPI.syncItemByUrl(currentProductData.url);
+      // Update local item with backend data (server extraction may be better)
+      await GiftistStorage.updateItemFromBackend(item.id, backendItem);
+      await loadItems(); // Refresh to show updated data
+    } catch (e) {
+      // Not logged in or from-url failed — try raw sync as fallback
+      try {
+        const backendItem = await GiftistAPI.syncItem(item);
+        await GiftistStorage.updateItemBackendId(item.id, backendItem.id);
+      } catch (e2) {
+        console.log('Backend sync skipped:', e2.message);
+      }
+    }
+
     // Check if we should show account modal
     if (itemCount === 10) {
-      const account = await GiftistStorage.getAccount();
-      if (!account) {
+      const session = await GiftistAPI.checkAuth();
+      if (!session) {
         setTimeout(() => {
           elements.accountModal.hidden = false;
         }, 500);
@@ -375,6 +409,33 @@
       }, 3000);
     } catch (error) {
       showToast('Failed to copy link', 'error');
+    }
+  }
+
+  /**
+   * Handle refresh / sync with portal
+   */
+  async function handleRefresh() {
+    const btn = elements.refreshBtn;
+    btn.disabled = true;
+    btn.classList.add('spinning');
+
+    try {
+      // Fetch items from backend and merge into local storage
+      const backendItems = await GiftistAPI.fetchItems();
+      if (Array.isArray(backendItems) && backendItems.length > 0) {
+        await GiftistStorage.mergeBackendItems(backendItems);
+      }
+      await loadItems();
+      await checkPriceDrops();
+      showToast('Synced with portal', 'success');
+    } catch (e) {
+      // Backend unavailable — just reload local data
+      await loadItems();
+      showToast('Refreshed locally', 'success');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
     }
   }
 
