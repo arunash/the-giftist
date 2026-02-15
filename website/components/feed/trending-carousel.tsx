@@ -15,7 +15,7 @@ interface TrendingCarouselProps {
   onAdd?: (item: TrendingItem) => void
 }
 
-const CACHE_KEY = 'giftist_trending_v2'
+const CACHE_KEY = 'giftist_trending_v3'
 
 function loadCache(): TrendingItem[] {
   try {
