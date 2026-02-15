@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Calendar, MessageCircle } from 'lucide-react'
 
 interface SummaryCard {
   emoji: string
@@ -67,37 +67,43 @@ export function SidebarSummary() {
       )}
       <div className="space-y-1.5">
         {cards.map((card, i) => {
-          const content = (
-            <div className="px-3 py-2 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition">
+          const isEventCard = card.href === '/events/new'
+
+          return (
+            <div key={i} className="px-3 py-2 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition">
               <div className="flex items-start gap-2 text-xs text-secondary leading-relaxed">
                 <span className="shrink-0 mt-0.5">{card.emoji}</span>
                 <span dangerouslySetInnerHTML={{ __html: formatCardText(card.text) }} />
               </div>
-              {card.action && (
+              {isEventCard ? (
+                <div className="flex gap-2 mt-2 ml-5">
+                  <Link
+                    href="/events/new"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary-hover transition"
+                  >
+                    <Calendar className="h-3 w-3" />
+                    Create event
+                  </Link>
+                  <span className="text-border">·</span>
+                  <Link
+                    href="/chat"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary-hover transition"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    Find gifts
+                  </Link>
+                </div>
+              ) : card.action ? (
                 <Link
-                  href="/chat"
+                  href={card.href || '/chat'}
                   className="mt-1.5 ml-5 inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary-hover transition"
                 >
                   {card.action}
                   <span className="text-[8px]">&rarr;</span>
                 </Link>
-              )}
+              ) : null}
             </div>
           )
-
-          if (card.href) {
-            return (
-              <Link key={i} href={card.href} className="block">
-                <div className="px-3 py-2 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition">
-                  <div className="flex items-start gap-2 text-xs text-secondary leading-relaxed">
-                    <span className="shrink-0 mt-0.5">{card.emoji}</span>
-                    <span dangerouslySetInnerHTML={{ __html: formatCardText(card.text) }} />
-                  </div>
-                </div>
-              </Link>
-            )
-          }
-          return <div key={i}>{content}</div>
         })}
       </div>
     </div>

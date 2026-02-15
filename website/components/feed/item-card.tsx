@@ -2,13 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Gift, ExternalLink, Share2, Check, Trash2 } from 'lucide-react'
+import { Gift, ExternalLink, Share2, Check, Trash2, Calendar } from 'lucide-react'
 import { formatPrice, getProgressPercentage, shareOrCopy, giftistShareText } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
 
 interface EventOption {
   id: string
   name: string
+}
+
+interface ItemEvent {
+  event: { id: string; name: string; type: string }
 }
 
 interface ItemCardProps {
@@ -25,6 +29,7 @@ interface ItemCardProps {
     fundedAmount: number
     goalAmount: number | null
     isPurchased: boolean
+    eventItems?: ItemEvent[]
   }
   ownerName?: string
   onFund?: (item: any) => void
@@ -81,6 +86,8 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
       })
     } catch {}
   }
+
+  const itemEvent = item.eventItems?.[0]?.event
 
   // Social proof badge
   const socialProof = isFullyFunded
@@ -178,6 +185,18 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
             {item.name}
           </h3>
           <p className="text-xs text-muted mt-0.5">{item.domain}</p>
+
+          {/* Event label */}
+          {itemEvent && (
+            <Link
+              href={`/events/${itemEvent.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium rounded-full hover:bg-primary/20 transition"
+            >
+              <Calendar className="h-2.5 w-2.5" />
+              {itemEvent.name}
+            </Link>
+          )}
 
           {/* Funding progress — always shown when there's a goal */}
           {goal > 0 && !isFullyFunded && (

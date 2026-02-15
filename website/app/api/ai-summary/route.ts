@@ -67,9 +67,12 @@ export async function GET() {
       interests = user?.interests ? JSON.parse(user.interests) : []
     } catch {}
 
-    const prompt = `Generate exactly 5-6 short sidebar summary cards for a gifting app. Each card is a JSON object with "emoji", "text", and optionally "action" fields. Return ONLY a JSON array, nothing else.
+    const prompt = `Generate exactly 5-6 short sidebar summary cards for a gifting app. Each card is a JSON object with "emoji", "text", and optionally "action" and "href" fields. Return ONLY a JSON array, nothing else.
 
-The "action" field should be included on any card that suggests a gifting opportunity — it contains a short button label like "Find gifts", "Build a list", "Browse ideas", "Start gifting", etc. Only the greeting card and pure info cards should omit "action".
+The "action" field should be included on actionable cards. The "href" field controls where the action links to:
+- For cards about a specific upcoming date/occasion: use "href": "/events/new"
+- For all other actionable cards (gift ideas, tips, trending, etc.): use "href": "/chat"
+- If no "action" is set, omit "href" too
 
 Context:
 - User name: ${userName}
@@ -82,18 +85,21 @@ Context:
 - Household: ${user?.relationship || 'unknown'}
 
 Rules:
-- Card 1: ALWAYS a warm personal greeting mentioning the user's name and something relevant (friend activity, or a warm welcome). No action button.
-- Cards 2-4: Pick from upcoming personal events, almost-funded items, upcoming holidays/cultural gifting moments (Valentine's Day, Mother's Day, Father's Day, Diwali, Christmas, Hanukkah, Lunar New Year, Eid, graduation season, Teacher Appreciation, etc.) — whichever are closest to today's date. Include "action" on these.
-- Cards 5-6: Proactive gifting tips, seasonal reminders, or lesser-known gifting occasions coming in the next 2-3 months (e.g. wedding season, back-to-school, National Sibling Day, Boss's Day, Galentine's Day, etc.). Include "action" on these.
-- ALWAYS generate at least 5 cards, ideally 6
+- Card 1: ALWAYS a warm personal greeting mentioning the user's name and something relevant (friend activity, or a warm welcome). No action.
+- Cards 2-6: MIX of different card types — do NOT make them all about dates. Include a diverse selection from these categories:
+  * Upcoming event/holiday (max 1-2): the closest relevant date. action: "Create event", href: "/events/new"
+  * Almost-funded items: if any items are close to being funded, highlight one. No action needed.
+  * Gifting insight: a smart, personalized tip based on user interests (e.g. "Your friend who loves cooking might enjoy the new Le Creuset collection"). action: "Browse ideas", href: "/chat"
+  * Trending/seasonal: what's hot in gifting right now, seasonal gift trends, or a product category suggestion. action: "See trending", href: "/chat"
+  * Social: what friends are adding or wishlisting, group gifting nudges, or a fun gifting fact. No action needed.
+- Maximum 2 cards about specific dates/occasions — the rest should be insights, tips, trends, or social updates
 - Keep each card text to 1-2 short sentences max
-- Use relevant emojis (🎂 birthdays, 🎁 gifts, 💝 Valentine's, 🎄 Christmas, 🪔 Diwali, etc.)
-- Be specific about dates: "today", "in 3 days", "next week", "in 2 weeks", "March 8"
-- These should feel like a smart personal assistant briefing, not generic tips
+- Use relevant emojis
+- Be specific and personal, not generic
 - Never mention the user should "check back" or "stay tuned"
 
 Example output format:
-[{"emoji":"👋","text":"Good morning, Alex! 3 friends added items this week."},{"emoji":"💝","text":"Valentine's Day is today — still time to find something special!","action":"Find gifts"},{"emoji":"🎁","text":"The Stanley Tumbler is almost funded — only $15 left."},{"emoji":"👩","text":"International Women's Day is March 8 — celebrate the women in your life.","action":"Browse ideas"},{"emoji":"🌸","text":"Mother's Day is 3 months away — never too early to start a list.","action":"Start a list"}]`
+[{"emoji":"👋","text":"Good morning, Alex! 3 friends added items this week."},{"emoji":"💝","text":"Valentine's Day is today — still time to find something special!","action":"Create event","href":"/events/new"},{"emoji":"🎁","text":"The Stanley Tumbler is almost funded — only $15 left."},{"emoji":"🔥","text":"Wellness gifts are trending this month — think journals, candles, and self-care kits.","action":"See trending","href":"/chat"},{"emoji":"💡","text":"Since you're into photography, a custom photo book makes an amazing last-minute gift.","action":"Browse ideas","href":"/chat"}]`
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',

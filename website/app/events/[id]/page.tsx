@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
-import { Gift, Calendar, ArrowLeft, Share2 } from 'lucide-react'
+import { Gift, Calendar, ArrowLeft } from 'lucide-react'
 import ContributeButton from './ContributeButton'
 import ShareItemButton from './ShareItemButton'
+import ShareEventButton from './ShareEventButton'
 
 const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   BIRTHDAY: { label: 'Birthday', emoji: '🎂' },
@@ -140,13 +141,7 @@ export default async function EventPage({
               <Gift className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-primary">The Giftist</span>
             </Link>
-            <button
-              onClick={() => navigator.clipboard.writeText(shareUrl)}
-              className="flex items-center gap-2 text-muted hover:text-white transition"
-            >
-              <Share2 className="h-5 w-5" />
-              Share
-            </button>
+            <ShareEventButton shareUrl={shareUrl} eventName={event.name} />
           </div>
         </div>
       </header>

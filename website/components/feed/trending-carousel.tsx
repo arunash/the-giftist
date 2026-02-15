@@ -15,7 +15,7 @@ interface TrendingCarouselProps {
   onAdd?: (item: TrendingItem) => void
 }
 
-const CACHE_KEY = 'giftist_trending_cache'
+const CACHE_KEY = 'giftist_trending_v2'
 
 function loadCache(): TrendingItem[] {
   try {
@@ -47,7 +47,7 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
   useEffect(() => {
     if (items.length === 0 || loading) return
     const timer = setTimeout(() => {
-      const good = items.filter((_, i) => !failedImages.has(i))
+      const good = items.filter((item, i) => item.image && !failedImages.has(i))
       if (good.length > 0) saveCache(good)
     }, 3000)
     return () => clearTimeout(timer)
@@ -74,11 +74,16 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
     }
 
     fetchTrending().finally(() => setLoading(false))
+
+    const interval = setInterval(() => {
+      fetchTrending()
+    }, 120000)
+    return () => clearInterval(interval)
   }, [])
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return
-    const amount = scrollRef.current.clientWidth / 4 + 12
+    const amount = scrollRef.current.clientWidth / 2
     scrollRef.current.scrollBy({
       left: direction === 'left' ? -amount : amount,
       behavior: 'smooth',
@@ -98,7 +103,6 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
         setAddedSet((prev) => new Set(prev).add(idx))
         onAdd?.(item)
       } else {
-        // Fallback: create item directly
         const fallbackRes = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -129,7 +133,12 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
     )
   }
 
-  if (items.length === 0) return null
+  // Only show items that have working images
+  const visibleItems = items
+    .map((item, i) => ({ item, originalIdx: i }))
+    .filter(({ item, originalIdx }) => item.image && !failedImages.has(originalIdx))
+
+  if (visibleItems.length < 3) return null
 
   return (
     <div className="relative">
@@ -144,7 +153,6 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
       </div>
 
       <div className="relative group">
-        {/* Left arrow */}
         <button
           onClick={() => scroll('left')}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface-raised border border-border rounded-full opacity-0 group-hover:opacity-100 transition -translate-x-2"
@@ -152,49 +160,44 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
           <ChevronLeft className="h-4 w-4 text-white" />
         </button>
 
-        {/* Scrollable container */}
         <div
           ref={scrollRef}
           className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
           style={{ scrollSnapType: 'x mandatory' }}
         >
-          {items.map((item, i) => (
+          {visibleItems.map(({ item, originalIdx }) => (
             <div
-              key={i}
-              className={`flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] bg-surface rounded-2xl border border-border overflow-hidden hover:border-border-light transition-all duration-300 group/card ${failedImages.has(i) ? 'hidden' : ''}`}
+              key={originalIdx}
+              className="flex-shrink-0 w-[calc((100%-0.5rem)/2)] lg:w-[calc((100%-1.5rem)/4)] bg-surface rounded-2xl border border-border overflow-hidden hover:border-border-light transition-all duration-300 group/card"
               style={{ scrollSnapAlign: 'start' }}
             >
-              {/* Product image */}
               <div className="relative aspect-square bg-surface-hover overflow-hidden">
                 <img
                   src={item.image}
                   alt={item.name}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02] group-hover/card:scale-105 transition-transform duration-500"
-                  onError={() => handleImageError(i)}
+                  onError={() => handleImageError(originalIdx)}
                 />
-                {/* Category pill */}
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-medium text-white uppercase tracking-wide">
                   {item.category}
                 </div>
-                {/* Price pill */}
                 {item.price && (
                   <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur-md text-sm font-semibold text-white">
                     {item.price}
                   </div>
                 )}
               </div>
-
-              {/* Content */}
               <div className="p-3">
                 <h4 className="text-sm font-medium text-white line-clamp-1 mb-1">{item.name}</h4>
                 <button
-                  onClick={() => handleAdd(item, i)}
-                  disabled={addingIdx === i || addedSet.has(i)}
+                  onClick={() => handleAdd(item, originalIdx)}
+                  disabled={addingIdx === originalIdx || addedSet.has(originalIdx)}
                   className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg transition disabled:opacity-50 bg-primary/10 text-primary hover:bg-primary/20"
                 >
-                  {addedSet.has(i) ? (
+                  {addedSet.has(originalIdx) ? (
                     'Added!'
-                  ) : addingIdx === i ? (
+                  ) : addingIdx === originalIdx ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <>
@@ -208,7 +211,6 @@ export function TrendingCarousel({ onAdd }: TrendingCarouselProps) {
           ))}
         </div>
 
-        {/* Right arrow */}
         <button
           onClick={() => scroll('right')}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface-raised border border-border rounded-full opacity-0 group-hover:opacity-100 transition translate-x-2"

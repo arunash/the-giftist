@@ -4,7 +4,7 @@ import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
 import { downloadMedia, sendTextMessage, sendImageMessage } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { stripSpecialBlocks } from '@/lib/parse-chat-content'
+import { stripSpecialBlocks, parseChatContent, type EventData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { logApiCall, logError } from '@/lib/api-logger'
@@ -550,8 +550,31 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       })
     }
 
-    // Strip product/preference blocks for WhatsApp (plain text only)
-    return stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
+    // Auto-create events from [EVENT] blocks
+    const segments = parseChatContent(fullContent)
+    const eventConfirmations: string[] = []
+    for (const seg of segments) {
+      if (seg.type === 'event') {
+        const eventData = seg.data as EventData
+        try {
+          await prisma.event.create({
+            data: {
+              userId,
+              name: eventData.name,
+              type: eventData.type,
+              date: new Date(eventData.date),
+              isPublic: true,
+            },
+          })
+          const dateStr = new Date(eventData.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          eventConfirmations.push(`\n\n📅 I've saved ${eventData.name} (${dateStr}) to your events!`)
+        } catch {}
+      }
+    }
+
+    // Strip product/preference/event blocks for WhatsApp (plain text only)
+    const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
+    return strippedContent + eventConfirmations.join('')
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

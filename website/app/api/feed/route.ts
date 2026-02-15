@@ -59,6 +59,14 @@ export async function GET(request: NextRequest) {
           orderBy: { recordedAt: 'asc' },
           take: 2,
         },
+        eventItems: {
+          include: {
+            event: {
+              select: { id: true, name: true, type: true },
+            },
+          },
+          take: 1,
+        },
       },
     })
 

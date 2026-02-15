@@ -1,7 +1,15 @@
+export interface EventData {
+  name: string
+  type: string
+  date: string
+  description?: string
+}
+
 export type ChatSegment =
   | { type: 'text'; content: string }
   | { type: 'product'; data: ProductData }
   | { type: 'preferences'; data: Record<string, any> }
+  | { type: 'event'; data: EventData }
 
 export interface ProductData {
   name: string
@@ -13,13 +21,14 @@ export interface ProductData {
 
 const PRODUCT_REGEX = /\[PRODUCT\]([\s\S]*?)\[\/PRODUCT\]/g
 const PREFERENCES_REGEX = /\[PREFERENCES\]([\s\S]*?)\[\/PREFERENCES\]/g
+const EVENT_REGEX = /\[EVENT\]([\s\S]*?)\[\/EVENT\]/g
 
 export function parseChatContent(content: string): ChatSegment[] {
   const segments: ChatSegment[] = []
   let lastIndex = 0
 
   // Combine all special blocks with their positions
-  const blocks: { start: number; end: number; type: 'product' | 'preferences'; raw: string }[] = []
+  const blocks: { start: number; end: number; type: 'product' | 'preferences' | 'event'; raw: string }[] = []
 
   let match: RegExpExecArray | null
 
@@ -43,6 +52,16 @@ export function parseChatContent(content: string): ChatSegment[] {
     })
   }
 
+  const eventRegex = new RegExp(EVENT_REGEX.source, 'g')
+  while ((match = eventRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'event',
+      raw: match[1],
+    })
+  }
+
   // Sort by position
   blocks.sort((a, b) => a.start - b.start)
 
@@ -59,6 +78,8 @@ export function parseChatContent(content: string): ChatSegment[] {
       const parsed = JSON.parse(block.raw)
       if (block.type === 'product') {
         segments.push({ type: 'product', data: parsed as ProductData })
+      } else if (block.type === 'event') {
+        segments.push({ type: 'event', data: parsed as EventData })
       } else {
         segments.push({ type: 'preferences', data: parsed })
       }
@@ -85,6 +106,7 @@ export function stripSpecialBlocks(content: string): string {
   return content
     .replace(PRODUCT_REGEX, '')
     .replace(PREFERENCES_REGEX, '')
+    .replace(EVENT_REGEX, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
