@@ -3,13 +3,139 @@
 @tailwind utilities;
 
 :root {
-  --background: #F9FAFB;
-  --foreground: #111827;
-  --surface: #FFFFFF;
-  --surface-hover: #F3F4F6;
-  --border: #E5E7EB;
-  --border-light: #D1D5DB;
-  --muted: #6B7280;
+  /* ---- Core Palette (HSL) ---- */
+  --background: 0 0% 98%;
+  --foreground: 220 15% 13%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 15% 13%;
+  --card-hover: 0 0% 97%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 15% 13%;
+
+  /* ---- Primary (Coral/Red) ---- */
+  --primary: 6 78% 57%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 6 78% 50%;
+  --primary-muted: 6 78% 95%;
+  --primary-ghost: 6 78% 97%;
+
+  /* ---- Secondary ---- */
+  --secondary: 220 10% 96%;
+  --secondary-foreground: 220 15% 35%;
+
+  /* ---- Muted ---- */
+  --muted: 220 10% 95%;
+  --muted-foreground: 220 10% 45%;
+
+  /* ---- Accent (for AI elements) ---- */
+  --accent: 6 78% 57%;
+  --accent-foreground: 0 0% 100%;
+  --accent-glow: 6 78% 92%;
+
+  /* ---- Success (Green — funding, contributions) ---- */
+  --success: 152 55% 42%;
+  --success-foreground: 0 0% 100%;
+  --success-muted: 152 45% 94%;
+  --success-text: 152 55% 32%;
+
+  /* ---- Warning (Amber — urgency, deadlines) ---- */
+  --warning: 38 92% 50%;
+  --warning-foreground: 38 92% 15%;
+  --warning-muted: 38 80% 94%;
+
+  /* ---- Destructive ---- */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-muted: 0 70% 95%;
+
+  /* ---- Info (Blue — tips, context) ---- */
+  --info: 210 80% 55%;
+  --info-foreground: 0 0% 100%;
+  --info-muted: 210 60% 95%;
+
+  /* ---- Borders & Inputs ---- */
+  --border: 220 10% 90%;
+  --border-hover: 220 10% 80%;
+  --border-focus: 6 78% 57%;
+  --input: 220 10% 90%;
+  --ring: 6 78% 57%;
+
+  /* ---- Bridge Aliases (backward compat) ---- */
+  --surface: var(--card);
+  --surface-hover: var(--card-hover);
+  --surface-raised: 220 13% 91%;
+  --border-light: var(--border-hover);
+
+  /* ---- Radius ---- */
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ---- Sidebar ---- */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 220 10% 40%;
+  --sidebar-foreground-active: 6 78% 57%;
+  --sidebar-border: 220 10% 92%;
+  --sidebar-accent: 220 10% 97%;
+  --sidebar-accent-foreground: 220 15% 13%;
+  --sidebar-hover: 220 10% 95%;
+
+  /* ---- AI-Specific Tokens ---- */
+  --ai-surface: 6 78% 97%;
+  --ai-surface-hover: 6 78% 94%;
+  --ai-border: 6 60% 90%;
+  --ai-glow: 6 78% 57%;
+  --ai-text: 6 60% 45%;
+  --ai-badge-bg: 6 70% 95%;
+  --ai-badge-text: 6 78% 50%;
+
+  /* ---- Urgency Tokens (for event priority) ---- */
+  --urgency-high-bg: 0 70% 97%;
+  --urgency-high-border: 0 70% 85%;
+  --urgency-high-text: 0 70% 45%;
+  --urgency-medium-bg: 38 80% 97%;
+  --urgency-medium-border: 38 60% 85%;
+  --urgency-medium-text: 38 70% 40%;
+  --urgency-low-bg: 0 0% 98%;
+  --urgency-low-border: 220 10% 90%;
+  --urgency-low-text: 220 10% 50%;
+
+  /* ---- Funding Progress ---- */
+  --funding-empty: 220 10% 92%;
+  --funding-partial: 6 78% 57%;
+  --funding-complete: 152 55% 42%;
+  --funding-almost: 38 92% 50%;
+
+  /* ---- Shadows ---- */
+  --shadow-xs: 0 1px 2px 0 hsl(220 15% 13% / 0.04);
+  --shadow-sm: 0 1px 3px 0 hsl(220 15% 13% / 0.06), 0 1px 2px -1px hsl(220 15% 13% / 0.06);
+  --shadow-md: 0 4px 6px -1px hsl(220 15% 13% / 0.06), 0 2px 4px -2px hsl(220 15% 13% / 0.04);
+  --shadow-lg: 0 10px 15px -3px hsl(220 15% 13% / 0.06), 0 4px 6px -4px hsl(220 15% 13% / 0.04);
+  --shadow-primary: 0 4px 14px -3px hsl(6 78% 57% / 0.25);
+  --shadow-card-hover: 0 8px 25px -5px hsl(220 15% 13% / 0.08), 0 4px 10px -4px hsl(220 15% 13% / 0.04);
+
+  /* ---- Gradients ---- */
+  --gradient-primary: linear-gradient(135deg, hsl(6 78% 57%), hsl(6 85% 48%));
+  --gradient-primary-soft: linear-gradient(135deg, hsl(6 78% 97%), hsl(6 50% 95%));
+  --gradient-success: linear-gradient(135deg, hsl(152 55% 42%), hsl(160 55% 38%));
+  --gradient-ai: linear-gradient(135deg, hsl(6 78% 97%), hsl(6 50% 93%) 50%, hsl(0 0% 100%));
+  --gradient-funds: linear-gradient(135deg, hsl(6 78% 57%), hsl(12 80% 50%));
+  --gradient-gifted: linear-gradient(135deg, hsl(152 55% 42%), hsl(160 60% 35%));
+
+  /* ---- Transitions ---- */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* {
+  border-color: hsl(var(--border));
 }
 
 html {
@@ -17,12 +143,25 @@ html {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 1.75rem; line-height: 1.2; }
+h2 { font-size: 1.125rem; line-height: 1.3; }
+h3 { font-size: 1rem; line-height: 1.4; }
 
 @layer utilities {
   .text-balance {
@@ -140,7 +279,7 @@ body {
 
 /* Modern focus styles */
 *:focus-visible {
-  outline: 2px solid rgba(232, 93, 76, 0.5);
+  outline: 2px solid hsl(var(--ring) / 0.5);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -156,12 +295,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: hsl(var(--border));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: hsl(var(--border-hover));
 }
 
 /* Safe area for mobile bottom nav */
@@ -169,4 +308,639 @@ body {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+
+/* ==========================================================================
+   AI-NATIVE COMPONENT PATTERNS
+   ========================================================================== */
+
+/* ---- Proactive AI Suggestion Card ---- */
+.ai-suggestion-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-ai);
+  border: 1px solid hsl(var(--ai-border));
+  padding: 1.25rem;
+}
+
+.ai-suggestion-card::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 40%;
+  height: 60%;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ai-suggestion-card .ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--ai-badge-text));
+  background: hsl(var(--ai-badge-bg));
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+/* ---- AI Insight Bubble ---- */
+.ai-insight {
+  background: hsl(var(--ai-surface));
+  border: 1px solid hsl(var(--ai-border));
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.ai-insight-text {
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: hsl(var(--ai-text));
+}
+
+.ai-insight-action {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.ai-insight-action:hover {
+  color: hsl(var(--primary-hover));
+}
+
+/* ---- Ticker Item (sidebar actionable insights) ---- */
+.ticker-item {
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  padding: 0.625rem;
+  border: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.ticker-item:hover {
+  border-color: hsl(var(--ai-border));
+}
+
+.ticker-item-action {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.ticker-item-action:hover {
+  color: hsl(var(--primary-hover));
+}
+
+/* ---- Taste Profile Teaser ---- */
+.taste-profile {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 0.75rem;
+}
+
+.taste-tag {
+  font-size: 0.5625rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: hsl(var(--ai-badge-bg));
+  color: hsl(var(--ai-badge-text));
+  font-weight: 500;
+}
+
+/* ---- Concierge Chat Bubble ---- */
+.chat-bubble-ai {
+  background: hsl(var(--secondary));
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+  padding: 0.875rem 1rem;
+  max-width: 85%;
+}
+
+.chat-bubble-user {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  padding: 0.625rem 1rem;
+  max-width: 75%;
+  margin-left: auto;
+}
+
+/* ---- Rich Card (for concierge product/event suggestions) ---- */
+.rich-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.rich-card:hover {
+  border-color: hsl(var(--border-hover));
+  box-shadow: var(--shadow-card-hover);
+}
+
+.rich-card-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.rich-card-body {
+  padding: 0.75rem;
+}
+
+
+/* ==========================================================================
+   EVENT PRIORITY / URGENCY PATTERNS
+   ========================================================================== */
+
+.event-card {
+  border-radius: var(--radius-xl);
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  transition: all var(--transition-base);
+}
+
+.event-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.event-card--urgent {
+  border-color: hsl(var(--urgency-high-border));
+  background: hsl(var(--urgency-high-bg));
+}
+
+.event-card--soon {
+  border-color: hsl(var(--urgency-medium-border));
+  background: hsl(var(--urgency-medium-bg));
+}
+
+.event-card--later {
+  border-color: hsl(var(--urgency-low-border));
+  background: hsl(var(--urgency-low-bg));
+}
+
+.urgency-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+.urgency-badge--high {
+  background: hsl(var(--destructive-muted));
+  color: hsl(var(--destructive));
+}
+
+.urgency-badge--medium {
+  background: hsl(var(--warning-muted));
+  color: hsl(var(--warning-foreground));
+}
+
+.urgency-badge--low {
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+}
+
+
+/* ==========================================================================
+   FUNDING PROGRESS PATTERNS
+   ========================================================================== */
+
+.funding-bar {
+  height: 0.375rem;
+  background: hsl(var(--funding-empty));
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.funding-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: hsl(var(--funding-partial));
+  transition: width var(--transition-slow);
+}
+
+.funding-bar-fill--complete {
+  background: hsl(var(--funding-complete));
+}
+
+.funding-bar-fill--almost {
+  background: hsl(var(--funding-almost));
+}
+
+.funding-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: hsl(var(--success-muted));
+  color: hsl(var(--success-text));
+}
+
+/* Funds hero cards */
+.funds-balance-card {
+  background: var(--gradient-funds);
+  color: hsl(var(--primary-foreground));
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.funds-received-card {
+  background: var(--gradient-gifted);
+  color: hsl(var(--success-foreground));
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+.btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-primary:hover {
+  background: hsl(var(--primary-hover));
+  box-shadow: var(--shadow-primary);
+}
+
+.btn-secondary {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  border-color: hsl(var(--border-hover));
+  background: hsl(var(--card-hover));
+}
+
+.btn-ghost {
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-ghost:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.btn-ai {
+  background: hsl(var(--ai-surface));
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--ai-border));
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-ai:hover {
+  background: hsl(var(--ai-surface-hover));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* Quick-action chip (concierge suggestions) */
+.chip {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-full);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+}
+
+.chip:hover {
+  background: hsl(var(--primary-muted));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* CTA chip (primary action) */
+.chip--filled {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+.chip--filled:hover {
+  background: hsl(var(--primary-hover));
+}
+
+
+/* ==========================================================================
+   INPUT & FORMS
+   ========================================================================== */
+
+.input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.input:focus {
+  border-color: hsl(var(--border-focus));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1);
+}
+
+/* Concierge input (embedded style) */
+.concierge-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(var(--secondary));
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+}
+
+.concierge-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+}
+
+.concierge-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 15rem;
+  background: hsl(var(--sidebar-background));
+  border-right: 1px solid hsl(var(--sidebar-border));
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.sidebar-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--sidebar-foreground));
+  transition: all var(--transition-fast);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sidebar-nav-item:hover {
+  background: hsl(var(--sidebar-hover));
+  color: hsl(var(--sidebar-accent-foreground));
+}
+
+.sidebar-nav-item--active {
+  background: hsl(var(--primary-ghost));
+  color: hsl(var(--sidebar-foreground-active));
+  font-weight: 600;
+}
+
+.sidebar-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-full);
+}
+
+
+/* ==========================================================================
+   ACTIVITY FEED
+   ========================================================================== */
+
+.feed-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: hsl(var(--secondary));
+  border-radius: var(--radius);
+  padding: 0.25rem;
+}
+
+.feed-tab {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.feed-tab--active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: var(--shadow-xs);
+}
+
+.feed-amount {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--success));
+}
+
+
+/* ==========================================================================
+   CARD PATTERNS
+   ========================================================================== */
+
+.card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.card-hoverable {
+  transition: all var(--transition-base);
+}
+
+.card-hoverable:hover {
+  border-color: hsl(var(--border-hover));
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Event card with cover image */
+.event-cover {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+
+.event-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.card-hoverable:hover .event-cover img {
+  transform: scale(1.05);
+}
+
+.event-cover-badge {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(8px);
+  color: hsl(var(--foreground));
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius);
+}
+
+.event-cover-count {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: hsl(var(--foreground) / 0.7);
+  backdrop-filter: blur(8px);
+  color: hsl(var(--background));
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+/* Text sizes matching the design */
+.text-2xs { font-size: 0.625rem; line-height: 1.4; }
+
+/* Truncation */
+.line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Focus ring */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+}
+
+/* Scrollbar (for sidebar ticker, chat) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: var(--radius-full);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border-hover));
+}
+
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-slide-up { animation: slide-up 0.4s ease-out; }
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 50%, hsl(var(--secondary)) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

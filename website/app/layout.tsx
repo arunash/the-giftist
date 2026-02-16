@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const dmSans = DM_Sans({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: {
@@ -58,7 +58,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={dmSans.className}>
         <Providers>{children}</Providers>
       </body>
     </html>
