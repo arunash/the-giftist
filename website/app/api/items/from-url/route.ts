@@ -9,7 +9,12 @@ import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
 const urlSchema = z.object({
-  url: z.string().url(),
+  url: z.string().url().refine((url) => {
+    try {
+      const parsed = new URL(url)
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+    } catch { return false }
+  }, 'Only HTTP(S) URLs are allowed'),
   source: z.enum(['WHATSAPP', 'EXTENSION', 'MANUAL', 'CHAT']).optional(),
 })
 

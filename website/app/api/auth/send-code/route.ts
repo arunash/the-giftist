@@ -8,7 +8,12 @@ const twilioClient = twilio(
   process.env.TWILIO_AUTH_TOKEN
 )
 
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || 'VA4d084fd13308242b810892d8bf45f4a0'
+function requireEnv(name: string): string {
+  const val = process.env[name]
+  if (!val) throw new Error(`${name} environment variable is required`)
+  return val
+}
+const VERIFY_SERVICE_SID = requireEnv('TWILIO_VERIFY_SERVICE_SID')
 
 // In-memory rate limiter: max 5 requests per phone per 15 minutes, max 10 per IP per 15 minutes
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()

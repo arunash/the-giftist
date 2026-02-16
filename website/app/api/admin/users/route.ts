@@ -3,10 +3,8 @@ import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
-  const session = await requireAdmin()
-  if (!session) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const { searchParams } = new URL(request.url)
   const page = parseInt(searchParams.get('page') || '1')

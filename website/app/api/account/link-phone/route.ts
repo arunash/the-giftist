@@ -10,7 +10,12 @@ const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 )
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || 'VA4d084fd13308242b810892d8bf45f4a0'
+function requireEnv(name: string): string {
+  const val = process.env[name]
+  if (!val) throw new Error(`${name} environment variable is required`)
+  return val
+}
+const VERIFY_SERVICE_SID = requireEnv('TWILIO_VERIFY_SERVICE_SID')
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -61,9 +66,24 @@ export async function POST(request: Request) {
     })
 
     if (existingPhoneUser && existingPhoneUser.id !== currentUserId) {
-      // Merge the phone user's items/events into the current user, then delete the old user
-      await prisma.item.updateMany({ where: { userId: existingPhoneUser.id }, data: { userId: currentUserId } })
-      await prisma.event.updateMany({ where: { userId: existingPhoneUser.id }, data: { userId: currentUserId } })
+      // Check if the existing account has real data (items, events, messages)
+      const [itemCount, eventCount] = await Promise.all([
+        prisma.item.count({ where: { userId: existingPhoneUser.id } }),
+        prisma.event.count({ where: { userId: existingPhoneUser.id } }),
+      ])
+
+      if (itemCount > 0 || eventCount > 0) {
+        // Don't silently merge accounts with real data — require explicit confirmation
+        return NextResponse.json(
+          {
+            error: 'phone_in_use',
+            message: 'This phone number is linked to another account with existing data. Please contact support to merge accounts.',
+          },
+          { status: 409 }
+        )
+      }
+
+      // Empty account (e.g., auto-created by WhatsApp bot) — safe to merge
       await prisma.chatMessage.updateMany({ where: { userId: existingPhoneUser.id }, data: { userId: currentUserId } })
       await prisma.user.delete({ where: { id: existingPhoneUser.id } })
     }

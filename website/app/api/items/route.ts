@@ -7,12 +7,19 @@ import { calculateGoalAmount } from '@/lib/platform-fee'
 import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
+const httpsUrl = z.string().url().refine((url) => {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch { return false }
+}, 'Only HTTP(S) URLs are allowed')
+
 const itemSchema = z.object({
   name: z.string().min(1).max(500),
   price: z.string().optional().nullable(),
   priceValue: z.number().optional().nullable(),
-  image: z.string().url().optional().nullable(),
-  url: z.string().url(),
+  image: httpsUrl.optional().nullable(),
+  url: httpsUrl,
   domain: z.string().optional(),
   category: z.string().optional().nullable(),
   source: z.enum(['WHATSAPP', 'EXTENSION', 'MANUAL', 'CHAT']).optional(),

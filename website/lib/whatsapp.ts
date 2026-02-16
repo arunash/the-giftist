@@ -1,4 +1,5 @@
 import { logApiCall } from '@/lib/api-logger'
+import { isPrivateUrl } from './url-safety'
 
 const GRAPH_API = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}`
 const TOKEN = () => process.env.WHATSAPP_ACCESS_TOKEN!
@@ -66,9 +67,21 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
     throw new Error(`Unsupported media type: ${mime_type}`)
   }
 
-  // Step 2: download the binary
+  // Validate URL is not pointing to internal network
+  try {
+    const parsedUrl = new URL(url)
+    if (isPrivateUrl(parsedUrl)) {
+      throw new Error('Invalid media URL: private network')
+    }
+  } catch (e: any) {
+    if (e.message?.includes('private network')) throw e
+    throw new Error(`Invalid media URL: ${url}`)
+  }
+
+  // Step 2: download the binary with timeout
   const dataRes = await fetch(url, {
     headers: { Authorization: `Bearer ${TOKEN()}` },
+    signal: AbortSignal.timeout(15000),
   })
   if (!dataRes.ok) throw new Error(`Failed to download media: ${dataRes.status}`)
 

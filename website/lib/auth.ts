@@ -6,6 +6,7 @@ import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
 import { createDefaultEventsForUser } from './default-events'
 import twilio from 'twilio'
+import crypto from 'crypto'
 import { ADMIN_PHONES } from './admin'
 import { logApiCall } from './api-logger'
 
@@ -13,7 +14,12 @@ const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 )
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || 'VA4d084fd13308242b810892d8bf45f4a0'
+function requireEnv(name: string): string {
+  const val = process.env[name]
+  if (!val) throw new Error(`${name} environment variable is required`)
+  return val
+}
+const VERIFY_SERVICE_SID = requireEnv('TWILIO_VERIFY_SERVICE_SID')
 
 // Wrap PrismaAdapter to intercept createUser for account linking
 const baseAdapter = PrismaAdapter(prisma) as any
@@ -21,7 +27,7 @@ const adapter = {
   ...baseAdapter,
   createUser: async (user: any) => {
     // Check if any user has a pending linking token (set by /api/account/prepare-link)
-    // and their email matches or they have no email yet
+    // Token format: "link_{userId}_{timestamp}_{hmac}"
     try {
       const linkingUser = await prisma.user.findFirst({
         where: {
@@ -30,23 +36,40 @@ const adapter = {
         orderBy: { updatedAt: 'desc' },
       })
 
-      if (linkingUser) {
-        // Verify the token is recent (< 5 minutes)
-        const tokenTime = parseInt(linkingUser.linkingToken!.replace('link_', ''), 10)
-        if (Date.now() - tokenTime < 5 * 60 * 1000) {
-          // Return existing user instead of creating a new one
-          const updated = await prisma.user.update({
-            where: { id: linkingUser.id },
-            data: {
-              email: linkingUser.email || user.email,
-              name: linkingUser.name || user.name,
-              image: linkingUser.image || user.image,
-              linkingToken: null,
-            },
-          })
-          return updated
+      if (linkingUser && linkingUser.linkingToken) {
+        const parts = linkingUser.linkingToken.split('_')
+        // Validate format: link_{userId}_{timestamp}_{hmac}
+        if (parts.length === 4 && parts[0] === 'link') {
+          const [, tokenUserId, timestampStr, tokenHmac] = parts
+          const timestamp = parseInt(timestampStr, 10)
+          const secret = process.env.NEXTAUTH_SECRET || ''
+
+          // Verify HMAC
+          const expectedHmac = crypto
+            .createHmac('sha256', secret)
+            .update(`link_${tokenUserId}_${timestampStr}`)
+            .digest('hex')
+            .slice(0, 16)
+
+          const isValidHmac = tokenHmac === expectedHmac
+          const isRecent = Date.now() - timestamp < 5 * 60 * 1000
+          const isCorrectUser = tokenUserId === linkingUser.id
+
+          if (isValidHmac && isRecent && isCorrectUser) {
+            // Return existing user instead of creating a new one
+            const updated = await prisma.user.update({
+              where: { id: linkingUser.id },
+              data: {
+                email: linkingUser.email || user.email,
+                name: linkingUser.name || user.name,
+                image: linkingUser.image || user.image,
+                linkingToken: null,
+              },
+            })
+            return updated
+          }
         }
-        // Expired — clear it
+        // Invalid/expired — clear it
         await prisma.user.update({
           where: { id: linkingUser.id },
           data: { linkingToken: null },
@@ -68,7 +91,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
       id: 'phone',

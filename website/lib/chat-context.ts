@@ -79,7 +79,7 @@ export async function buildChatContext(userId: string): Promise<string> {
 
   const itemsList = items.map((i) => {
     const status = i.isPurchased ? 'purchased' : i.fundedAmount > 0 ? `${Math.round((i.fundedAmount / (i.goalAmount || i.priceValue || 1)) * 100)}% funded` : 'unfunded'
-    return `- [id:${i.id}] ${i.name} | ${i.price || 'no price'} | ${i.category || 'uncategorized'} | ${status} | from ${i.source} | image: ${i.image || 'none'} | url: ${i.url}`
+    return `- [id:${i.id}] ${i.name} | ${i.price || 'no price'} | ${i.category || 'uncategorized'} | ${status} | from ${i.domain || i.source} | has_image: ${i.image ? 'yes' : 'no'}`
   }).join('\n')
 
   const eventsList = events.map((e) => {
@@ -89,7 +89,14 @@ export async function buildChatContext(userId: string): Promise<string> {
   // Build demographics section
   const demographics: string[] = []
   if (user?.name) demographics.push(`Name: ${user.name}`)
-  if (user?.birthday) demographics.push(`Birthday: ${new Date(user.birthday).toLocaleDateString()}`)
+  if (user?.birthday) {
+    const bday = new Date(user.birthday)
+    const now = new Date()
+    const next = new Date(now.getFullYear(), bday.getMonth(), bday.getDate())
+    if (next < now) next.setFullYear(next.getFullYear() + 1)
+    const daysUntil = Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    demographics.push(`Birthday: ${bday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} (${daysUntil} days away)`)
+  }
   if (user?.gender) demographics.push(`Gender: ${user.gender.replace('_', ' ').toLowerCase()}`)
   if (user?.ageRange) demographics.push(`Age range: ${user.ageRange}`)
   if (user?.interests) {

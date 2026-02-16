@@ -3,10 +3,8 @@ import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 
 export async function GET() {
-  const session = await requireAdmin()
-  if (!session) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())

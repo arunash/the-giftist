@@ -9,8 +9,8 @@ import { z } from 'zod'
 const contributionSchema = z.object({
   itemId: z.string().optional(),
   eventId: z.string().optional(),
-  amount: z.number().positive(),
-  message: z.string().optional().nullable(),
+  amount: z.number().positive().min(1, 'Minimum contribution is $1.00'),
+  message: z.string().max(500).optional().nullable(),
   isAnonymous: z.boolean().optional().default(false),
   contributorEmail: z.string().email().optional().nullable(),
   returnUrl: z.string().optional(),
@@ -48,9 +48,16 @@ export async function POST(request: NextRequest) {
       }
 
       const goalAmount = item.goalAmount || item.priceValue || 0
-      const remaining = goalAmount - item.fundedAmount
+      const remaining = goalAmount > 0 ? goalAmount - item.fundedAmount : Infinity
 
-      if (data.amount > remaining && remaining > 0) {
+      if (remaining <= 0) {
+        return NextResponse.json(
+          { error: 'This item is already fully funded' },
+          { status: 400 }
+        )
+      }
+
+      if (data.amount > remaining && remaining !== Infinity) {
         return NextResponse.json(
           { error: `Maximum contribution is $${remaining.toFixed(2)}` },
           { status: 400 }
