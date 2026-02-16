@@ -24,16 +24,15 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { stripeConnectAccountId: true, stripeConnectOnboarded: true },
+        select: { stripeConnectAccountId: true, stripeConnectOnboarded: true, lifetimeContributionsReceived: true },
       })
 
       if (!user?.stripeConnectAccountId || !user.stripeConnectOnboarded) {
         throw new Error('NOT_ONBOARDED')
       }
 
-      const wallet = await tx.wallet.findUnique({ where: { userId } })
-      if (!wallet) throw new Error('NO_WALLET')
-      if (wallet.balance < amount) throw new Error('INSUFFICIENT_BALANCE')
+      const availableBalance = user.lifetimeContributionsReceived || 0
+      if (availableBalance < amount) throw new Error('INSUFFICIENT_BALANCE')
 
       // Create Stripe transfer to connected account
       const transfer = await stripe.transfers.create({
@@ -42,13 +41,19 @@ export async function POST(request: NextRequest) {
         destination: user.stripeConnectAccountId,
       })
 
-      // Decrement wallet balance
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: amount } },
+      // Decrement contributions received balance
+      await tx.user.update({
+        where: { id: userId },
+        data: { lifetimeContributionsReceived: { decrement: amount } },
       })
 
-      // Record transaction
+      // Record transaction in wallet (create wallet if needed)
+      const wallet = await tx.wallet.upsert({
+        where: { userId },
+        create: { userId, balance: 0 },
+        update: {},
+      })
+
       await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
@@ -60,7 +65,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return { balance: wallet.balance - amount, transferId: transfer.id }
+      return { balance: availableBalance - amount, transferId: transfer.id }
     })
 
     return NextResponse.json(result)

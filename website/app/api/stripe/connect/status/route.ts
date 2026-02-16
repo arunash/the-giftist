@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Check current status with Stripe
     const account = await stripe.accounts.retrieve(user.stripeConnectAccountId)
-    const onboarded = account.details_submitted && account.charges_enabled
+    const onboarded = account.details_submitted && (account.payouts_enabled || account.charges_enabled)
 
     // Update local state if changed
     if (onboarded && !user.stripeConnectOnboarded) {
