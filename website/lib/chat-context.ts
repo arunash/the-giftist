@@ -3,11 +3,16 @@ import { prisma } from './db'
 const FREE_DAILY_MESSAGE_LIMIT = 10
 
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
-  // Check if user has an active Gold subscription
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId },
-    select: { status: true, currentPeriodEnd: true },
-  })
+  const [subscription, user] = await Promise.all([
+    prisma.subscription.findUnique({
+      where: { userId },
+      select: { status: true, currentPeriodEnd: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    }),
+  ])
 
   const isGold = subscription?.status === 'ACTIVE' &&
     (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
@@ -16,20 +21,33 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     return { allowed: true, remaining: Infinity }
   }
 
-  // Count today's user messages
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+  // Start of day in user's local timezone (falls back to UTC)
+  const startOfUserDay = getStartOfDayInUTC(user?.timezone || 'UTC')
 
   const todayCount = await prisma.chatMessage.count({
     where: {
       userId,
       role: 'USER',
-      createdAt: { gte: startOfDay },
+      createdAt: { gte: startOfUserDay },
     },
   })
 
   const remaining = Math.max(0, FREE_DAILY_MESSAGE_LIMIT - todayCount)
   return { allowed: todayCount < FREE_DAILY_MESSAGE_LIMIT, remaining }
+}
+
+/** Get midnight of the current day in the given timezone, returned as a UTC Date */
+function getStartOfDayInUTC(timezone: string): Date {
+  // Get today's date string in the user's timezone (YYYY-MM-DD)
+  const localDate = new Date().toLocaleDateString('en-CA', { timeZone: timezone })
+  const [year, month, day] = localDate.split('-').map(Number)
+  // Find the UTC offset at ~noon local time (avoids DST edge cases at midnight)
+  const noonUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  const utcStr = noonUTC.toLocaleString('en-US', { timeZone: 'UTC' })
+  const localStr = noonUTC.toLocaleString('en-US', { timeZone: timezone })
+  const offsetMs = new Date(localStr).getTime() - new Date(utcStr).getTime()
+  // Midnight local in UTC = midnight UTC - offset
+  return new Date(Date.UTC(year, month - 1, day) - offsetMs)
 }
 
 export async function buildChatContext(userId: string): Promise<string> {

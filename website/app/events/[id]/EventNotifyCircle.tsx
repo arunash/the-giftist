@@ -106,8 +106,8 @@ export default function EventNotifyCircle({ eventId, circleNotifiedAt }: EventNo
         </div>
         <p className="text-sm text-muted">
           No one in your Gift Circle yet.{' '}
-          <a href="/settings" className="text-primary hover:underline">
-            Add people in Settings
+          <a href="/circle" className="text-primary hover:underline">
+            Add people to your Circle
           </a>{' '}
           to notify them about this event.
         </p>

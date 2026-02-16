@@ -9,12 +9,14 @@ import {
   Wallet,
   Settings,
   LogOut,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
   { href: '/chat', label: 'Concierge', icon: MessageCircle },
+  { href: '/circle', label: 'Circle', icon: Users },
   { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

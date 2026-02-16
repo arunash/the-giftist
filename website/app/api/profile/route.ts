@@ -16,6 +16,7 @@ const updateSchema = z.object({
   interests: z.array(z.string()).nullable().optional(),
   giftBudget: z.enum(VALID_BUDGETS).nullable().optional(),
   relationship: z.enum(VALID_RELATIONSHIPS).nullable().optional(),
+  timezone: z.string().max(50).optional(),
 })
 
 export async function GET() {
@@ -85,6 +86,9 @@ export async function PATCH(request: NextRequest) {
   }
   if (giftBudget !== undefined) data.giftBudget = giftBudget
   if (relationship !== undefined) data.relationship = relationship
+
+  const { timezone } = parsed.data
+  if (timezone !== undefined) data.timezone = timezone
 
   const user = await prisma.user.update({
     where: { id: userId },

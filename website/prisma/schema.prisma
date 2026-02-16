@@ -30,6 +30,7 @@ model User {
   stripeConnectOnboarded        Boolean         @default(false)
   lastDigestSentAt              DateTime?
   digestOptOut                  Boolean         @default(false)
+  timezone                      String?
   accounts                      Account[]
   activityEvents                ActivityEvent[]
   chatMessages                  ChatMessage[]

@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   Gift,
   Sparkles,
+  Users,
 } from 'lucide-react'
 import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
@@ -22,6 +23,7 @@ import { SidebarSummary } from './sidebar-summary'
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
   { href: '/chat', label: 'Concierge', icon: MessageCircle },
+  { href: '/circle', label: 'Circle', icon: Users },
   { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
