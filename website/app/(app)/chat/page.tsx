@@ -18,18 +18,26 @@ const defaultSuggestions = [
 export default function ChatPage() {
   const { messages, streaming, sendMessage, setInitialMessages } = useChatStream()
   const [loading, setLoading] = useState(true)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
+  const desktopEndRef = useRef<HTMLDivElement>(null)
+  const mobileEndRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const pendingQuerySent = useRef(false)
 
   const scrollToBottom = useCallback(() => {
-    // Desktop: scroll container
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-    // Mobile: scroll the sentinel into view
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    requestAnimationFrame(() => {
+      // Desktop
+      if (desktopScrollRef.current) {
+        desktopScrollRef.current.scrollTop = desktopScrollRef.current.scrollHeight
+      }
+      desktopEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // Mobile
+      if (mobileScrollRef.current) {
+        mobileScrollRef.current.scrollTop = mobileScrollRef.current.scrollHeight
+      }
+      mobileEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    })
   }, [])
 
   // Load history on mount, then auto-send ?q= param if present
@@ -87,23 +95,21 @@ export default function ChatPage() {
     </div>
   )
 
-  const suggestionBar = messages.length > 0 && !streaming && (
-    <div className="px-4 py-1.5 flex gap-2 overflow-x-auto flex-shrink-0">
-      {defaultSuggestions.slice(0, 3).map((s) => (
-        <SuggestionChip key={s} label={s} onClick={sendMessage} />
-      ))}
-    </div>
-  )
+  const suggestionChips = messages.length > 0 && !streaming ? (
+    defaultSuggestions.slice(0, 3).map((s) => (
+      <SuggestionChip key={s} label={s} onClick={sendMessage} />
+    ))
+  ) : null
 
   return (
     <>
-      {/* Desktop: flex column layout */}
-      <div className="hidden lg:flex flex-col h-screen">
+      {/* Desktop: flex column layout filling viewport height */}
+      <div className="hidden lg:flex flex-col h-screen max-h-screen overflow-hidden">
         <div className="p-6 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
           <p className="text-sm text-muted">Your personal shopping assistant — ask about gifts, trends, and your wishlist</p>
         </div>
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+        <div ref={desktopScrollRef} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center">{emptyState}</div>
           ) : (
@@ -111,15 +117,20 @@ export default function ChatPage() {
               <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
             ))
           )}
+          <div ref={desktopEndRef} />
         </div>
-        {suggestionBar}
+        {suggestionChips && (
+          <div className="px-4 py-1.5 flex gap-2 overflow-x-auto flex-shrink-0">
+            {suggestionChips}
+          </div>
+        )}
         <div className="flex-shrink-0">
           <ChatInput onSend={sendMessage} disabled={streaming} />
         </div>
       </div>
 
       {/* Mobile: flex column, NO fixed positioning — avoids Safari keyboard issues */}
-      <div className="lg:hidden flex flex-col" style={{ height: 'calc(100dvh - 4rem)' }}>
+      <div className="lg:hidden flex flex-col -mb-20 w-full overflow-hidden" style={{ height: 'calc(100dvh - 4rem)' }}>
         {/* Header */}
         <div className="p-4 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
@@ -127,7 +138,7 @@ export default function ChatPage() {
         </div>
 
         {/* Messages — flex-1 scrollable area */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="pt-12">{emptyState}</div>
           ) : (
@@ -135,11 +146,15 @@ export default function ChatPage() {
               <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
             ))
           )}
-          <div ref={messagesEndRef} />
+          <div ref={mobileEndRef} />
         </div>
 
         {/* Suggestions + Input — pinned to bottom of flex, no position:fixed */}
-        {suggestionBar}
+        {suggestionChips && (
+          <div className="px-4 py-1.5 flex gap-2 overflow-x-auto flex-shrink-0">
+            {suggestionChips}
+          </div>
+        )}
         <div className="flex-shrink-0">
           <ChatInput onSend={sendMessage} disabled={streaming} onFocus={scrollToBottom} />
         </div>

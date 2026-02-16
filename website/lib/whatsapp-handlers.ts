@@ -167,6 +167,66 @@ export async function handleTextMessage(
     return `Your recent saves:\n\n${lines.join('\n')}`
   }
 
+  // Command: events
+  if (trimmed === 'events') {
+    const events = await prisma.event.findMany({
+      where: { userId },
+      orderBy: { date: 'asc' },
+      take: 10,
+    })
+    if (events.length === 0) return "You don't have any events yet. Ask me to create one, or visit *giftist.ai/events*."
+    const lines = events.map((ev, i) => {
+      const dateStr = new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      return `${i + 1}. ${ev.name} — ${dateStr}`
+    })
+    return `Your events:\n\n${lines.join('\n')}\n\nTo delete an event, reply *remove event <number>*`
+  }
+
+  // Command: remove event <n>
+  const removeEventMatch = trimmed.match(/^remove\s+event\s+(\d+)$/)
+  if (removeEventMatch) {
+    const index = parseInt(removeEventMatch[1]) - 1
+    const events = await prisma.event.findMany({
+      where: { userId },
+      orderBy: { date: 'asc' },
+      take: 10,
+    })
+    if (index < 0 || index >= events.length) return `Invalid number. You have ${events.length} events. Reply *events* to see them.`
+    const target = events[index]
+    await prisma.event.delete({ where: { id: target.id } })
+    return `Deleted event: ${target.name}`
+  }
+
+  // Command: edit <n> <field> <value>
+  const editMatch = trimmed.match(/^edit\s+(\d+)\s+(name|price)\s+(.+)$/i)
+  if (editMatch) {
+    const index = parseInt(editMatch[1]) - 1
+    const field = editMatch[2].toLowerCase()
+    const value = editMatch[3].trim()
+    const items = await prisma.giftListItem.findMany({
+      where: { listId },
+      include: { item: true },
+      orderBy: { addedAt: 'desc' },
+      take: 10,
+    })
+    if (index < 0 || index >= items.length) return `Invalid number. You have ${items.length} items. Reply *list* to see them.`
+    const target = items[index]
+
+    if (field === 'name') {
+      await prisma.item.update({ where: { id: target.item.id }, data: { name: value } })
+      return `Updated name: ${value}`
+    }
+
+    if (field === 'price') {
+      const cleanPrice = value.replace(/^\$/, '')
+      const match = cleanPrice.replace(/,/g, '').match(/[\d.]+/)
+      const priceValue = match ? parseFloat(match[0]) : null
+      const priceStr = priceValue ? `$${priceValue.toFixed(2)}` : value
+      await prisma.item.update({ where: { id: target.item.id }, data: { price: priceStr, priceValue } })
+      return `Updated price for "${target.item.name}": ${priceStr}`
+    }
+  }
+
   // Command: remove <n>
   const removeMatch = trimmed.match(/^remove\s+(\d+)$/)
   if (removeMatch) {
@@ -825,6 +885,10 @@ export function getHelpMessage(): string {
 - *list* — See your recent saves
 - *share* — Get a link to share your wishlist
 - *remove <number>* — Remove an item (e.g. "remove 3")
+- *edit <number> name <new name>* — Rename an item
+- *edit <number> price <new price>* — Update item price
+- *events* — See your events
+- *remove event <number>* — Delete an event
 
 *On the web (giftist.ai):*
 - Visual wishlist feed with trending gifts

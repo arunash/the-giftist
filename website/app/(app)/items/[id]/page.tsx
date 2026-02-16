@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users, Heart, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users, Heart, ShoppingBag, Pencil, Trash2, X } from 'lucide-react'
 import { formatPrice, getProgressPercentage, formatDate, shareOrCopy } from '@/lib/utils'
 
 interface Contribution {
@@ -55,6 +55,11 @@ export default function ItemDetailPage() {
   const [thankYouId, setThankYouId] = useState<string | null>(null)
   const [thankYouMsg, setThankYouMsg] = useState('')
   const [sendingThankYou, setSendingThankYou] = useState(false)
+  const [isEditingItem, setIsEditingItem] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingItem, setDeletingItem] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -146,6 +151,85 @@ export default function ItemDetailPage() {
     }
   }
 
+  const startEditing = () => {
+    if (!item) return
+    setEditName(item.name)
+    setEditPrice(item.price || '')
+    setIsEditingItem(true)
+  }
+
+  const cancelEditing = () => {
+    setIsEditingItem(false)
+    setEditName('')
+    setEditPrice('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!item || savingEdit) return
+    setSavingEdit(true)
+    try {
+      const patchData: any = {}
+      if (editName.trim() && editName.trim() !== item.name) {
+        patchData.name = editName.trim()
+      }
+      if (editPrice !== (item.price || '')) {
+        patchData.price = editPrice || null
+        const match = editPrice.replace(/,/g, '').match(/[\d.]+/)
+        patchData.priceValue = match ? parseFloat(match[0]) : null
+      }
+      if (Object.keys(patchData).length === 0) {
+        cancelEditing()
+        return
+      }
+      const res = await fetch(`/api/items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patchData),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: updated.name ?? prev.name,
+                price: updated.price ?? prev.price,
+                priceValue: updated.priceValue ?? prev.priceValue,
+              }
+            : prev
+        )
+        setIsEditingItem(false)
+      } else {
+        alert('Failed to save changes')
+      }
+    } catch (err) {
+      console.error('Failed to save edit:', err)
+      alert('Failed to save changes')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeleteItem = async () => {
+    if (!item || deletingItem) return
+    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return
+
+    setDeletingItem(true)
+    try {
+      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/feed')
+      } else {
+        alert('Failed to delete item')
+      }
+    } catch (err) {
+      console.error('Failed to delete item:', err)
+      alert('Failed to delete item')
+    } finally {
+      setDeletingItem(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -215,21 +299,78 @@ export default function ItemDetailPage() {
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <h1 className="text-xl font-semibold text-gray-900">{item.name}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted">{item.domain}</span>
-                {item.price && (
-                  <span className="text-sm font-semibold text-gray-900">{item.price}</span>
-                )}
-              </div>
+              {isEditingItem ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-hover border border-border rounded-lg text-gray-900 text-lg font-semibold outline-none focus:border-primary"
+                    placeholder="Item name"
+                  />
+                  <input
+                    type="text"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-hover border border-border rounded-lg text-gray-900 text-sm outline-none focus:border-primary"
+                    placeholder="Price (e.g. $49.99)"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={savingEdit}
+                      className="px-3 py-1.5 bg-primary text-white text-sm rounded-lg font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                    >
+                      {savingEdit ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      className="px-3 py-1.5 text-sm text-muted hover:text-gray-900 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-xl font-semibold text-gray-900">{item.name}</h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-muted">{item.domain}</span>
+                    {item.price && (
+                      <span className="text-sm font-semibold text-gray-900">{item.price}</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-2 bg-surface-hover rounded-lg text-sm text-muted hover:text-gray-900 transition-colors"
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-              {copied ? 'Copied!' : 'Share'}
-            </button>
+            <div className="flex items-center gap-1">
+              {!isEditingItem && (
+                <>
+                  <button
+                    onClick={startEditing}
+                    className="p-2 rounded-lg text-muted hover:text-gray-900 hover:bg-surface-hover transition-colors"
+                    title="Edit item"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleDeleteItem}
+                    disabled={deletingItem}
+                    className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                    title="Delete item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-1.5 px-3 py-2 bg-surface-hover rounded-lg text-sm text-muted hover:text-gray-900 transition-colors"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                {copied ? 'Copied!' : 'Share'}
+              </button>
+            </div>
           </div>
 
           {/* Funding progress */}

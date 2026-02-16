@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { daysUntil } from '@/lib/utils'
 import { Plus, Calendar } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import EventCardActions from './EventCardActions'
 
 export default async function EventsPage() {
   const session = await getServerSession(authOptions)
@@ -65,44 +66,51 @@ export default async function EventsPage() {
             {events.map((event) => {
               const days = daysUntil(event.date)
               return (
-                <Link
+                <div
                   key={event.id}
-                  href={`/events/${event.id}`}
-                  className="block bg-surface rounded-xl p-5 border border-border hover:border-border-light transition"
+                  className="bg-surface rounded-xl p-5 border border-border hover:border-border-light transition relative"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-medium text-accent uppercase">
-                        {eventTypeLabels[event.type] || 'Event'}
-                      </span>
-                      <h3 className="font-semibold text-gray-900 mt-1 text-lg">{event.name}</h3>
-                      <p className="text-sm text-muted mt-1">
-                        {new Date(event.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <p className="text-sm text-muted mt-1">
-                        {event.items.length} item{event.items.length !== 1 ? 's' : ''}
-                      </p>
+                  <Link
+                    href={`/events/${event.id}`}
+                    className="block"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-medium text-accent uppercase">
+                          {eventTypeLabels[event.type] || 'Event'}
+                        </span>
+                        <h3 className="font-semibold text-gray-900 mt-1 text-lg">{event.name}</h3>
+                        <p className="text-sm text-muted mt-1">
+                          {new Date(event.date).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                        <p className="text-sm text-muted mt-1">
+                          {event.items.length} item{event.items.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={`text-sm font-medium px-3 py-1 rounded-full ${
+                            days <= 7
+                              ? 'bg-red-500/10 text-red-400'
+                              : days <= 30
+                              ? 'bg-yellow-500/10 text-yellow-400'
+                              : days < 0
+                              ? 'bg-surface-hover text-muted'
+                              : 'bg-green-500/10 text-green-600'
+                          }`}
+                        >
+                          {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : days < 0 ? 'Passed' : `${days} days`}
+                        </span>
+                      </div>
                     </div>
-                    <span
-                      className={`text-sm font-medium px-3 py-1 rounded-full ${
-                        days <= 7
-                          ? 'bg-red-500/10 text-red-400'
-                          : days <= 30
-                          ? 'bg-yellow-500/10 text-yellow-400'
-                          : days < 0
-                          ? 'bg-surface-hover text-muted'
-                          : 'bg-green-500/10 text-green-600'
-                      }`}
-                    >
-                      {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : days < 0 ? 'Passed' : `${days} days`}
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
+                  <EventCardActions eventId={event.id} eventName={event.name} />
+                </div>
               )
             })}
           </div>

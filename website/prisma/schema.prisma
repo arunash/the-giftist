@@ -8,47 +8,39 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
-  phone         String?   @unique
-  name          String?
-  image         String?
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Pending product confirmation (WhatsApp flow)
-  pendingProduct String? // JSON: {name, price, priceValue, image, url, domain, source}
-
-  // Demographics (for AI personalization)
-  birthday     DateTime?
-  gender       String?   // MALE, FEMALE, NON_BINARY, PREFER_NOT_TO_SAY
-  ageRange     String?   // 18-24, 25-34, 35-44, 45-54, 55-64, 65+
-  interests    String?   // JSON array: ["tech","fashion",...]
-  giftBudget   String?   // UNDER_50, 50_100, 100_250, 250_500, OVER_500
-  relationship String?   // SINGLE, COUPLE, FAMILY
-
-  // Relations
-  accounts       Account[]
-  sessions       Session[]
-  items          Item[]
-  events         Event[]
-  contributions  Contribution[]
-  giftLists      GiftList[]
-  giftListItems  GiftListItem[]
-  wallet         Wallet?
-  subscription   Subscription?
-  activityEvents ActivityEvent[]
-  chatMessages   ChatMessage[]
-  shareId        String?   @unique @default(cuid())
-
-  // Account linking
-  linkingToken String?
-
-  // Monetization
-  lifetimeContributionsReceived Float   @default(0)
-  stripeConnectAccountId        String? @unique
-  stripeConnectOnboarded        Boolean @default(false)
+  id                            String          @id @default(cuid())
+  email                         String?         @unique
+  phone                         String?         @unique
+  name                          String?
+  image                         String?
+  emailVerified                 DateTime?
+  createdAt                     DateTime        @default(now())
+  updatedAt                     DateTime        @updatedAt
+  pendingProduct                String?
+  birthday                      DateTime?
+  gender                        String?
+  ageRange                      String?
+  interests                     String?
+  giftBudget                    String?
+  relationship                  String?
+  shareId                       String?         @unique @default(cuid())
+  linkingToken                  String?
+  lifetimeContributionsReceived Float           @default(0)
+  stripeConnectAccountId        String?         @unique
+  stripeConnectOnboarded        Boolean         @default(false)
+  lastDigestSentAt              DateTime?
+  digestOptOut                  Boolean         @default(false)
+  accounts                      Account[]
+  activityEvents                ActivityEvent[]
+  chatMessages                  ChatMessage[]
+  contributions                 Contribution[]
+  events                        Event[]
+  giftLists                     GiftList[]
+  giftListItems                 GiftListItem[]
+  items                         Item[]
+  sessions                      Session[]
+  subscription                  Subscription?
+  wallet                        Wallet?
 }
 
 model Account {
@@ -64,8 +56,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -87,148 +78,129 @@ model VerificationToken {
 }
 
 model Item {
-  id           String   @id @default(cuid())
-  userId       String
-  name         String
-  price        String?
-  priceValue   Float?
-  image        String?
-  url          String
-  domain       String
-  category     String?
-  addedAt      DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Price tracking
-  priceHistory PriceHistory[]
-
-  // Source tracking
-  source       String   @default("MANUAL") // WHATSAPP, EXTENSION, MANUAL, CHAT
-  notes        String?
-  tags         String?  // JSON array string
-
-  // Wallet/funding
-  goalAmount   Float?
-  fundedAmount Float    @default(0)
-  isPurchased  Boolean  @default(false)
-  purchasedAt  DateTime?
-
-  // Relations
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventItems         EventItem[]
-  contributions      Contribution[]
-  giftListItems      GiftListItem[]
-  walletTransactions WalletTransaction[]
+  id                 String              @id @default(cuid())
+  userId             String
+  name               String
+  price              String?
+  priceValue         Float?
+  image              String?
+  url                String
+  domain             String
+  category           String?
+  addedAt            DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  source             String              @default("MANUAL")
+  notes              String?
+  tags               String?
+  goalAmount         Float?
+  fundedAmount       Float               @default(0)
+  isPurchased        Boolean             @default(false)
+  purchasedAt        DateTime?
   activityEvents     ActivityEvent[]
+  contributions      Contribution[]
+  eventItems         EventItem[]
+  giftListItems      GiftListItem[]
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceHistory       PriceHistory[]
+  walletTransactions WalletTransaction[]
 
   @@index([userId])
 }
 
 model PriceHistory {
-  id        String   @id @default(cuid())
-  itemId    String
-  price     Float
+  id         String   @id @default(cuid())
+  itemId     String
+  price      Float
   recordedAt DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId])
 }
 
 model Event {
-  id          String    @id @default(cuid())
-  userId      String
-  name        String
-  type        String    // BIRTHDAY, ANNIVERSARY, WEDDING, BABY_SHOWER, CHRISTMAS, HOLIDAY, OTHER
-  date        DateTime
-  description String?
-  shareUrl    String?   @unique @default(cuid())
-  isPublic    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Event-level funding
-  fundedAmount Float    @default(0)
-
-  // Relations
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items          EventItem[]
-  giftLists      GiftList[]
-  contributions  Contribution[]
+  id            String         @id @default(cuid())
+  userId        String
+  name          String
+  type          String
+  date          DateTime
+  description   String?
+  shareUrl      String?        @unique @default(cuid())
+  isPublic      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  fundedAmount  Float          @default(0)
+  contributions Contribution[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         EventItem[]
+  giftLists     GiftList[]
 
   @@index([userId])
 }
 
 model EventItem {
-  id        String   @id @default(cuid())
-  eventId   String
-  itemId    String
-  priority  Int      @default(0)
-  addedAt   DateTime @default(now())
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  item  Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  eventId  String
+  itemId   String
+  priority Int      @default(0)
+  addedAt  DateTime @default(now())
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, itemId])
 }
 
 model Contribution {
-  id            String   @id @default(cuid())
-  itemId        String?  // null for event-level contributions
-  eventId       String?  // for event-level contributions
-  contributorId String?  // null if anonymous
-  contributorEmail String? // for non-logged-in gifter notifications
-  amount        Float
-  message       String?
-  isAnonymous   Boolean  @default(false)
-  stripePaymentId String?
-  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
-  platformFeeRate   Float @default(0)
-  platformFeeAmount Float @default(0)
+  id                String    @id @default(cuid())
+  itemId            String?
+  eventId           String?
+  contributorId     String?
+  contributorEmail  String?
+  amount            Float
+  message           String?
+  isAnonymous       Boolean   @default(false)
+  stripePaymentId   String?
+  status            String    @default("PENDING")
+  platformFeeRate   Float     @default(0)
+  platformFeeAmount Float     @default(0)
   thankYouMessage   String?
   thankYouSentAt    DateTime?
-  createdAt     DateTime @default(now())
-
-  item        Item?  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  event       Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  contributor User?  @relation(fields: [contributorId], references: [id])
+  createdAt         DateTime  @default(now())
+  contributor       User?     @relation(fields: [contributorId], references: [id])
+  event             Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  item              Item?     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId])
   @@index([eventId])
 }
 
 model GiftList {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   userId      String
   name        String
   description String?
-  shareUrl    String   @unique @default(cuid())
-  isPublic    Boolean  @default(true)
+  shareUrl    String         @unique @default(cuid())
+  isPublic    Boolean        @default(true)
   eventId     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  items GiftListItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  event       Event?         @relation(fields: [eventId], references: [id])
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       GiftListItem[]
 
   @@index([userId])
 }
 
 model GiftListItem {
-  id       String  @id @default(cuid())
-  listId   String
-  itemId   String
-  priority Int     @default(0)
+  id        String   @id @default(cuid())
+  listId    String
+  itemId    String
+  priority  Int      @default(0)
   addedById String?
-  note     String?
-  addedAt  DateTime @default(now())
-
-  // Relations
-  list    GiftList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  item    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  addedBy User?    @relation(fields: [addedById], references: [id])
+  note      String?
+  addedAt   DateTime @default(now())
+  addedBy   User?    @relation(fields: [addedById], references: [id])
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  list      GiftList @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@unique([listId, itemId])
   @@index([listId])
@@ -250,12 +222,11 @@ model WhatsAppMessage {
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  balance   Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id           String              @id @default(cuid())
+  userId       String              @unique
+  balance      Float               @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
 }
@@ -263,16 +234,15 @@ model Wallet {
 model WalletTransaction {
   id              String   @id @default(cuid())
   walletId        String
-  type            String   // DEPOSIT, FUND_ITEM, REFUND, PAYOUT
+  type            String
   amount          Float
   stripeSessionId String?
   itemId          String?
-  status          String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  status          String   @default("PENDING")
   description     String?
   createdAt       DateTime @default(now())
-
-  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  item   Item?  @relation(fields: [itemId], references: [id])
+  item            Item?    @relation(fields: [itemId], references: [id])
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
 }
@@ -280,14 +250,13 @@ model WalletTransaction {
 model ActivityEvent {
   id         String   @id @default(cuid())
   userId     String
-  type       String   // ITEM_ADDED, ITEM_FUNDED, ITEM_PURCHASED, WALLET_DEPOSIT, CONTRIBUTION_RECEIVED, EVENT_CREATED
-  visibility String   @default("PRIVATE") // PRIVATE, PUBLIC
-  metadata   String?  // JSON string
+  type       String
+  visibility String   @default("PRIVATE")
+  metadata   String?
   itemId     String?
   createdAt  DateTime @default(now())
-
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item Item? @relation(fields: [itemId], references: [id])
+  item       Item?    @relation(fields: [itemId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
@@ -296,11 +265,10 @@ model ActivityEvent {
 model ChatMessage {
   id        String   @id @default(cuid())
   userId    String
-  role      String   // USER, ASSISTANT
+  role      String
   content   String
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -311,24 +279,23 @@ model Subscription {
   stripeCustomerId     String    @unique
   stripeSubscriptionId String?   @unique
   stripePriceId        String?
-  status               String    @default("INACTIVE") // ACTIVE, INACTIVE, PAST_DUE, CANCELED
+  status               String    @default("INACTIVE")
   currentPeriodEnd     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ApiCallLog {
   id            String   @id @default(cuid())
-  provider      String   // ANTHROPIC, OPENAI, TWILIO, STRIPE, WHATSAPP
+  provider      String
   endpoint      String
   model         String?
   inputTokens   Int?
   outputTokens  Int?
   estimatedCost Float    @default(0)
   userId        String?
-  source        String?  // WEB, WHATSAPP, WEBHOOK
+  source        String?
   metadata      String?
   createdAt     DateTime @default(now())
 
@@ -338,7 +305,7 @@ model ApiCallLog {
 
 model ErrorLog {
   id        String   @id @default(cuid())
-  source    String   // STRIPE_WEBHOOK, WHATSAPP_WEBHOOK, API, CHAT, EXTRACT
+  source    String
   message   String
   stack     String?
   metadata  String?

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Gift, Check } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Gift, Check, Trash2 } from 'lucide-react'
 
 const eventTypes = [
   { value: 'BIRTHDAY', label: 'Birthday', emoji: '🎂' },
@@ -14,9 +14,15 @@ const eventTypes = [
   { value: 'OTHER', label: 'Other', emoji: '🎁' },
 ]
 
-export default function NewEventPage() {
+export default function EventFormPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('edit')
+  const isEditing = !!editId
+
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [fetchingEvent, setFetchingEvent] = useState(isEditing)
   const [items, setItems] = useState<any[]>([])
   const [formData, setFormData] = useState({
     name: '',
@@ -26,6 +32,7 @@ export default function NewEventPage() {
     itemIds: [] as string[],
   })
 
+  // Fetch user's items
   useEffect(() => {
     fetch('/api/items')
       .then((res) => res.json())
@@ -33,13 +40,42 @@ export default function NewEventPage() {
       .catch(console.error)
   }, [])
 
+  // Fetch event data when editing
+  useEffect(() => {
+    if (!editId) return
+    setFetchingEvent(true)
+    fetch(`/api/events/${editId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Event not found')
+        return res.json()
+      })
+      .then((event) => {
+        setFormData({
+          name: event.name || '',
+          type: event.type || 'BIRTHDAY',
+          date: event.date ? new Date(event.date).toISOString().split('T')[0] : '',
+          description: event.description || '',
+          itemIds: event.items?.map((ei: any) => ei.item?.id || ei.itemId) || [],
+        })
+        setFetchingEvent(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        alert('Could not load event for editing')
+        router.push('/events')
+      })
+  }, [editId, router])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const res = await fetch('/api/events', {
-        method: 'POST',
+      const url = isEditing ? `/api/events/${editId}` : '/api/events'
+      const method = isEditing ? 'PATCH' : 'POST'
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
@@ -48,13 +84,33 @@ export default function NewEventPage() {
         const event = await res.json()
         router.push(`/events/${event.id}`)
       } else {
-        alert('Failed to create event')
+        alert(`Failed to ${isEditing ? 'update' : 'create'} event`)
       }
     } catch (error) {
       console.error(error)
-      alert('Failed to create event')
+      alert(`Failed to ${isEditing ? 'update' : 'create'} event`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!editId) return
+    if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/events/${editId}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/events')
+      } else {
+        alert('Failed to delete event')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Failed to delete event')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -67,11 +123,25 @@ export default function NewEventPage() {
     }))
   }
 
+  if (fetchingEvent) {
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-surface rounded-xl border border-border p-6">
+            <div className="animate-pulse text-muted text-center py-12">Loading event...</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-surface rounded-xl border border-border p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Event</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">
+            {isEditing ? 'Edit Event' : 'Create Event'}
+          </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Event Type */}
@@ -185,8 +255,23 @@ export default function NewEventPage() {
               disabled={loading || !formData.name || !formData.date}
               className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-hover transition disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Event'}
+              {loading
+                ? isEditing ? 'Saving...' : 'Creating...'
+                : isEditing ? 'Save Changes' : 'Create Event'}
             </button>
+
+            {/* Delete button (edit mode only) */}
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-red-500 border border-red-500/30 hover:bg-red-500/10 transition disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deleting ? 'Deleting...' : 'Delete Event'}
+              </button>
+            )}
           </form>
         </div>
       </div>

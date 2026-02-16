@@ -13,6 +13,7 @@ import EventContributeButton from './EventContributeButton'
 import AllocateFundsPanel from './AllocateFundsPanel'
 import ShareItemButton from './ShareItemButton'
 import ShareEventButton from './ShareEventButton'
+import EventOwnerActions from './EventOwnerActions'
 
 const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   BIRTHDAY: { label: 'Birthday', emoji: '🎂' },
@@ -207,6 +208,11 @@ export default async function EventPage({
             <p className="mt-4 text-secondary bg-surface-hover p-4 rounded-lg">
               {event.description}
             </p>
+          )}
+
+          {/* Owner Actions */}
+          {isOwner && (
+            <EventOwnerActions eventId={event.id} eventName={event.name} />
           )}
 
           {/* Overall Progress */}
