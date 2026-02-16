@@ -63,6 +63,10 @@ export default async function Home() {
           </p>
 
           <HeroChatInput />
+
+          <div className="mt-12 flex justify-center">
+            <WhatsAppQRBlock />
+          </div>
         </div>
       </section>
 
@@ -78,13 +82,6 @@ export default async function Home() {
             <span>Free forever</span>
             <span>WhatsApp native</span>
           </div>
-        </div>
-      </section>
-
-      {/* WhatsApp QR */}
-      <section className="py-16">
-        <div className="max-w-6xl mx-auto px-6 flex justify-center">
-          <WhatsAppQRBlock />
         </div>
       </section>
 
