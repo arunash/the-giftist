@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
       const availableBalance = user.lifetimeContributionsReceived || 0
       if (availableBalance < amount) throw new Error('INSUFFICIENT_BALANCE')
 
+      // Check platform's actual Stripe available balance
+      const stripeBalance = await stripe.balance.retrieve()
+      const usdAvailable = stripeBalance.available.find((b) => b.currency === 'usd')
+      const platformAvailable = (usdAvailable?.amount || 0) / 100
+      if (platformAvailable < amount) throw new Error('FUNDS_PENDING')
+
       // Create Stripe transfer to connected account
       const transfer = await stripe.transfers.create({
         amount: Math.round(amount * 100), // cents
@@ -81,6 +87,9 @@ export async function POST(request: NextRequest) {
     }
     if (error.message === 'INSUFFICIENT_BALANCE') {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })
+    }
+    if (error.message === 'FUNDS_PENDING') {
+      return NextResponse.json({ error: 'Funds are still pending. Please try again in 1-2 business days.' }, { status: 400 })
     }
     console.error('Error processing payout:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

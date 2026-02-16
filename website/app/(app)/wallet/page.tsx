@@ -14,7 +14,7 @@ export default function WalletPage() {
   const [unfundedItems, setUnfundedItems] = useState<any[]>([])
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean } | null>(null)
+  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
@@ -285,45 +285,57 @@ export default function WalletPage() {
                   <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
                   <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
                 </div>
-                {lifetimeReceived > 0 ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(lifetimeReceived)}</span></p>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                        <input
-                          type="number"
-                          value={withdrawAmount}
-                          onChange={(e) => setWithdrawAmount(e.target.value)}
-                          placeholder="0.00"
-                          max={lifetimeReceived}
-                          step="0.01"
-                          className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500/30"
-                        />
+                {(() => {
+                  const withdrawable = connectStatus?.availableBalance || 0
+                  const pending = lifetimeReceived - withdrawable
+                  return withdrawable > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(withdrawable)}</span></p>
+                      {pending > 0 && (
+                        <p className="text-xs text-amber-600">{formatPrice(pending)} pending — available in 1-2 business days</p>
+                      )}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                          <input
+                            type="number"
+                            value={withdrawAmount}
+                            onChange={(e) => setWithdrawAmount(e.target.value)}
+                            placeholder="0.00"
+                            max={withdrawable}
+                            step="0.01"
+                            className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500/30"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setWithdrawAmount(withdrawable.toFixed(2))}
+                          className="px-3 py-2.5 text-xs font-medium text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition"
+                        >
+                          Max
+                        </button>
                       </div>
                       <button
-                        onClick={() => setWithdrawAmount(lifetimeReceived.toFixed(2))}
-                        className="px-3 py-2.5 text-xs font-medium text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition"
+                        onClick={handleWithdraw}
+                        disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > withdrawable}
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
                       >
-                        Max
+                        {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''}`}
                       </button>
+                      {withdrawError && (
+                        <p className="text-sm text-red-500">{withdrawError}</p>
+                      )}
                     </div>
-                    <button
-                      onClick={handleWithdraw}
-                      disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > lifetimeReceived}
-                      className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
-                    >
-                      {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''}`}
-                    </button>
-                    {withdrawError && (
-                      <p className="text-sm text-red-500">{withdrawError}</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">
-                    Bank connected. Funds will appear here when friends contribute.
-                  </p>
-                )}
+                  ) : lifetimeReceived > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-amber-600 font-medium">{formatPrice(lifetimeReceived)} pending</p>
+                      <p className="text-xs text-gray-400">Funds will be available to withdraw in 1-2 business days.</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      Bank connected. Funds will appear here when friends contribute.
+                    </p>
+                  )
+                })()}
               </div>
             )}
           </div>

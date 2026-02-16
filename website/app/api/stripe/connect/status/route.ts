@@ -34,10 +34,23 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Get platform available balance to determine withdrawable amount
+    let availableBalance = 0
+    if (onboarded) {
+      try {
+        const balance = await stripe.balance.retrieve()
+        const usdAvailable = balance.available.find((b) => b.currency === 'usd')
+        availableBalance = (usdAvailable?.amount || 0) / 100 // cents to dollars
+      } catch {
+        // If balance check fails, leave at 0
+      }
+    }
+
     return NextResponse.json({
       connected: true,
       onboarded: !!onboarded,
       payoutsEnabled: account.payouts_enabled,
+      availableBalance,
     })
   } catch (error) {
     console.error('Error checking Connect status:', error)
