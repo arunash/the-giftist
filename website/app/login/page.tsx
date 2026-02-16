@@ -2,20 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Lock, MessageCircle } from 'lucide-react'
 import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
+  const q = searchParams.get('q')
+  const postAuthUrl = q ? `/chat?q=${encodeURIComponent(q)}` : '/feed'
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/feed')
+      router.replace(postAuthUrl)
     }
-  }, [status, router])
+  }, [status, router, postAuthUrl])
 
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
@@ -32,7 +35,7 @@ export default function LoginPage() {
     setGoogleLoading(true)
     setError('')
     try {
-      await signIn('google', { callbackUrl: '/dashboard' })
+      await signIn('google', { callbackUrl: postAuthUrl })
     } catch (err) {
       console.error('Google sign-in error:', err)
       setError('Failed to sign in with Google')
@@ -83,7 +86,7 @@ export default function LoginPage() {
       setError('Invalid or expired verification code')
       setPhoneLoading(false)
     } else {
-      router.push('/dashboard')
+      router.push(postAuthUrl)
     }
   }
 

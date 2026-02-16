@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { ArrowRight, Sparkles, MessageCircle, ShoppingBag, Users, Zap, Crown, Check, X } from 'lucide-react'
+import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X } from 'lucide-react'
 import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
+import { HeroChatInput } from '@/components/landing/hero-chat-input'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
@@ -39,59 +40,29 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hero — chat-first */}
       <section className="relative overflow-hidden">
         {/* Light gradient mesh */}
         <div className="absolute inset-0 bg-gradient-to-br from-orange-50 via-[#F9FAFB] to-violet-50" />
         <div className="absolute top-20 -right-40 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-40 w-[500px] h-[500px] bg-amber-100/30 rounded-full blur-3xl" />
 
-        <div className="relative max-w-6xl mx-auto px-6 pt-36 pb-24">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full mb-8">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Gift Concierge</span>
-              </div>
-
-              <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] mb-4">
-                Make Gifting<br />
-                <span className="text-primary">Great Again.</span>
-              </h1>
-
-              <p className="text-lg text-gray-500 max-w-xl leading-relaxed mb-6">
-                Your wishlist lives where your chats do. Just message your Gift Concierge on WhatsApp — send a link, a photo, or just ask.
-              </p>
-
-              <div className="space-y-3 mb-8">
-                <CheckItem text="Send a link → saved to your list" />
-                <CheckItem text="Ask for gift ideas → concierge responds instantly" />
-                <CheckItem text="Friends chip in → items get funded" />
-                <CheckItem text="Share your list in any group chat" />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-semibold text-base hover:bg-primary-hover transition shadow-lg shadow-primary/20"
-                >
-                  Start for free
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <a
-                  href="#how"
-                  className="inline-flex items-center justify-center gap-2 text-gray-900 px-8 py-3.5 rounded-xl font-semibold text-base border border-gray-300 hover:border-gray-400 hover:bg-gray-100 transition"
-                >
-                  See how it works
-                </a>
-              </div>
-            </div>
-
-            {/* WhatsApp QR — above the fold */}
-            <div className="flex justify-center">
-              <WhatsAppQRBlock />
-            </div>
+        <div className="relative max-w-3xl mx-auto px-6 pt-36 pb-24 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full mb-8">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Gift Concierge</span>
           </div>
+
+          <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] mb-4">
+            Who are you<br />
+            <span className="text-primary">shopping for?</span>
+          </h1>
+
+          <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-10">
+            Tell your Gift Concierge what you need. It handles the rest.
+          </p>
+
+          <HeroChatInput />
         </div>
       </section>
 
@@ -107,6 +78,13 @@ export default async function Home() {
             <span>Free forever</span>
             <span>WhatsApp native</span>
           </div>
+        </div>
+      </section>
+
+      {/* WhatsApp QR */}
+      <section className="py-16">
+        <div className="max-w-6xl mx-auto px-6 flex justify-center">
+          <WhatsAppQRBlock />
         </div>
       </section>
 
@@ -256,6 +234,21 @@ export default async function Home() {
             </p>
           </div>
 
+          {/* AI nudge */}
+          <div className="ai-suggestion-card max-w-3xl mx-auto mb-8 p-5 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <span className="ai-badge mb-2"><Sparkles className="h-3 w-3 inline -mt-0.5 mr-1" />AI Insight</span>
+                <p className="text-sm text-gray-600 mt-2">
+                  Most gift-givers have 3+ events a year. Gold members never hit the concierge limit when it matters most.
+                </p>
+              </div>
+              <a href="#gold" className="chip chip--filled whitespace-nowrap self-start">
+                See what Gold unlocks →
+              </a>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {/* Free tier */}
             <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
@@ -285,7 +278,7 @@ export default async function Home() {
             </div>
 
             {/* Gold tier */}
-            <div className="bg-white rounded-2xl border border-yellow-500/30 p-8 relative overflow-hidden shadow-sm">
+            <div id="gold" className="bg-white rounded-2xl border border-yellow-500/30 p-8 relative overflow-hidden shadow-sm">
               <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
                 Popular
               </div>
@@ -355,18 +348,6 @@ export default async function Home() {
           </div>
         </div>
       </footer>
-    </div>
-  )
-}
-
-function FloatingPill({ icon, text, delay }: { icon: React.ReactNode; text: string; delay: string }) {
-  return (
-    <div
-      className="flex items-center gap-2.5 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2.5 shadow-xl shadow-black/5 border border-gray-200 animate-float"
-      style={{ animationDelay: delay }}
-    >
-      <span className="text-primary">{icon}</span>
-      <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{text}</span>
     </div>
   )
 }
