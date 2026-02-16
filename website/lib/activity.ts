@@ -12,6 +12,7 @@ export type ActivityType =
   | 'EVENT_CONTRIBUTION_RECEIVED'
   | 'THANK_YOU_SENT'
   | 'FUNDS_ALLOCATED'
+  | 'CIRCLE_NOTIFIED'
 
 export async function createActivity({
   userId,

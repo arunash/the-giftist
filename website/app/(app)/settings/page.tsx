@@ -7,6 +7,7 @@ import LinkPhoneForm from './link-phone-form'
 import { ChatBubble } from '@/components/chat/chat-bubble'
 import { useChatStream } from '@/lib/hooks/use-chat-stream'
 import GoldUpgradeCard from '@/components/settings/gold-upgrade-card'
+import CircleSection from './circle-section'
 
 const BUDGET_LABELS: Record<string, string> = {
   UNDER_50: 'Under $50',
@@ -233,6 +234,9 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Gift Circle */}
+        <CircleSection />
 
         {/* Sign Out */}
         <button

@@ -33,7 +33,7 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
 }
 
 export async function buildChatContext(userId: string): Promise<string> {
-  const [items, events, wallet, user] = await Promise.all([
+  const [items, events, wallet, user, circleCount] = await Promise.all([
     prisma.item.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' },
@@ -75,6 +75,7 @@ export async function buildChatContext(userId: string): Promise<string> {
         relationship: true,
       },
     }),
+    prisma.circleMember.count({ where: { userId } }),
   ])
 
   const itemsList = items.map((i) => {
@@ -147,7 +148,7 @@ RESPONSE LENGTH — THIS IS CRITICAL:
 - One great recommendation beats five okay ones.
 ${demographicsSection}${tasteSection}
 USER CONTEXT:
-- Wallet: $${(wallet?.balance ?? 0).toFixed(2)} | Items: ${items.length} | Unfunded: ${items.filter(i => !i.isPurchased && i.fundedAmount === 0).length}
+- Wallet: $${(wallet?.balance ?? 0).toFixed(2)} | Items: ${items.length} | Unfunded: ${items.filter(i => !i.isPurchased && i.fundedAmount === 0).length} | Gift Circle: ${circleCount} ${circleCount === 1 ? 'person' : 'people'}${circleCount === 0 ? ' (suggest adding family/friends to their Gift Circle in Settings so they can be notified about events)' : ''}
 
 ITEMS (last 30):
 ${itemsList || '(none)'}

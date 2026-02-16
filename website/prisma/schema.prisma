@@ -33,6 +33,7 @@ model User {
   accounts                      Account[]
   activityEvents                ActivityEvent[]
   chatMessages                  ChatMessage[]
+  circleMembers                 CircleMember[]
   contributions                 Contribution[]
   events                        Event[]
   giftLists                     GiftList[]
@@ -118,21 +119,22 @@ model PriceHistory {
 }
 
 model Event {
-  id            String         @id @default(cuid())
-  userId        String
-  name          String
-  type          String
-  date          DateTime
-  description   String?
-  shareUrl      String?        @unique @default(cuid())
-  isPublic      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  fundedAmount  Float          @default(0)
-  contributions Contribution[]
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items         EventItem[]
-  giftLists     GiftList[]
+  id               String         @id @default(cuid())
+  userId           String
+  name             String
+  type             String
+  date             DateTime
+  description      String?
+  shareUrl         String?        @unique @default(cuid())
+  isPublic         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  fundedAmount     Float          @default(0)
+  circleNotifiedAt DateTime?
+  contributions    Contribution[]
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items            EventItem[]
+  giftLists        GiftList[]
 
   @@index([userId])
 }
@@ -314,4 +316,18 @@ model ErrorLog {
 
   @@index([source])
   @@index([createdAt])
+}
+
+model CircleMember {
+  id           String   @id @default(cuid())
+  userId       String
+  phone        String
+  name         String?
+  relationship String?
+  source       String   @default("MANUAL")
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phone])
+  @@index([userId])
 }

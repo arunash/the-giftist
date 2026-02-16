@@ -12,6 +12,7 @@ import AllocateFundsPanel from './AllocateFundsPanel'
 import ShareEventButton from './ShareEventButton'
 import EventOwnerActions from './EventOwnerActions'
 import EventItemsGrid from './EventItemsGrid'
+import EventNotifyCircle from './EventNotifyCircle'
 
 const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   BIRTHDAY: { label: 'Birthday', emoji: '🎂' },
@@ -211,6 +212,14 @@ export default async function EventPage({
           {/* Owner Actions */}
           {isOwner && (
             <EventOwnerActions eventId={event.id} eventName={event.name} />
+          )}
+
+          {/* Notify Circle (owner only) */}
+          {isOwner && (
+            <EventNotifyCircle
+              eventId={event.id}
+              circleNotifiedAt={event.circleNotifiedAt?.toISOString() ?? null}
+            />
           )}
 
           {/* Overall Progress */}
