@@ -64,7 +64,7 @@ export default async function Home() {
 
           <HeroChatInput />
 
-          <div className="mt-12 flex justify-center">
+          <div className="mt-12 hidden lg:flex justify-center">
             <WhatsAppQRBlock />
           </div>
         </div>
