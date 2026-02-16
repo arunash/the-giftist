@@ -364,14 +364,13 @@ export default function FeedPage() {
                   {futureEvents.map((event) => {
                     const days = daysUntil(new Date(event.date))
                     const firstImage = event.itemImages[0]
-                    const isActive = eventFilter === event.id
                     return (
-                      <button
+                      <Link
                         key={event.id}
-                        onClick={() => setEventFilter(isActive ? null : event.id)}
+                        href={`/events/${event.id}`}
                         className="flex flex-col items-center gap-1.5 flex-shrink-0 group/story"
                       >
-                        <div className={isActive ? 'ig-stories-ring' : 'rounded-full p-[2.5px] bg-gray-200 group-hover/story:bg-gray-300 transition'}>
+                        <div className="ig-stories-ring">
                           <div className="ig-stories-ring-inner">
                             <div className="w-16 h-16 rounded-full overflow-hidden ig-image-wrap">
                               {firstImage ? (
@@ -388,7 +387,7 @@ export default function FeedPage() {
                         <span className={`text-[10px] font-medium -mt-1 ${days <= 7 ? 'text-red-500' : days <= 30 ? 'text-amber-500' : 'text-gray-400'}`}>
                           {days < 0 ? 'Passed' : days === 0 ? 'Today!' : `${days}d`}
                         </span>
-                      </button>
+                      </Link>
                     )
                   })}
                   <Link
