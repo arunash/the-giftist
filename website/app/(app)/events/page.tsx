@@ -1,36 +1,79 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { daysUntil } from '@/lib/utils'
-import { Plus, Calendar } from 'lucide-react'
+import { Plus, Calendar, Search, Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { cn } from '@/lib/utils'
 import EventCardActions from './EventCardActions'
 
-export default async function EventsPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
+type EventWithItems = {
+  id: string
+  name: string
+  type: string
+  date: string
+  items: { item: { id: string; name: string; image: string | null } }[]
+}
 
-  const userId = (session.user as any).id
+const eventTypeLabels: Record<string, string> = {
+  BIRTHDAY: 'Birthday',
+  ANNIVERSARY: 'Anniversary',
+  WEDDING: 'Wedding',
+  BABY_SHOWER: 'Baby Shower',
+  CHRISTMAS: 'Christmas',
+  HOLIDAY: 'Holiday',
+  OTHER: 'Event',
+}
 
-  const events = await prisma.event.findMany({
-    where: { userId },
-    orderBy: { date: 'asc' },
-    include: {
-      items: { include: { item: true } },
-    },
-  })
+const sorts = [
+  { value: 'date-asc', label: 'Soonest' },
+  { value: 'date-desc', label: 'Latest' },
+  { value: 'name-asc', label: 'A\u2013Z' },
+]
 
-  const eventTypeLabels: Record<string, string> = {
-    BIRTHDAY: 'Birthday',
-    ANNIVERSARY: 'Anniversary',
-    WEDDING: 'Wedding',
-    BABY_SHOWER: 'Baby Shower',
-    CHRISTMAS: 'Christmas',
-    HOLIDAY: 'Holiday',
-    OTHER: 'Event',
+export default function EventsPage() {
+  const [events, setEvents] = useState<EventWithItems[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [localSearch, setLocalSearch] = useState('')
+  const [sort, setSort] = useState('date-asc')
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    fetch('/api/events')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setEvents(data)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  function handleSearchInput(value: string) {
+    setLocalSearch(value)
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearch(value)
+    }, 300)
   }
+
+  const filtered = useMemo(() => {
+    let result = events
+
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter((e) => e.name.toLowerCase().includes(q))
+    }
+
+    result = [...result].sort((a, b) => {
+      if (sort === 'date-desc') return new Date(b.date).getTime() - new Date(a.date).getTime()
+      if (sort === 'name-asc') return a.name.localeCompare(b.name)
+      return new Date(a.date).getTime() - new Date(b.date).getTime() // date-asc default
+    })
+
+    return result
+  }, [events, search, sort])
 
   return (
     <div className="p-6 lg:p-8">
@@ -46,7 +89,41 @@ export default async function EventsPage() {
           </Link>
         </div>
 
-        {events.length === 0 ? (
+        {/* Search + Sort */}
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => handleSearchInput(e.target.value)}
+              placeholder="Search events..."
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-surface text-sm text-gray-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+            />
+          </div>
+          <div className="flex gap-2">
+            {sorts.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setSort(s.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-all',
+                  sort === s.value
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted" />
+          </div>
+        ) : events.length === 0 ? (
           <EmptyState
             icon={<Calendar className="h-16 w-16" />}
             title="No events yet"
@@ -61,9 +138,11 @@ export default async function EventsPage() {
               </Link>
             }
           />
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-muted py-12">No events match &ldquo;{search}&rdquo;</p>
         ) : (
           <div className="space-y-4">
-            {events.map((event) => {
+            {filtered.map((event) => {
               const days = daysUntil(event.date)
               return (
                 <div

@@ -20,9 +20,15 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get('cursor')
     const limit = Math.min(parseInt(searchParams.get('limit') || '12'), 50)
     const eventId = searchParams.get('eventId')
+    const search = searchParams.get('search')?.trim()
 
     // Build where clause
     const where: any = { userId }
+
+    // Search by name
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' }
+    }
 
     // Filter by event
     if (eventId) {
