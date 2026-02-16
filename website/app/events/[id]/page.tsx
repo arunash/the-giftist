@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
-import { Gift, Calendar, ArrowLeft } from 'lucide-react'
+import { Gift, Calendar, ArrowLeft, Pencil } from 'lucide-react'
 import Image from 'next/image'
 import ContributeButton from './ContributeButton'
 import EventContributeButton from './EventContributeButton'
@@ -283,6 +283,7 @@ export default async function EventPage({
                 key={eventItem.item.id}
                 item={eventItem.item}
                 ownerName={event.user.name || 'Someone'}
+                isOwner={isOwner}
               />
             ))}
           </div>
@@ -292,7 +293,7 @@ export default async function EventPage({
   )
 }
 
-function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
+function ItemCard({ item, ownerName, isOwner }: { item: any; ownerName: string; isOwner: boolean }) {
   const goalAmount = item.goalAmount || item.priceValue || 0
   const progress = getProgressPercentage(item.fundedAmount, goalAmount)
   const remaining = Math.max(0, goalAmount - item.fundedAmount)
@@ -331,9 +332,20 @@ function ItemCard({ item, ownerName }: { item: any; ownerName: string }) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
-          {item.name}
-        </h3>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-semibold text-gray-900 line-clamp-2">
+            {item.name}
+          </h3>
+          {isOwner && (
+            <Link
+              href={`/items/${item.id}`}
+              className="flex-shrink-0 p-1.5 rounded-lg text-muted hover:text-gray-900 hover:bg-surface-hover transition-colors"
+              title="View & edit item"
+            >
+              <Pencil className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
         <p className="text-xl font-bold text-primary mb-3">
           {formatPrice(goalAmount)}
         </p>
