@@ -21,10 +21,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Block /admin routes on non-admin hostnames (except API routes which have their own auth)
-  if (!hostname.startsWith('admin.') && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/feed', request.url))
-  }
+  // Allow /admin routes on main domain too (admin pages check isAdmin in session)
+  // Previously blocked to require admin. subdomain, but cookies don't share on Vercel
 
   // Bearer token → cookie injection for Chrome extension
   const authHeader = request.headers.get('authorization')

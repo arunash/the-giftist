@@ -632,8 +632,8 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
             })
             itemId = newItem.id
 
-            // Fire-and-forget: enrich with real image
-            enrichItem(itemId, ateData.itemName).catch(() => {})
+            // Enrich with real image — await so Vercel doesn't kill it
+            await enrichItem(itemId, ateData.itemName).catch(() => {})
 
             createActivity({
               userId,
@@ -644,13 +644,19 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
             }).catch(() => {})
           }
 
-          // Link item to event
-          const eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })
+          // Link item to event — resolve by ID first, fallback to name match
+          let eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })
+          if (!eventExists && ateData.eventName) {
+            eventExists = await prisma.event.findFirst({
+              where: { userId, name: { contains: ateData.eventName, mode: 'insensitive' } },
+              orderBy: { date: 'asc' },
+            })
+          }
           if (eventExists && itemId) {
             // Remove existing event mappings first
             await prisma.eventItem.deleteMany({ where: { itemId } })
             await prisma.eventItem.create({
-              data: { eventId: ateData.eventId, itemId, priority: 0 },
+              data: { eventId: eventExists.id, itemId, priority: 0 },
             })
 
             createActivity({

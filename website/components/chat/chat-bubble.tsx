@@ -95,11 +95,27 @@ async function addItemToEvent(data: AddToEventData): Promise<boolean> {
       fetch(`/api/items/${itemId}/enrich`, { method: 'POST' }).catch(() => {})
     }
 
+    // Resolve eventId — if "new" or invalid, find by event name
+    let resolvedEventId = data.eventId
+    if (!resolvedEventId || resolvedEventId === 'new' || resolvedEventId === 'TBD') {
+      if (data.eventName) {
+        const eventsRes = await fetch('/api/events')
+        if (eventsRes.ok) {
+          const events = await eventsRes.json()
+          const match = events.find((e: any) =>
+            e.name.toLowerCase().includes(data.eventName!.toLowerCase())
+          )
+          if (match) resolvedEventId = match.id
+        }
+      }
+      if (!resolvedEventId || resolvedEventId === 'new' || resolvedEventId === 'TBD') return false
+    }
+
     // Link item to event
     const res = await fetch(`/api/items/${itemId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId: data.eventId }),
+      body: JSON.stringify({ eventId: resolvedEventId }),
     })
     return res.ok
   } catch {

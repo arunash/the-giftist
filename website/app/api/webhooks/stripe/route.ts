@@ -3,7 +3,7 @@ import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
-import { logError } from '@/lib/api-logger'
+import { logApiCall, logError } from '@/lib/api-logger'
 import { sendTextMessage } from '@/lib/whatsapp'
 
 export async function POST(request: NextRequest) {
@@ -32,6 +32,13 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as any
         const type = session.metadata?.type
+        logApiCall({
+          provider: 'STRIPE',
+          endpoint: 'webhook/checkout.session.completed',
+          amount: (session.amount_total || 0) / 100,
+          userId: session.metadata?.userId || null,
+          source: type || 'STRIPE',
+        }).catch(() => {})
 
         if (type === 'wallet_deposit') {
           const { walletId, userId } = session.metadata

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizePhone } from '@/lib/whatsapp'
 import twilio from 'twilio'
-import { logError } from '@/lib/api-logger'
+import { logApiCall, logError } from '@/lib/api-logger'
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
         to: `+${normalized}`,
         channel: 'whatsapp',
       })
+
+    logApiCall({ provider: 'TWILIO', endpoint: 'verify/send', source: 'AUTH' }).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

@@ -7,6 +7,7 @@ import { normalizePhone } from './whatsapp'
 import { createDefaultEventsForUser } from './default-events'
 import twilio from 'twilio'
 import { ADMIN_PHONES } from './admin'
+import { logApiCall } from './api-logger'
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -91,6 +92,8 @@ export const authOptions: NextAuthOptions = {
               to: `+${normalized}`,
               code: credentials.code,
             })
+
+          logApiCall({ provider: 'TWILIO', endpoint: 'verify/check', source: 'AUTH' }).catch(() => {})
 
           if (check.status !== 'approved') {
             return null

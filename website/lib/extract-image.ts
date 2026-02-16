@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { logApiCall } from '@/lib/api-logger'
 
 export interface ImageProductInfo {
   name: string
@@ -59,6 +60,15 @@ If this is not a product image, return {"name": null}.`,
       },
     ],
   })
+
+  logApiCall({
+    provider: 'OPENAI',
+    endpoint: 'chat.completions',
+    model: 'gpt-5.2',
+    inputTokens: response.usage?.prompt_tokens || null,
+    outputTokens: response.usage?.completion_tokens || null,
+    source: 'WHATSAPP',
+  }).catch(() => {})
 
   const text = response.choices[0]?.message?.content || ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
