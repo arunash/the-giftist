@@ -7,8 +7,6 @@ import { ArrowRight } from 'lucide-react'
 const suggestions = [
   'Gift for mom under $50',
   'Birthday ideas for my partner',
-  'Something unique for a coworker',
-  'Help me plan a wedding registry',
 ]
 
 export function HeroChatInput() {
