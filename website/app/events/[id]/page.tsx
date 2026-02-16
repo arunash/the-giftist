@@ -5,15 +5,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatPrice, daysUntil, getProgressPercentage } from '@/lib/utils'
-import { applyAffiliateTag } from '@/lib/affiliate'
-import { Gift, Calendar, ArrowLeft, Pencil } from 'lucide-react'
+import { Gift, Calendar, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
-import ContributeButton from './ContributeButton'
 import EventContributeButton from './EventContributeButton'
 import AllocateFundsPanel from './AllocateFundsPanel'
-import ShareItemButton from './ShareItemButton'
 import ShareEventButton from './ShareEventButton'
 import EventOwnerActions from './EventOwnerActions'
+import EventItemsGrid from './EventItemsGrid'
 
 const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   BIRTHDAY: { label: 'Birthday', emoji: '🎂' },
@@ -266,146 +264,27 @@ export default async function EventPage({
           Wishlist Items ({event.items.length})
         </h2>
 
-        {event.items.length === 0 ? (
-          <div className="bg-surface rounded-xl p-12 text-center border border-border">
-            <Gift className="h-16 w-16 text-[#333] mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No items added yet
-            </h3>
-            <p className="text-muted">
-              Check back later for wishlist items!
-            </p>
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-6">
-            {event.items.map((eventItem) => (
-              <ItemCard
-                key={eventItem.item.id}
-                item={eventItem.item}
-                ownerName={event.user.name || 'Someone'}
-                isOwner={isOwner}
-              />
-            ))}
-          </div>
-        )}
+        <EventItemsGrid
+          items={event.items.map((ei) => ({
+            id: ei.item.id,
+            name: ei.item.name,
+            image: ei.item.image,
+            url: ei.item.url,
+            priceValue: ei.item.priceValue,
+            goalAmount: ei.item.goalAmount,
+            fundedAmount: ei.item.fundedAmount,
+            isPurchased: ei.item.isPurchased,
+            contributions: ei.item.contributions.map((c: any) => ({
+              id: c.id,
+              amount: c.amount,
+              isAnonymous: c.isAnonymous,
+              contributor: c.contributor ? { name: c.contributor.name } : null,
+            })),
+          }))}
+          ownerName={event.user.name || 'Someone'}
+          isOwner={isOwner}
+        />
       </main>
-    </div>
-  )
-}
-
-function ItemCard({ item, ownerName, isOwner }: { item: any; ownerName: string; isOwner: boolean }) {
-  const goalAmount = item.goalAmount || item.priceValue || 0
-  const progress = getProgressPercentage(item.fundedAmount, goalAmount)
-  const remaining = Math.max(0, goalAmount - item.fundedAmount)
-  const isFullyFunded = item.fundedAmount >= goalAmount
-  const isPurchased = item.isPurchased
-  const affiliateUrl = applyAffiliateTag(item.url)
-
-  return (
-    <div className="bg-surface rounded-xl overflow-hidden border border-border">
-      {/* Image */}
-      <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="block relative h-48 bg-surface-hover">
-        {item.image ? (
-          <img
-            src={item.image}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <Gift className="h-16 w-16 text-[#333]" />
-          </div>
-        )}
-        {isPurchased && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-success text-white px-4 py-2 rounded-lg font-semibold">
-              Purchased!
-            </span>
-          </div>
-        )}
-        {!isPurchased && isFullyFunded && (
-          <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-semibold">
-            Fully Funded!
-          </div>
-        )}
-      </a>
-
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-gray-900 line-clamp-2">
-            {item.name}
-          </h3>
-          {isOwner && (
-            <Link
-              href={`/items/${item.id}`}
-              className="flex-shrink-0 p-1.5 rounded-lg text-muted hover:text-gray-900 hover:bg-surface-hover transition-colors"
-              title="View & edit item"
-            >
-              <Pencil className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-        <p className="text-xl font-bold text-primary mb-3">
-          {formatPrice(goalAmount)}
-        </p>
-
-        {/* Progress Bar */}
-        <div className="mb-3">
-          <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${
-                isFullyFunded ? 'bg-success' : 'bg-primary'
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-sm mt-1">
-            <span className="text-muted">
-              {formatPrice(item.fundedAmount)} funded
-            </span>
-            <span className="text-muted">{progress}%</span>
-          </div>
-        </div>
-
-        {/* Contributors */}
-        {item.contributions.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs text-muted mb-1">Contributors:</p>
-            <div className="flex flex-wrap gap-1">
-              {item.contributions.slice(0, 5).map((c: any) => (
-                <span
-                  key={c.id}
-                  className="text-xs bg-surface-hover text-muted px-2 py-1 rounded"
-                >
-                  {c.isAnonymous
-                    ? 'Anonymous'
-                    : c.contributor?.name || 'Someone'}{' '}
-                  ({formatPrice(c.amount)})
-                </span>
-              ))}
-              {item.contributions.length > 5 && (
-                <span className="text-xs text-muted">
-                  +{item.contributions.length - 5} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          {!isPurchased && !isFullyFunded && (
-            <ContributeButton
-              itemId={item.id}
-              itemName={item.name}
-              remaining={remaining}
-              ownerName={ownerName}
-            />
-          )}
-          <ShareItemButton itemId={item.id} ownerName={ownerName} />
-        </div>
-      </div>
     </div>
   )
 }

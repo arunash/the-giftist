@@ -96,7 +96,8 @@ function transformActivity(raw: any) {
 export default function FeedPage() {
   const [items, setItems] = useState<any[]>([])
   const [filter, setFilter] = useState('all')
-  const [sort] = useState('newest')
+  const [sort, setSort] = useState('newest')
+  const [search, setSearch] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -130,6 +131,7 @@ export default function FeedPage() {
       const params = new URLSearchParams({ filter, sort, limit: '12' })
       if (!reset && cursor) params.set('cursor', cursor)
       if (eventFilter) params.set('eventId', eventFilter)
+      if (search) params.set('search', search)
 
       const res = await fetch(`/api/feed?${params}`)
       const data = await res.json()
@@ -156,7 +158,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [filter, sort, cursor, eventFilter])
+  }, [filter, sort, cursor, eventFilter, search])
 
   const fetchActivities = useCallback(async (tab: 'mine' | 'community') => {
     setActivityLoading(true)
@@ -204,7 +206,13 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchFeed(true)
-  }, [filter, eventFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter, sort, search, eventFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset sort when switching between items/events views
+  useEffect(() => {
+    setSort('newest')
+    setSearch('')
+  }, [viewMode])
 
   useEffect(() => {
     fetchActivities(activityTab)
@@ -316,6 +324,11 @@ export default function FeedPage() {
               </div>
             </div>
 
+            {/* Search + Sort + Filter */}
+            <div className="mb-4">
+              <ItemFilters filter={filter} onFilterChange={setFilter} sort={sort} onSortChange={setSort} search={search} onSearchChange={setSearch} mode={viewMode} />
+            </div>
+
             {/* View mode toggle pills */}
             <div className="flex gap-2 mb-4">
               <button
@@ -401,20 +414,17 @@ export default function FeedPage() {
                   <AddProductBar onAdded={() => fetchFeed(true)} />
                 </div>
 
-                <div className="mb-6 space-y-3">
-                  <ItemFilters filter={filter} onFilterChange={setFilter} />
-                  {eventFilter && (
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
-                        {EVENT_TYPE_EMOJI[events.find((e) => e.id === eventFilter)?.type || ''] || '📅'}
-                        {events.find((e) => e.id === eventFilter)?.name || 'Event'}
-                        <button onClick={() => setEventFilter(null)} className="ml-1 hover:text-gray-900 transition">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    </div>
-                  )}
-                </div>
+                {eventFilter && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
+                      {EVENT_TYPE_EMOJI[events.find((e) => e.id === eventFilter)?.type || ''] || '📅'}
+                      {events.find((e) => e.id === eventFilter)?.name || 'Event'}
+                      <button onClick={() => setEventFilter(null)} className="ml-1 hover:text-gray-900 transition">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  </div>
+                )}
 
                 {loading ? (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 animate-pulse">
