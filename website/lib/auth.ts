@@ -201,7 +201,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: true,
-        domain: '.giftist.ai',
+        domain: process.env.VERCEL ? undefined : '.giftist.ai',
       },
     },
     csrfToken: {

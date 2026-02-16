@@ -1,15 +1,13 @@
 import { ImageResponse } from 'next/og'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 export const alt = 'The Giftist - Your Personal Gift Concierge'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function Image() {
-  const logoData = await readFile(join(process.cwd(), 'public', 'logo-dark.png'))
-  const logoSrc = `data:image/png;base64,${logoData.toString('base64')}`
+  // Fetch logo from public URL at build/request time (works on Vercel)
+  const logoUrl = new URL('/logo-dark.png', process.env.NEXTAUTH_URL || 'https://giftist.ai').toString()
 
   return new ImageResponse(
     (
@@ -27,7 +25,7 @@ export default async function Image() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={logoSrc}
+          src={logoUrl}
           alt=""
           width={180}
           height={180}
