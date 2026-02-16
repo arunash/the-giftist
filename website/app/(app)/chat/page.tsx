@@ -24,6 +24,8 @@ export default function ChatPage() {
   const mobileEndRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const pendingQuerySent = useRef(false)
+  // Track the ID of the last assistant message created during active streaming
+  const lastStreamedIdRef = useRef<string | null>(null)
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -62,6 +64,19 @@ export default function ChatPage() {
       sendMessage(q)
     }
   }, [loading, searchParams, sendMessage])
+
+  // Track the actively streaming assistant message
+  useEffect(() => {
+    if (streaming) {
+      // Find the last assistant message — that's the one being streamed
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'ASSISTANT') {
+          lastStreamedIdRef.current = messages[i].id
+          break
+        }
+      }
+    }
+  }, [streaming, messages])
 
   useEffect(() => {
     scrollToBottom()
@@ -114,7 +129,12 @@ export default function ChatPage() {
             <div className="h-full flex items-center justify-center">{emptyState}</div>
           ) : (
             messages.map((msg) => (
-              <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
+              <ChatBubble
+                key={msg.id}
+                role={msg.role}
+                content={msg.content}
+                autoExecute={streaming && msg.id === lastStreamedIdRef.current}
+              />
             ))
           )}
           <div ref={desktopEndRef} />
@@ -143,7 +163,12 @@ export default function ChatPage() {
             <div className="pt-12">{emptyState}</div>
           ) : (
             messages.map((msg) => (
-              <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
+              <ChatBubble
+                key={msg.id}
+                role={msg.role}
+                content={msg.content}
+                autoExecute={streaming && msg.id === lastStreamedIdRef.current}
+              />
             ))
           )}
           <div ref={mobileEndRef} />

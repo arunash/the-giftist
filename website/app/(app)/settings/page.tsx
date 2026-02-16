@@ -265,9 +265,19 @@ export default function SettingsPage() {
             </div>
 
             <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
-              {messages.map((msg) => (
-                <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
-              ))}
+              {messages.map((msg, idx) => {
+                // Only the last assistant message during active streaming gets autoExecute
+                const isLastAssistant = streaming && msg.role === 'ASSISTANT' &&
+                  !messages.slice(idx + 1).some((m) => m.role === 'ASSISTANT')
+                return (
+                  <ChatBubble
+                    key={msg.id}
+                    role={msg.role}
+                    content={msg.content}
+                    autoExecute={isLastAssistant}
+                  />
+                )
+              })}
               <div ref={messagesEndRef} />
             </div>
 
