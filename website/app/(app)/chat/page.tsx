@@ -27,19 +27,24 @@ export default function ChatPage() {
   // Track the ID of the last assistant message created during active streaming
   const lastStreamedIdRef = useRef<string | null>(null)
 
-  const scrollToBottom = useCallback(() => {
-    requestAnimationFrame(() => {
+  const initialScrollDone = useRef(false)
+
+  const scrollToBottom = useCallback((instant?: boolean) => {
+    const doScroll = () => {
+      const behavior = instant ? 'instant' as const : 'smooth' as const
       // Desktop
       if (desktopScrollRef.current) {
         desktopScrollRef.current.scrollTop = desktopScrollRef.current.scrollHeight
       }
-      desktopEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      desktopEndRef.current?.scrollIntoView({ behavior })
       // Mobile
       if (mobileScrollRef.current) {
         mobileScrollRef.current.scrollTop = mobileScrollRef.current.scrollHeight
       }
-      mobileEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    })
+      mobileEndRef.current?.scrollIntoView({ behavior })
+    }
+    // Double rAF ensures the browser has fully laid out new content
+    requestAnimationFrame(() => requestAnimationFrame(doScroll))
   }, [])
 
   // Load history on mount, then auto-send ?q= param if present
@@ -79,7 +84,15 @@ export default function ChatPage() {
   }, [streaming, messages])
 
   useEffect(() => {
-    scrollToBottom()
+    if (messages.length === 0) return
+    if (!initialScrollDone.current) {
+      // First load with history — jump instantly to bottom
+      initialScrollDone.current = true
+      scrollToBottom(true)
+    } else {
+      // Subsequent messages (streaming, new sends) — smooth scroll
+      scrollToBottom(false)
+    }
   }, [messages, scrollToBottom])
 
   if (loading) {
@@ -181,7 +194,7 @@ export default function ChatPage() {
           </div>
         )}
         <div className="flex-shrink-0">
-          <ChatInput onSend={sendMessage} disabled={streaming} onFocus={scrollToBottom} />
+          <ChatInput onSend={sendMessage} disabled={streaming} onFocus={() => scrollToBottom(false)} />
         </div>
       </div>
     </>
