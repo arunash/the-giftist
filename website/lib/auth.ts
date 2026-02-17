@@ -218,36 +218,39 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-  cookies: {
-    sessionToken: {
-      name: 'next-auth.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        domain: process.env.VERCEL ? undefined : '.giftist.ai',
+  cookies: (() => {
+    const isLocalDev = process.env.NODE_ENV === 'development'
+    return {
+      sessionToken: {
+        name: 'next-auth.session-token',
+        options: {
+          httpOnly: true,
+          sameSite: 'lax' as const,
+          path: '/',
+          secure: !isLocalDev,
+          domain: isLocalDev ? undefined : (process.env.VERCEL ? undefined : '.giftist.ai'),
+        },
       },
-    },
-    csrfToken: {
-      name: 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
+      csrfToken: {
+        name: 'next-auth.csrf-token',
+        options: {
+          httpOnly: true,
+          sameSite: 'lax' as const,
+          path: '/',
+          secure: !isLocalDev,
+        },
       },
-    },
-    callbackUrl: {
-      name: 'next-auth.callback-url',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
+      callbackUrl: {
+        name: 'next-auth.callback-url',
+        options: {
+          httpOnly: true,
+          sameSite: 'lax' as const,
+          path: '/',
+          secure: !isLocalDev,
+        },
       },
-    },
-  },
+    }
+  })(),
   pages: {
     signIn: '/login',
     error: '/login',
