@@ -76,6 +76,32 @@ function transformActivity(raw: any) {
     }
   }
 
+  // Compute actionBadge — rule-based, no extra AI calls
+  let actionBadge: { label: string; href?: string; itemId?: string } | null = null
+
+  if (raw.type === 'ITEM_ADDED' && raw.item?.goalAmount && raw.userId !== raw.item?.userId) {
+    // Community item with goal — suggest contributing
+    actionBadge = { label: 'Contribute $20?', itemId: raw.item?.id }
+  } else if (raw.type === 'ITEM_FUNDED') {
+    const funded = raw.item?.fundedAmount || 0
+    const goal = raw.item?.goalAmount || raw.item?.priceValue || 0
+    const remaining = goal - funded
+    if (remaining > 0 && remaining <= 50) {
+      actionBadge = { label: `Chip in $${remaining.toFixed(0)}?`, itemId: raw.item?.id }
+    }
+  } else if (raw.type === 'CONTRIBUTION_RECEIVED') {
+    const contributorName = metadata.contributorName || 'them'
+    actionBadge = {
+      label: 'Send thank you',
+      href: `/chat?q=${encodeURIComponent(`Help me write a thank you note for ${contributorName}'s gift contribution`)}`,
+    }
+  } else if (raw.type === 'EVENT_CREATED' && metadata.eventName && raw.userId !== raw.item?.userId) {
+    actionBadge = {
+      label: 'Browse gift ideas',
+      href: `/chat?q=${encodeURIComponent(`Gift ideas for ${metadata.eventName}`)}`,
+    }
+  }
+
   return {
     id: raw.id,
     type: raw.type,
@@ -90,6 +116,7 @@ function transformActivity(raw: any) {
     itemUrl: raw.item?.url || null,
     itemDomain: raw.item?.domain || null,
     contextBadge,
+    actionBadge,
   }
 }
 
@@ -112,6 +139,7 @@ export default function FeedPage() {
   const [shareId, setShareId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('')
   const [shareCopied, setShareCopied] = useState(false)
+  const [userInterests, setUserInterests] = useState<string[]>([])
 
   // Activity state
   const [activities, setActivities] = useState<any[]>([])
@@ -200,7 +228,11 @@ export default function FeedPage() {
       .catch(() => {})
     fetch('/api/profile')
       .then((r) => r.json())
-      .then((data) => { if (data.shareId) setShareId(data.shareId); if (data.name) setUserName(data.name) })
+      .then((data) => {
+        if (data.shareId) setShareId(data.shareId)
+        if (data.name) setUserName(data.name)
+        if (Array.isArray(data.interests) && data.interests.length > 0) setUserInterests(data.interests)
+      })
       .catch(() => {})
   }, [])
 
@@ -233,9 +265,26 @@ export default function FeedPage() {
     return () => observer.disconnect()
   }, [cursor, loadingMore]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Smart sort: priority score based on urgency + readiness
+  function eventPriorityScore(e: { date: string; itemCount: number }) {
+    const days = daysUntil(new Date(e.date))
+    let score = 1000 - days
+    if (e.itemCount === 0) score += 500
+    if (days <= 7 && e.itemCount < 3) score += 300
+    if (days <= 3) score += 200
+    return score
+  }
+
+  function getAttentionBadge(e: { date: string; itemCount: number }): { label: string; color: string } | null {
+    const days = daysUntil(new Date(e.date))
+    if (days <= 7 && e.itemCount < 3) return { label: 'Needs attention', color: 'red' }
+    if (days <= 14 && e.itemCount === 0) return { label: 'Needs gifts', color: 'amber' }
+    return null
+  }
+
   const futureEvents = events
     .filter((e) => daysUntil(new Date(e.date)) >= 0)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => eventPriorityScore(b) - eventPriorityScore(a))
 
   const pastEvents = events
     .filter((e) => daysUntil(new Date(e.date)) < 0)
@@ -257,7 +306,17 @@ export default function FeedPage() {
       ) : (
         <div className="divide-y-0 space-y-0">
           {activities.map((activity) => (
-            <ActivityItem key={activity.id} activity={activity} />
+            <ActivityItem
+              key={activity.id}
+              activity={activity}
+              onAction={(a) => {
+                if (a.itemId) {
+                  // Open fund modal for the item
+                  setFundingItem({ id: a.itemId, name: activity.itemName })
+                }
+                // href-based actions are handled by the component link
+              }}
+            />
           ))}
         </div>
       )}
@@ -322,6 +381,23 @@ export default function FeedPage() {
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
+            </div>
+
+            {/* Taste profile teaser */}
+            <div className="mb-4">
+              {userInterests.length > 0 ? (
+                <Link href="/settings" className="flex items-center gap-1.5 text-xs text-secondary hover:text-gray-900 transition">
+                  <span>✨</span>
+                  <span>You love <strong>{userInterests.slice(0, 3).join(', ')}</strong></span>
+                  <span className="text-primary font-semibold ml-1">Edit →</span>
+                </Link>
+              ) : (
+                <Link href="/settings" className="flex items-center gap-1.5 text-xs text-muted hover:text-gray-900 transition">
+                  <span>✨</span>
+                  <span>Tell us what you love</span>
+                  <span className="text-primary font-semibold ml-1">Set up →</span>
+                </Link>
+              )}
             </div>
 
             {/* Search + Sort + Filter */}
@@ -516,16 +592,29 @@ export default function FeedPage() {
                                   </div>
                                 )}
 
-                                <div
-                                  className={`absolute bottom-3 left-3 ig-glass px-3 py-1.5 rounded-full text-sm font-semibold z-10 ${
-                                    days <= 7
-                                      ? '!bg-red-500/80 text-white'
-                                      : days <= 30
-                                      ? '!bg-amber-500/80 text-white'
-                                      : 'text-white'
-                                  }`}
-                                >
-                                  {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days} days`}
+                                <div className="absolute bottom-3 left-3 z-10 flex flex-col gap-1.5">
+                                  <div
+                                    className={`ig-glass px-3 py-1.5 rounded-full text-sm font-semibold ${
+                                      days <= 7
+                                        ? '!bg-red-500/80 text-white'
+                                        : days <= 30
+                                        ? '!bg-amber-500/80 text-white'
+                                        : 'text-white'
+                                    }`}
+                                  >
+                                    {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days} days`}
+                                  </div>
+                                  {(() => {
+                                    const badge = getAttentionBadge(event)
+                                    if (!badge) return null
+                                    return (
+                                      <div className={`ig-glass px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                        badge.color === 'red' ? '!bg-red-500/90 text-white' : '!bg-amber-500/90 text-white'
+                                      }`}>
+                                        {badge.label}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
 
                                 <div className="absolute top-3 right-3 ig-glass px-2.5 py-1 rounded-full text-white text-xs font-medium z-10">

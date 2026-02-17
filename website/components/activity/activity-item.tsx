@@ -3,6 +3,13 @@
 import { useState } from 'react'
 import { formatPrice } from '@/lib/utils'
 import { Gift, Plus } from 'lucide-react'
+import Link from 'next/link'
+
+interface ActionBadge {
+  label: string
+  href?: string
+  itemId?: string
+}
 
 interface ActivityItemProps {
   activity: {
@@ -19,7 +26,9 @@ interface ActivityItemProps {
     itemUrl?: string | null
     itemDomain?: string | null
     contextBadge?: string | null
+    actionBadge?: ActionBadge | null
   }
+  onAction?: (badge: ActionBadge) => void
 }
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -36,7 +45,7 @@ const AVATAR_COLORS: Record<string, string> = {
   FUNDS_ALLOCATED: 'bg-teal-500/20',
 }
 
-export function ActivityItem({ activity }: ActivityItemProps) {
+export function ActivityItem({ activity, onAction }: ActivityItemProps) {
   const isPositive = activity.type === 'ITEM_FUNDED' || activity.type === 'CONTRIBUTION_RECEIVED' || activity.type === 'EVENT_FUNDED' || activity.type === 'EVENT_CONTRIBUTION_RECEIVED'
   const hasItem = !!activity.itemName
   const [adding, setAdding] = useState(false)
@@ -90,6 +99,27 @@ export function ActivityItem({ activity }: ActivityItemProps) {
           <span className="inline-block text-xs text-primary bg-primary-light rounded-lg px-2.5 py-1">
             {activity.contextBadge}
           </span>
+        </div>
+      )}
+
+      {/* Action badge pill */}
+      {activity.actionBadge && (
+        <div className="ml-11 -mt-0.5 mb-2">
+          {activity.actionBadge.href ? (
+            <Link
+              href={activity.actionBadge.href}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-primary hover:bg-primary-hover rounded-full px-3 py-1 transition"
+            >
+              {activity.actionBadge.label}
+            </Link>
+          ) : (
+            <button
+              onClick={() => onAction?.(activity.actionBadge!)}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-primary hover:bg-primary-hover rounded-full px-3 py-1 transition"
+            >
+              {activity.actionBadge.label}
+            </button>
+          )}
         </div>
       )}
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, Send } from 'lucide-react'
+import { Sparkles, Send, Lightbulb, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -14,20 +14,20 @@ const quickSuggestions = [
 export function HomeChatBar() {
   const [inputValue, setInputValue] = useState('')
   const [proactiveGreeting, setProactiveGreeting] = useState<string | null>(null)
+  const [suggestion, setSuggestion] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const greetingFetched = useRef(false)
   const router = useRouter()
 
-  // Fetch proactive greeting on mount
+  // Fetch proactive greeting + suggestion on mount
   useEffect(() => {
     if (greetingFetched.current) return
     greetingFetched.current = true
     fetch('/api/chat/greeting')
       .then((r) => r.json())
       .then((data) => {
-        if (data.greeting) {
-          setProactiveGreeting(data.greeting)
-        }
+        if (data.greeting) setProactiveGreeting(data.greeting)
+        if (data.suggestion) setSuggestion(data.suggestion)
       })
       .catch(() => {})
   }, [])
@@ -80,11 +80,29 @@ export function HomeChatBar() {
         )}
       </div>
 
-      {/* Proactive greeting from concierge */}
-      {proactiveGreeting && (
-        <Link href="/chat" className="block mx-4 mb-3 px-3 py-3 bg-primary/5 border border-primary/10 rounded-xl hover:bg-primary/10 transition">
-          <p className="text-xs text-secondary leading-relaxed">{proactiveGreeting}</p>
-        </Link>
+      {/* Proactive greeting + Today's Suggestion */}
+      {(proactiveGreeting || suggestion) && (
+        <div className="mx-4 mb-3 space-y-2">
+          {proactiveGreeting && (
+            <p className="text-xs text-muted leading-relaxed px-1">{proactiveGreeting}</p>
+          )}
+          {suggestion && (
+            <button
+              onClick={() => navigateToChat(`Tell me more about this suggestion: ${suggestion}`)}
+              className="w-full text-left px-3 py-3 bg-gradient-to-r from-primary/5 to-amber-50 border border-primary/10 rounded-xl hover:from-primary/10 hover:to-amber-100/50 transition group"
+            >
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Lightbulb className="h-3 w-3 text-amber-500" />
+                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">Today's Suggestion</span>
+              </div>
+              <p className="text-xs text-secondary leading-relaxed">{suggestion}</p>
+              <div className="flex items-center gap-1 mt-2 text-[11px] font-semibold text-primary group-hover:gap-2 transition-all">
+                Tell me more
+                <ArrowRight className="h-3 w-3" />
+              </div>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Suggestions */}

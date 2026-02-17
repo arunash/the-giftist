@@ -23,6 +23,9 @@ export async function GET() {
   const userId = (session.user as any).id
 
   try {
+    const now = new Date()
+    const twoWeeksOut = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+
     const [user, itemCount, events] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
@@ -37,7 +40,7 @@ export async function GET() {
       }),
       prisma.item.count({ where: { userId } }),
       prisma.event.findMany({
-        where: { userId },
+        where: { userId, date: { gte: now, lte: twoWeeksOut } },
         orderBy: { date: 'asc' },
         take: 5,
         select: { name: true, type: true, date: true },
@@ -45,7 +48,7 @@ export async function GET() {
     ])
 
     if (!user) {
-      return NextResponse.json({ greeting: null })
+      return NextResponse.json({ greeting: null, suggestion: null })
     }
 
     const firstName = user.name?.split(' ')[0] || 'there'
@@ -75,7 +78,16 @@ export async function GET() {
         return `${e.name} (${e.type}) in ${days} days`
       })
 
-    const prompt = `Generate a single short, warm, proactive greeting message (2-3 sentences max) from the Giftist Gift Concierge to a user who just opened the app. The tone should be like a friendly personal shopper checking in.
+    let interests: string[] = []
+    try {
+      interests = user.interests ? JSON.parse(user.interests) : []
+    } catch {}
+
+    const prompt = `Generate a JSON object with two fields: "greeting" and "suggestion". Return ONLY the JSON object, nothing else.
+
+The "greeting" is a short, warm, proactive greeting (1-2 sentences) from the Giftist Gift Concierge. The tone should be like a friendly personal shopper checking in.
+
+The "suggestion" is a specific, actionable gift recommendation tied to an upcoming event or user interest. It should name a specific product with a price point. If there's an upcoming event, tie the suggestion to it. If not, base it on the user's interests. If neither, suggest a trending/seasonal gift idea.
 
 User context:
 - Name: ${firstName}
@@ -83,23 +95,31 @@ User context:
 - Account age: ${accountAgeDays} days
 - Items on wishlist: ${itemCount}
 - Has upcoming events: ${hasEvents}${upcomingEvents.length > 0 ? ` (${upcomingEvents.join(', ')})` : ''}
+- User interests: ${interests.length > 0 ? interests.join(', ') : 'unknown'}
 - Profile gaps (things we don't know yet): ${profileGaps.length > 0 ? profileGaps.join(', ') : 'profile is complete'}
 - Is brand new user: ${isNew}
 
-Rules:
-- Always end with a specific question to engage the user
-- If they're missing important dates, ask about upcoming birthdays/anniversaries/special occasions in their life — frame it as wanting to help them prepare gift lists ahead of time
-- If they have an upcoming event, reference it and ask if they need help curating a list
-- If they're new with no items, welcome them warmly and ask about the most important people in their life they'd want to build gift lists for
-- If their profile is complete and they have events, give a more specific, personalized check-in
+Rules for greeting:
+- If they're missing important dates, ask about upcoming events
+- If they have an upcoming event, reference it
+- If they're new, welcome them warmly
 - Do NOT use emojis
-- Do NOT use the [PRODUCT] or [PREFERENCES] format
-- Keep it conversational, 2-3 sentences max
-- Output ONLY the greeting message text, nothing else`
+- Keep it conversational, 1-2 sentences max
+
+Rules for suggestion:
+- MUST be specific: name a real product/experience and approximate price (e.g. "A Le Creuset Dutch Oven (~$95) would match her love of cooking")
+- If there's an upcoming event within 14 days, tie the suggestion to it (e.g. "Sarah's birthday is in 5 days. A Kindle Paperwhite (~$140) would be perfect for the book lover in your life.")
+- If no upcoming event, base it on user interests
+- If no interests known, suggest something seasonally relevant or universally loved
+- Keep it to 1-2 sentences
+- Do NOT use emojis
+
+Example output:
+{"greeting":"Good morning, Alex! You've been building a great list this week.","suggestion":"Mom's birthday is in 8 days. A Le Creuset Dutch Oven (~$95) would be a perfect match for her love of cooking."}`
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
+      max_tokens: 400,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -113,13 +133,30 @@ Rules:
       source: 'WEB',
     }).catch(() => {})
 
-    const text =
+    const rawText =
       response.content[0].type === 'text' ? response.content[0].text.trim() : null
 
-    return NextResponse.json({ greeting: text })
+    if (!rawText) {
+      return NextResponse.json({ greeting: null, suggestion: null })
+    }
+
+    // Parse structured JSON response
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        return NextResponse.json({
+          greeting: parsed.greeting || null,
+          suggestion: parsed.suggestion || null,
+        })
+      }
+    } catch {}
+
+    // Fallback: treat entire response as greeting text
+    return NextResponse.json({ greeting: rawText, suggestion: null })
   } catch (error) {
     console.error('Greeting generation error:', error)
     logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
-    return NextResponse.json({ greeting: null })
+    return NextResponse.json({ greeting: null, suggestion: null })
   }
 }

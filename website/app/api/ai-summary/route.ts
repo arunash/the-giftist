@@ -101,12 +101,9 @@ export async function GET() {
       interests = user?.interests ? JSON.parse(user.interests) : []
     } catch {}
 
-    const prompt = `Generate exactly 5-6 short sidebar summary cards for a gifting app. Each card is a JSON object with "emoji", "text", and optionally "action" and "href" fields. Return ONLY a JSON array, nothing else.
+    const prompt = `Generate exactly 5-6 short sidebar summary cards for a gifting app. Each card is a JSON object with "emoji", "text", "action", and "href" fields. Return ONLY a JSON array, nothing else.
 
-The "action" field should be included on actionable cards. The "href" field controls where the action links to:
-- For cards about a specific upcoming date/occasion: use "href": "/events/new"
-- For all other actionable cards (gift ideas, tips, trending, etc.): use "href": "/chat"
-- If no "action" is set, omit "href" too
+IMPORTANT: Every card EXCEPT the first greeting card MUST have "action" and "href". Actions must be verb-first and specific. The "href" should be a /chat?q= deep link with a specific question or request, or /events/new for event creation.
 
 Context:
 - User name: ${userName}
@@ -122,22 +119,24 @@ Context:
 - Household: ${user?.relationship || 'unknown'}
 
 Rules:
-- Card 1: ALWAYS a warm personal greeting mentioning the user's name and something relevant (recent activity, or a warm welcome). No action.
-- Cards 2-6: MIX of different card types — do NOT make them all about dates. Include a diverse selection from these categories:
-  * Upcoming event insight (max 1-2): mention the closest event, how many items are linked, if it needs gift ideas. action: "Create event", href: "/events/new"
-  * Event prep nudge: if an event has no items yet and is coming up soon, nudge to find gifts. action: "Find gifts", href: "/chat"
-  * Almost-funded items: if any items are close to being funded, highlight one. No action needed.
-  * Activity insight: reference what the user has been doing (items added, events created, purchases). Make it feel alive.
-  * Gifting insight: a smart, personalized tip based on user interests (e.g. "Since you love cooking, the new Le Creuset collection is a great self-gift"). action: "Browse ideas", href: "/chat"
-  * Trending/seasonal: what's hot in gifting right now, seasonal gift trends, or a product category suggestion. action: "See trending", href: "/chat"
+- Card 1: ALWAYS a warm personal greeting mentioning the user's name and something relevant (recent activity, or a warm welcome). No action or href on this card only.
+- Cards 2-6: EVERY card MUST have "action" and "href". MIX of different card types — do NOT make them all about dates. Include a diverse selection from these categories:
+  * Upcoming event insight (max 1-2): mention the closest event, how many items are linked. action: verb-first CTA like "Find gifts for Mom", href: "/chat?q=Help me find gift ideas for <event name>"
+  * Event prep nudge: if an event has no items yet and is coming up soon. action: "Plan <event> gifts", href: "/chat?q=Help me find gifts for <event name>"
+  * Almost-funded items: highlight one that's close to being funded. action: "Share to finish funding", href: "/chat?q=Help me share <item name> to get it fully funded"
+  * List curation: if the user has many items, suggest curating. action: "Curate top 10", href: "/chat?q=Help me pick my top 10 items"
+  * Activity insight: reference recent activity and suggest a next step. action: verb-first CTA, href: "/chat?q=<relevant follow-up>"
+  * Gifting insight: personalized tip based on user interests. action: "Explore <category>", href: "/chat?q=Show me <category> gift ideas"
+  * Trending/seasonal: what's hot in gifting right now. action: "See what's trending", href: "/chat?q=What gifts are trending right now"
 - Maximum 2 cards about specific dates/occasions — the rest should be insights, activity recaps, and tips
 - Keep each card text to 1-2 short sentences max
 - Use relevant emojis
 - Be specific and personal, not generic
 - Never mention the user should "check back" or "stay tuned"
+- Action text should be 2-4 words, verb-first (e.g. "Find gifts for Mom", "Curate top 10", "Explore cooking gear")
 
 Example output format:
-[{"emoji":"👋","text":"Good morning, Alex! 3 friends added items this week."},{"emoji":"💝","text":"Valentine's Day is today — still time to find something special!","action":"Create event","href":"/events/new"},{"emoji":"🎁","text":"The Stanley Tumbler is almost funded — only $15 left."},{"emoji":"🔥","text":"Wellness gifts are trending this month — think journals, candles, and self-care kits.","action":"See trending","href":"/chat"},{"emoji":"💡","text":"Since you're into photography, a custom photo book makes an amazing last-minute gift.","action":"Browse ideas","href":"/chat"}]`
+[{"emoji":"👋","text":"Good morning, Alex! 3 friends added items this week."},{"emoji":"💝","text":"Valentine's Day is in 5 days — you have 2 items linked but no gifts for Sarah yet.","action":"Find gifts for Sarah","href":"/chat?q=Help me find Valentine's Day gifts for Sarah"},{"emoji":"🎁","text":"The Stanley Tumbler is almost funded — only $15 left.","action":"Share to finish funding","href":"/chat?q=Help me share my Stanley Tumbler to get it fully funded"},{"emoji":"🔥","text":"Wellness gifts are trending this month — journals, candles, and self-care kits.","action":"See what's trending","href":"/chat?q=What wellness gifts are trending right now"},{"emoji":"💡","text":"Since you love photography, a custom photo book makes an amazing gift.","action":"Explore photo gifts","href":"/chat?q=Show me photography themed gift ideas"}]`
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
