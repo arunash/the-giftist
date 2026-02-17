@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Plus, X, UserPlus } from 'lucide-react'
+import { Users, Plus, X, UserPlus, Bell, Clock, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 
 interface CircleMember {
   id: string
@@ -12,11 +13,56 @@ interface CircleMember {
   createdAt: string
 }
 
+interface EventSuggestion {
+  name: string
+  eventTitle: string
+}
+
 const RELATIONSHIP_LABELS: Record<string, { label: string; color: string }> = {
   family: { label: 'Family', color: 'bg-purple-500/10 text-purple-600' },
   friend: { label: 'Friend', color: 'bg-blue-500/10 text-blue-600' },
   work: { label: 'Work', color: 'bg-amber-500/10 text-amber-600' },
   other: { label: 'Other', color: 'bg-gray-500/10 text-gray-500' },
+}
+
+const EVENT_TYPE_KEYWORDS = [
+  'birthday', 'anniversary', 'wedding', 'baby shower', 'christmas',
+  'holiday', 'graduation', 'shower', 'party', 'celebration',
+]
+
+function extractNamesFromEvents(events: { name: string }[]): EventSuggestion[] {
+  const suggestions: EventSuggestion[] = []
+  const seen = new Set<string>()
+
+  for (const event of events) {
+    let title = event.name.trim()
+
+    // Remove possessive suffix patterns like "'s Birthday"
+    const possessiveMatch = title.match(/^(.+?)[''\u2019]s\s+/i)
+    if (possessiveMatch) {
+      const name = possessiveMatch[1].trim()
+      if (name.length >= 2 && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase())
+        suggestions.push({ name, eventTitle: event.name })
+      }
+      continue
+    }
+
+    // Try stripping known type keywords
+    let cleaned = title
+    for (const keyword of EVENT_TYPE_KEYWORDS) {
+      cleaned = cleaned.replace(new RegExp(`\\b${keyword}\\b`, 'gi'), '').trim()
+    }
+    // Remove trailing/leading separators
+    cleaned = cleaned.replace(/^[\s\-–—,]+|[\s\-–—,]+$/g, '').trim()
+
+    if (cleaned.length >= 2 && cleaned !== title && !seen.has(cleaned.toLowerCase())) {
+      seen.add(cleaned.toLowerCase())
+      suggestions.push({ name: cleaned, eventTitle: event.name })
+    }
+  }
+
+  return suggestions
 }
 
 export default function CirclePage() {
@@ -28,6 +74,7 @@ export default function CirclePage() {
   const [relationship, setRelationship] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [eventSuggestions, setEventSuggestions] = useState<EventSuggestion[]>([])
 
   const fetchMembers = () => {
     fetch('/api/circle')
@@ -41,6 +88,15 @@ export default function CirclePage() {
 
   useEffect(() => {
     fetchMembers()
+    // Fetch events for name suggestions
+    fetch('/api/events')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setEventSuggestions(extractNamesFromEvents(data))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -85,12 +141,23 @@ export default function CirclePage() {
     } catch {}
   }
 
+  const handleSuggestedName = (suggestedName: string) => {
+    setName(suggestedName)
+    setShowForm(true)
+  }
+
   const formatPhone = (phone: string) => {
     if (phone.length === 11 && phone.startsWith('1')) {
       return `+1 (${phone.slice(1, 4)}) ${phone.slice(4, 7)}-${phone.slice(7)}`
     }
     return `+${phone}`
   }
+
+  // Filter out suggestions for names already in the circle
+  const memberNames = new Set(members.map((m) => m.name?.toLowerCase()).filter(Boolean))
+  const filteredSuggestions = eventSuggestions.filter(
+    (s) => !memberNames.has(s.name.toLowerCase())
+  )
 
   return (
     <div className="p-6 lg:p-8">
@@ -188,61 +255,160 @@ export default function CirclePage() {
             </div>
           </div>
         ) : members.length === 0 ? (
-          <div className="bg-surface rounded-xl border border-border p-10 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-primary" />
+          <div className="space-y-4">
+            {/* Alive Empty State — Benefits */}
+            <div className="bg-surface rounded-xl border border-border p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Start your Gift Circle</h2>
+              <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
+                Add family and friends so they can be notified via WhatsApp when you have upcoming events with gift ideas.
+              </p>
+
+              {/* Benefits Grid */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-surface-hover rounded-xl p-4">
+                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Bell className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">WhatsApp Alerts</p>
+                  <p className="text-[11px] text-muted mt-0.5">Auto-notify for events</p>
+                </div>
+                <div className="bg-surface-hover rounded-xl p-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">Group Gifting</p>
+                  <p className="text-[11px] text-muted mt-0.5">Pool funds together</p>
+                </div>
+                <div className="bg-surface-hover rounded-xl p-4">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">Smart Reminders</p>
+                  <p className="text-[11px] text-muted mt-0.5">Never miss a date</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add Your First Person
+              </button>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Start your Gift Circle</h2>
-            <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-              Add family and friends so they can be notified via WhatsApp when you have upcoming events with gift ideas.
-            </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition"
-            >
-              <UserPlus className="h-4 w-4" />
-              Add Your First Person
-            </button>
+
+            {/* Event-based name suggestions */}
+            {filteredSuggestions.length > 0 && (
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">People from your events</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {filteredSuggestions.map((s) => (
+                    <button
+                      key={s.name}
+                      onClick={() => handleSuggestedName(s.name)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-purple-500/20 rounded-full text-sm font-medium text-purple-700 hover:bg-purple-500/10 transition"
+                      title={`From: ${s.eventTitle}`}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI Import Link */}
+            <div className="text-center">
+              <Link
+                href="/chat?q=Help me build my gift circle. Who should I add based on my events?"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-hover transition font-medium"
+              >
+                <Sparkles className="h-4 w-4" />
+                Get AI suggestions for your circle
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border divide-y divide-border">
-            {members.map((member) => {
-              const rel = member.relationship ? RELATIONSHIP_LABELS[member.relationship] : null
-              return (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-4 group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-semibold text-primary">
-                        {(member.name || member.phone).charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {member.name || formatPhone(member.phone)}
-                      </p>
-                      {member.name && (
-                        <p className="text-xs text-muted">{formatPhone(member.phone)}</p>
+          <div className="space-y-4">
+            <div className="bg-surface rounded-xl border border-border divide-y divide-border">
+              {members.map((member) => {
+                const rel = member.relationship ? RELATIONSHIP_LABELS[member.relationship] : null
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-4 group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-semibold text-primary">
+                          {(member.name || member.phone).charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {member.name || formatPhone(member.phone)}
+                        </p>
+                        {member.name && (
+                          <p className="text-xs text-muted">{formatPhone(member.phone)}</p>
+                        )}
+                      </div>
+                      {rel && (
+                        <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${rel.color}`}>
+                          {rel.label}
+                        </span>
                       )}
                     </div>
-                    {rel && (
-                      <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${rel.color}`}>
-                        {rel.label}
-                      </span>
-                    )}
+                    <button
+                      onClick={() => handleRemove(member.id)}
+                      className="p-1.5 text-muted hover:text-red-400 transition opacity-0 group-hover:opacity-100"
+                      title="Remove from circle"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleRemove(member.id)}
-                    className="p-1.5 text-muted hover:text-red-400 transition opacity-0 group-hover:opacity-100"
-                    title="Remove from circle"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                )
+              })}
+            </div>
+
+            {/* Event-based suggestions (when circle has members) */}
+            {filteredSuggestions.length > 0 && (
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">People from your events</h3>
                 </div>
-              )
-            })}
+                <div className="flex flex-wrap gap-2">
+                  {filteredSuggestions.map((s) => (
+                    <button
+                      key={s.name}
+                      onClick={() => handleSuggestedName(s.name)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-purple-500/20 rounded-full text-sm font-medium text-purple-700 hover:bg-purple-500/10 transition"
+                      title={`From: ${s.eventTitle}`}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI Import Link */}
+            <div className="text-center">
+              <Link
+                href="/chat?q=Help me build my gift circle. Who should I add based on my events?"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-hover transition font-medium"
+              >
+                <Sparkles className="h-4 w-4" />
+                Get AI suggestions for your circle
+              </Link>
+            </div>
           </div>
         )}
       </div>

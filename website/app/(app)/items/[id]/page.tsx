@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users, Heart, ShoppingBag, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Gift, Share2, Check, Users, Heart, ShoppingBag, Pencil, Trash2, X, Sparkles, Tag } from 'lucide-react'
 import { formatPrice, getProgressPercentage, formatDate, shareOrCopy } from '@/lib/utils'
+import Link from 'next/link'
 
 interface Contribution {
   id: string
@@ -91,6 +92,39 @@ export default function ItemDetailPage() {
       })
   }, [id])
 
+  // Price intelligence: find best retailer
+  const priceIntelligence = useMemo(() => {
+    if (!item || retailers.length === 0) return null
+
+    const nonOriginalWithPrice = retailers.filter(
+      (r) => !r.isOriginal && r.priceValue != null && r.priceValue > 0
+    )
+    if (nonOriginalWithPrice.length === 0) return null
+
+    const best = nonOriginalWithPrice.reduce((min, r) =>
+      (r.priceValue! < min.priceValue!) ? r : min
+    )
+
+    const originalPrice = item.priceValue || 0
+    if (originalPrice > 0 && best.priceValue! < originalPrice) {
+      const savings = originalPrice - best.priceValue!
+      return { retailer: best, savings, bestPrice: best.priceValue! }
+    }
+
+    return null
+  }, [item, retailers])
+
+  // Find cheapest retailer index for badge
+  const cheapestRetailerIndex = useMemo(() => {
+    if (retailers.length <= 1) return -1
+    const withPrice = retailers
+      .map((r, i) => ({ ...r, idx: i }))
+      .filter((r) => r.priceValue != null && r.priceValue > 0)
+    if (withPrice.length <= 1) return -1
+    const cheapest = withPrice.reduce((min, r) => (r.priceValue! < min.priceValue!) ? r : min)
+    return cheapest.idx
+  }, [retailers])
+
   const handleShare = async () => {
     const url = `${window.location.origin}/items/${id}`
     const didShare = await shareOrCopy(url, item?.name || 'Gift item')
@@ -110,7 +144,6 @@ export default function ItemDetailPage() {
         body: JSON.stringify({ isPurchased: true }),
       })
       if (res.ok) {
-        const updated = await res.json()
         setItem((prev) => prev ? { ...prev, isPurchased: true } : prev)
       }
     } catch (err) {
@@ -416,6 +449,34 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
+      {/* Price Intelligence Card */}
+      {priceIntelligence && (
+        <div className="mt-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <Tag className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-emerald-800 mb-1">Better price found!</h3>
+              <p className="text-sm text-emerald-700">
+                Best price on <span className="font-semibold">{priceIntelligence.retailer.retailer}</span> at{' '}
+                <span className="font-semibold">{formatPrice(priceIntelligence.bestPrice)}</span>
+                {' '}&mdash; Save {formatPrice(priceIntelligence.savings)} vs original
+              </p>
+              <a
+                href={priceIntelligence.retailer.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition"
+              >
+                View deal
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contributors */}
       {visibleContributions.length > 0 && (
         <div className="mt-6 rounded-2xl bg-surface border border-border p-5">
@@ -433,8 +494,12 @@ export default function ItemDetailPage() {
                     <p className="text-sm text-gray-900">
                       {c.isAnonymous ? 'Anonymous' : c.contributor?.name || 'Someone'}
                     </p>
+                    {/* Gift Note Card */}
                     {c.message && (
-                      <p className="text-xs text-muted mt-0.5 italic">"{c.message}"</p>
+                      <div className="mt-1.5 bg-pink-500/5 border border-pink-500/15 rounded-lg px-3 py-2 flex items-start gap-2">
+                        <Heart className="h-3.5 w-3.5 text-pink-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-pink-800 italic">&ldquo;{c.message}&rdquo;</p>
+                      </div>
                     )}
                   </div>
                   <div className="text-right flex items-start gap-2">
@@ -514,15 +579,22 @@ export default function ItemDetailPage() {
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 bg-surface-hover rounded-xl hover:bg-border transition-colors group"
               >
-                <div>
-                  <p className="text-sm text-gray-900 font-medium">
-                    {r.retailer}
-                    {r.isOriginal && (
-                      <span className="ml-2 text-xs text-muted">(original)</span>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="text-sm text-gray-900 font-medium">
+                      {r.retailer}
+                      {r.isOriginal && (
+                        <span className="ml-2 text-xs text-muted">(original)</span>
+                      )}
+                    </p>
+                    {r.price && (
+                      <p className="text-xs text-muted mt-0.5">{r.price}</p>
                     )}
-                  </p>
-                  {r.price && (
-                    <p className="text-xs text-muted mt-0.5">{r.price}</p>
+                  </div>
+                  {i === cheapestRetailerIndex && (
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      Best Price
+                    </span>
                   )}
                 </div>
                 <span className="text-xs text-red-400 group-hover:text-red-300 transition-colors flex items-center gap-1">
@@ -546,6 +618,28 @@ export default function ItemDetailPage() {
             </span>
           </a>
         )}
+      </div>
+
+      {/* Complementary Suggestions */}
+      <div className="mt-6 bg-primary/5 border border-primary/20 rounded-2xl p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900 mb-1">Goes well with this</h3>
+            <p className="text-sm text-muted mb-2">
+              Your Gift Concierge can suggest complementary items.
+            </p>
+            <Link
+              href={`/chat?q=${encodeURIComponent(`What goes well with "${item.name}"? Suggest 2-3 complementary items.`)}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-hover transition"
+            >
+              <Sparkles className="h-4 w-4" />
+              Get suggestions
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Contribute button — sticky at bottom */}

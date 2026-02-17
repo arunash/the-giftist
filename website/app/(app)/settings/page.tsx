@@ -28,6 +28,24 @@ interface ProfileData {
   relationship: string | null
 }
 
+const PROFILE_FIELDS: (keyof ProfileData)[] = [
+  'name', 'birthday', 'gender', 'ageRange', 'interests', 'giftBudget', 'relationship',
+]
+
+function getProfileCompleteness(profile: ProfileData): { filled: number; total: number; percent: number; missing: number } {
+  const total = PROFILE_FIELDS.length
+  let filled = 0
+  for (const field of PROFILE_FIELDS) {
+    const val = profile[field]
+    if (field === 'interests') {
+      if (Array.isArray(val) && val.length > 0) filled++
+    } else {
+      if (val) filled++
+    }
+  }
+  return { filled, total, percent: Math.round((filled / total) * 100), missing: total - filled }
+}
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -82,6 +100,8 @@ export default function SettingsPage() {
       </div>
     )
   }
+
+  const completeness = profile ? getProfileCompleteness(profile) : null
 
   return (
     <div className="p-6 lg:p-8">
@@ -153,6 +173,36 @@ export default function SettingsPage() {
 
         {/* Gold Subscription */}
         <GoldUpgradeCard />
+
+        {/* Profile Completeness Nudge */}
+        {completeness && completeness.percent < 100 && (
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-amber-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Profile Completeness</h3>
+              </div>
+              <span className="text-sm font-semibold text-amber-700">{completeness.percent}%</span>
+            </div>
+            <div className="h-2 bg-amber-100 rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full bg-amber-500 rounded-full transition-all"
+                style={{ width: `${completeness.percent}%` }}
+              />
+            </div>
+            <p className="text-sm text-amber-800 mb-3">
+              Answer {completeness.missing} more question{completeness.missing !== 1 ? 's' : ''} for better gift recommendations ({completeness.filled}/{completeness.total} complete)
+            </p>
+            <button
+              onClick={handleStartChat}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-800 transition"
+            >
+              <Sparkles className="h-4 w-4" />
+              Complete via chat
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Profile Card */}
         <div className="bg-surface rounded-xl border border-border p-6">

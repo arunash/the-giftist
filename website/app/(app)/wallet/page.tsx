@@ -6,12 +6,14 @@ import { AddMoneyButton } from '@/components/wallet/add-money-button'
 import { TransactionRow } from '@/components/wallet/transaction-row'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
+import Link from 'next/link'
 
 export default function WalletPage() {
   const [wallet, setWallet] = useState<any>(null)
   const [unfundedItems, setUnfundedItems] = useState<any[]>([])
+  const [allUnfundedItems, setAllUnfundedItems] = useState<any[]>([])
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number } | null>(null)
@@ -45,8 +47,8 @@ export default function WalletPage() {
           const goal = item.goalAmount || item.priceValue || 0
           return goal > 0 && item.fundedAmount < goal && !item.isPurchased
         })
-        .slice(0, 3)
-      setUnfundedItems(unfunded)
+      setAllUnfundedItems(unfunded)
+      setUnfundedItems(unfunded.slice(0, 3))
     } catch (error) {
       console.error('Error fetching wallet data:', error)
     } finally {
@@ -128,6 +130,24 @@ export default function WalletPage() {
 
   const balance = wallet?.balance || 0
 
+  // Smart Fund Matching: find items where remaining <= balance
+  const smartMatch = balance > 0
+    ? allUnfundedItems
+        .map((item: any) => {
+          const goal = item.goalAmount || item.priceValue || 0
+          const remaining = Math.max(0, goal - item.fundedAmount)
+          return { ...item, remaining }
+        })
+        .filter((item: any) => item.remaining > 0 && item.remaining <= balance)
+        .sort((a: any, b: any) => a.remaining - b.remaining)[0] || null
+    : null
+
+  // Check for high-value items
+  const hasHighValueItems = allUnfundedItems.some((item: any) => {
+    const goal = item.goalAmount || item.priceValue || 0
+    return goal > 50
+  })
+
   return (
     <div className="p-6 lg:p-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Funds</h1>
@@ -135,7 +155,7 @@ export default function WalletPage() {
       {/* Two-panel layout */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
 
-        {/* ═══ LEFT PANEL: Funds Balance ═══ */}
+        {/* LEFT PANEL: Funds Balance */}
         <div className="space-y-5">
           {/* Balance hero card */}
           <div className="ig-card !transform-none overflow-hidden">
@@ -151,6 +171,31 @@ export default function WalletPage() {
               <AddMoneyButton />
             </div>
           </div>
+
+          {/* Smart Fund Match Card */}
+          {smartMatch && (
+            <div className="ig-card !transform-none overflow-hidden border-emerald-200">
+              <div className="bg-emerald-500/5 border-b border-emerald-200 p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h3 className="font-semibold text-emerald-800">Perfect Match</h3>
+                </div>
+                <p className="text-sm text-emerald-700">
+                  You have <span className="font-semibold">{formatPrice(balance)}</span> and{' '}
+                  <span className="font-semibold">&ldquo;{smartMatch.name}&rdquo;</span> needs just{' '}
+                  <span className="font-semibold">{formatPrice(smartMatch.remaining)}</span> &mdash; use your funds?
+                </p>
+                <button
+                  onClick={() => setFundingItem(smartMatch)}
+                  className="mt-3 w-full py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-500 transition text-sm"
+                >
+                  Fund This Item
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quick Fund */}
           {unfundedItems.length > 0 && (
@@ -188,6 +233,49 @@ export default function WalletPage() {
             </div>
           )}
 
+          {/* Wallet Insights */}
+          {allUnfundedItems.length > 0 && (
+            <div className="ig-card !transform-none p-5 bg-blue-500/5 border-blue-200">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  {balance === 0 && allUnfundedItems.length > 0 ? (
+                    <p className="text-sm text-blue-800">
+                      Add funds to quickly contribute to items on your list.
+                    </p>
+                  ) : hasHighValueItems ? (
+                    <>
+                      <p className="text-sm text-blue-800">
+                        Have expensive items? Split the cost among friends for faster funding.
+                      </p>
+                      <Link
+                        href="/chat?q=Help me split the cost of an expensive gift among friends"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Ask your concierge
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-blue-800">
+                        Items get funded 3x faster when shared on WhatsApp. Share your event links!
+                      </p>
+                      <Link
+                        href="/events"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
+                      >
+                        View events
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Transaction History */}
           <div className="ig-card !transform-none p-5">
             <h3 className="font-semibold text-gray-900 mb-4">Transaction History</h3>
@@ -208,7 +296,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* ═══ RIGHT PANEL: Funds Received ═══ */}
+        {/* RIGHT PANEL: Funds Received */}
         <div className="space-y-5">
           {/* Received hero card */}
           <div className="ig-card !transform-none overflow-hidden">

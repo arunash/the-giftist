@@ -13,6 +13,7 @@ import ShareEventButton from './ShareEventButton'
 import EventOwnerActions from './EventOwnerActions'
 import EventItemsGrid from './EventItemsGrid'
 import EventNotifyCircle from './EventNotifyCircle'
+import EventAISuggestions from './EventAISuggestions'
 
 const eventTypeLabels: Record<string, { label: string; emoji: string }> = {
   BIRTHDAY: { label: 'Birthday', emoji: '🎂' },
@@ -135,6 +136,9 @@ export default async function EventPage({
     (sum, ei) => sum + ei.item.fundedAmount,
     0
   )
+
+  // Build item names list for AI suggestion prompt
+  const itemNames = event.items.map((ei) => ei.item.name)
 
   return (
     <div className="min-h-screen bg-background">
@@ -293,6 +297,11 @@ export default async function EventPage({
           ownerName={event.user.name || 'Someone'}
           isOwner={isOwner}
         />
+
+        {/* AI Suggestion CTA (owner only) */}
+        {isOwner && (
+          <EventAISuggestions eventName={event.name} itemNames={itemNames} />
+        )}
       </main>
     </div>
   )

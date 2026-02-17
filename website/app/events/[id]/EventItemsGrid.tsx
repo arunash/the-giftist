@@ -38,6 +38,50 @@ const sorts = [
   { value: 'price-low', label: 'Price ↑' },
 ]
 
+type BadgeInfo = {
+  label: string
+  color: string
+}
+
+function getItemBadge(item: EventItem, allItems: EventItem[]): BadgeInfo | null {
+  const goal = item.goalAmount || item.priceValue || 0
+  if (goal <= 0 || item.isPurchased) return null
+
+  const progress = getProgressPercentage(item.fundedAmount, goal)
+  const isFullyFunded = item.fundedAmount >= goal
+
+  // "Almost There" — funded >75% but not 100%
+  if (progress > 75 && !isFullyFunded) {
+    return { label: 'Almost There', color: 'bg-amber-500 text-white' }
+  }
+
+  // "Most Wanted" — most funded by dollar amount (not fully funded)
+  const unfundedItems = allItems.filter((i) => {
+    const g = i.goalAmount || i.priceValue || 0
+    return g > 0 && !i.isPurchased && i.fundedAmount < g && i.fundedAmount > 0
+  })
+  if (unfundedItems.length > 1) {
+    const maxFunded = Math.max(...unfundedItems.map((i) => i.fundedAmount))
+    if (item.fundedAmount === maxFunded && item.fundedAmount > 0 && !isFullyFunded) {
+      return { label: 'Most Wanted', color: 'bg-primary text-white' }
+    }
+  }
+
+  // "Best Value" — lowest price among items with a goal
+  const itemsWithGoal = allItems.filter((i) => {
+    const g = i.goalAmount || i.priceValue || 0
+    return g > 0 && !i.isPurchased
+  })
+  if (itemsWithGoal.length > 1) {
+    const lowestGoal = Math.min(...itemsWithGoal.map((i) => i.goalAmount || i.priceValue || 0))
+    if (goal === lowestGoal && goal > 0) {
+      return { label: 'Best Value', color: 'bg-emerald-500 text-white' }
+    }
+  }
+
+  return null
+}
+
 export default function EventItemsGrid({ items, ownerName, isOwner }: EventItemsGridProps) {
   const [search, setSearch] = useState('')
   const [localSearch, setLocalSearch] = useState('')
@@ -118,7 +162,7 @@ export default function EventItemsGrid({ items, ownerName, isOwner }: EventItems
       ) : (
         <div className="grid sm:grid-cols-2 gap-6">
           {filtered.map((item) => (
-            <ItemCard key={item.id} item={item} ownerName={ownerName} isOwner={isOwner} />
+            <ItemCard key={item.id} item={item} ownerName={ownerName} isOwner={isOwner} allItems={items} />
           ))}
         </div>
       )}
@@ -126,12 +170,14 @@ export default function EventItemsGrid({ items, ownerName, isOwner }: EventItems
   )
 }
 
-function ItemCard({ item, ownerName, isOwner }: { item: EventItem; ownerName: string; isOwner: boolean }) {
+function ItemCard({ item, ownerName, isOwner, allItems }: { item: EventItem; ownerName: string; isOwner: boolean; allItems: EventItem[] }) {
   const goalAmount = item.goalAmount || item.priceValue || 0
   const progress = getProgressPercentage(item.fundedAmount, goalAmount)
   const remaining = Math.max(0, goalAmount - item.fundedAmount)
   const isFullyFunded = item.fundedAmount >= goalAmount
   const isPurchased = item.isPurchased
+
+  const badge = getItemBadge(item, allItems)
 
   return (
     <div className="bg-surface rounded-xl overflow-hidden border border-border">
@@ -157,6 +203,12 @@ function ItemCard({ item, ownerName, isOwner }: { item: EventItem; ownerName: st
         {!isPurchased && isFullyFunded && (
           <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-semibold">
             Fully Funded!
+          </div>
+        )}
+        {/* Smart Priority Badge */}
+        {badge && !isPurchased && !isFullyFunded && (
+          <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${badge.color}`}>
+            {badge.label}
           </div>
         )}
       </Link>
