@@ -13,9 +13,9 @@ export function WhatsAppQRBlock() {
       <div className="p-2 bg-green-50 rounded-full mb-3">
         <MessageCircle className="h-5 w-5 text-green-600" />
       </div>
-      <h3 className="text-sm font-semibold text-gray-900 mb-1">Start on WhatsApp</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Say Hi! on WhatsApp</h3>
       <p className="text-xs text-muted mb-4 text-center">
-        Scan to create your Giftist instantly via WhatsApp
+        Scan and send to get started!
       </p>
       <a href={WA_LINK} target="_blank" rel="noopener noreferrer">
         <QRCodeSVG
