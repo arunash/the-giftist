@@ -866,13 +866,14 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hi ${name}!` : 'Hi there!'
-  return `${greeting} Welcome to *The Giftist* — your personal gift concierge.
+  return `${greeting} Welcome to *The Giftist* — I'm your personal gift concierge.
 
-Send me a *link* or *photo* of anything you love and I'll save it to your wishlist. I can also help you find the perfect gift — just ask!
+Here's what I can do:
+- Send me a *link* or *photo* of something you love — I'll save it to your wishlist
+- Tell me about an *upcoming event* (birthday, anniversary) — I'll help you plan
+- Ask me for *gift ideas* for anyone — I'll suggest the perfect thing
 
-Quick commands: *list* · *share* · *help*
-
-For the full experience — trending gifts, event wishlists, and a visual feed — visit *giftist.ai*`
+Try it now — send me a link to something you've been eyeing, or tell me about your next gift-giving occasion!`
 }
 
 export function getHelpMessage(): string {

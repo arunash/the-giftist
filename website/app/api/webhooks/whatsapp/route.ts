@@ -94,6 +94,12 @@ export async function POST(request: NextRequest) {
 
     if (isNewUser) {
       await sendTextMessage(phone, getWelcomeMessage(profileName))
+      // Welcome is the complete first interaction — skip processing their initial message
+      await prisma.whatsAppMessage.update({
+        where: { id: waMsg.id },
+        data: { status: 'PROCESSED', processedAt: new Date() },
+      })
+      return NextResponse.json({ status: 'ok' })
     }
 
     let reply = ''
