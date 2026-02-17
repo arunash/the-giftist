@@ -71,7 +71,7 @@ export default async function Home() {
 
           {/* Mobile: WhatsApp button */}
           <a
-            href="https://wa.me/15014438478?text=Hi"
+            href="https://wa.me/15014438478?text=Hi!"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-8 lg:hidden inline-flex items-center justify-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-semibold text-base hover:bg-green-700 transition"
