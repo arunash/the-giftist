@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
     // Build system prompt with user context
     const systemPrompt = await buildChatContext(userId)
 
-    // Stream response
+    // Stream response (30s timeout to prevent hung connections)
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
-    })
+    }, { timeout: 30000 })
 
     // Create a ReadableStream for SSE
     const encoder = new TextEncoder()

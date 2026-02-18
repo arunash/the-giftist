@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio'
-import { isPrivateUrl } from './url-safety'
+import { isPrivateUrl, isPrivateUrlResolved } from './url-safety'
 
 export interface ProductInfo {
   name: string
@@ -169,8 +169,8 @@ export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
   const parsedUrl = new URL(url)
   const domain = parsedUrl.hostname
 
-  // SSRF protection: block requests to private/internal networks
-  if (isPrivateUrl(parsedUrl)) {
+  // SSRF protection: block requests to private/internal networks (with DNS resolution)
+  if (await isPrivateUrlResolved(parsedUrl)) {
     throw new Error('URLs pointing to private or internal networks are not allowed')
   }
 
@@ -182,9 +182,33 @@ export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
         Accept: 'text/html,application/xhtml+xml',
       },
       signal: AbortSignal.timeout(10000),
+      redirect: 'manual',
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    html = await res.text()
+    // If redirect, validate the target URL before following
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location')
+      if (location) {
+        const redirectUrl = new URL(location, url)
+        if (await isPrivateUrlResolved(redirectUrl)) {
+          throw new Error('Redirect target points to a private network')
+        }
+        const redirectRes = await fetch(redirectUrl.toString(), {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml',
+          },
+          signal: AbortSignal.timeout(10000),
+          redirect: 'manual',
+        })
+        if (!redirectRes.ok) throw new Error(`HTTP ${redirectRes.status}`)
+        html = await redirectRes.text()
+      } else {
+        throw new Error('Redirect with no location header')
+      }
+    } else {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      html = await res.text()
+    }
   } catch (e) {
     // Can't fetch — return minimal info
     return {

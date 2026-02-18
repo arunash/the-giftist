@@ -141,7 +141,13 @@ export async function handleTextMessage(
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { pendingProduct: true } })
   if (user?.pendingProduct) {
     if (CONFIRM_WORDS.has(trimmed)) {
-      const pending = JSON.parse(user.pendingProduct as string) as PendingProduct
+      let pending: PendingProduct
+      try {
+        pending = JSON.parse(user.pendingProduct as string) as PendingProduct
+      } catch {
+        await prisma.user.update({ where: { id: userId }, data: { pendingProduct: null } })
+        return "Something went wrong with that product. Send me the link again?"
+      }
       return savePendingProduct(userId, listId, pending, phone)
     }
     if (REJECT_WORDS.has(trimmed)) {
@@ -468,9 +474,16 @@ async function handleInstagramLink(
   if (ogImage) {
     let imageBuffer: Buffer | null = null
     try {
-      const imgRes = await fetch(ogImage, { signal: AbortSignal.timeout(10000) })
-      if (imgRes.ok) {
-        imageBuffer = Buffer.from(await imgRes.arrayBuffer())
+      // SSRF check on OG image URL
+      const ogParsed = new URL(ogImage)
+      const { isPrivateUrlResolved } = await import('./url-safety')
+      if (await isPrivateUrlResolved(ogParsed)) {
+        ogImage = null
+      } else {
+        const imgRes = await fetch(ogImage, { signal: AbortSignal.timeout(10000) })
+        if (imgRes.ok) {
+          imageBuffer = Buffer.from(await imgRes.arrayBuffer())
+        }
       }
     } catch {
       // Image download failed
@@ -620,7 +633,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       max_tokens: 1024,
       system: systemPrompt,
       messages,
-    })
+    }, { timeout: 30000 })
 
     logApiCall({
       provider: 'ANTHROPIC',

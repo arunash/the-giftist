@@ -7,6 +7,10 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
 
+// Cache greeting per user for 15 minutes
+const greetingCache = new Map<string, { data: any; expiresAt: number }>()
+const CACHE_TTL_MS = 15 * 60 * 1000
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 12) return 'Good morning'
@@ -21,6 +25,11 @@ export async function GET() {
   }
 
   const userId = (session.user as any).id
+
+  const cached = greetingCache.get(userId)
+  if (cached && Date.now() < cached.expiresAt) {
+    return NextResponse.json(cached.data)
+  }
 
   try {
     const now = new Date()
@@ -145,15 +154,19 @@ Example output:
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
-        return NextResponse.json({
+        const data = {
           greeting: parsed.greeting || null,
           suggestion: parsed.suggestion || null,
-        })
+        }
+        greetingCache.set(userId, { data, expiresAt: Date.now() + CACHE_TTL_MS })
+        return NextResponse.json(data)
       }
     } catch {}
 
     // Fallback: treat entire response as greeting text
-    return NextResponse.json({ greeting: rawText, suggestion: null })
+    const fallback = { greeting: rawText, suggestion: null }
+    greetingCache.set(userId, { data: fallback, expiresAt: Date.now() + CACHE_TTL_MS })
+    return NextResponse.json(fallback)
   } catch (error) {
     console.error('Greeting generation error:', error)
     logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

@@ -7,6 +7,10 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
 
+// Cache AI summary per user for 10 minutes to avoid redundant API calls
+const summaryCache = new Map<string, { data: any; expiresAt: number }>()
+const CACHE_TTL_MS = 10 * 60 * 1000
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 12) return 'Good morning'
@@ -21,6 +25,12 @@ export async function GET() {
   }
 
   const userId = (session.user as any).id
+
+  // Return cached response if fresh
+  const cached = summaryCache.get(userId)
+  if (cached && Date.now() < cached.expiresAt) {
+    return NextResponse.json(cached.data)
+  }
 
   try {
     const now = new Date()
@@ -176,7 +186,9 @@ Example output format:
     }
     console.log('[AI Summary] Parsed cards:', cards.length)
 
-    return NextResponse.json({ cards, updatedAt: now.toISOString() })
+    const result = { cards, updatedAt: now.toISOString() }
+    summaryCache.set(userId, { data: result, expiresAt: Date.now() + CACHE_TTL_MS })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('AI summary error:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

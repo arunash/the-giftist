@@ -25,12 +25,18 @@ export function middleware(request: NextRequest) {
   // Previously blocked to require admin. subdomain, but cookies don't share on Vercel
 
   // Bearer token → cookie injection for Chrome extension
+  // Only allow on API routes to limit attack surface
   const authHeader = request.headers.get('authorization')
   if (
     authHeader?.startsWith('Bearer ') &&
+    pathname.startsWith('/api/') &&
     !request.cookies.get('next-auth.session-token')?.value
   ) {
     const token = authHeader.slice(7)
+    // Reject tokens that look malicious (must be a JWT-shaped string)
+    if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) {
+      return NextResponse.next()
+    }
     const requestHeaders = new Headers(request.headers)
     const existingCookies = requestHeaders.get('cookie') || ''
     const separator = existingCookies ? '; ' : ''
