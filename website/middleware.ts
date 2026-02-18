@@ -1,9 +1,36 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const ALLOWED_ORIGINS = new Set([
+  'https://giftist.ai',
+  'https://www.giftist.ai',
+  'https://admin.giftist.ai',
+])
+
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || ''
   const pathname = request.nextUrl.pathname
+
+  // CSRF protection: validate Origin header on state-changing API requests
+  const method = request.method
+  if (
+    pathname.startsWith('/api/') &&
+    !pathname.startsWith('/api/auth/') &&
+    !pathname.startsWith('/api/webhooks/') &&
+    !pathname.startsWith('/api/cron/') &&
+    (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')
+  ) {
+    const origin = request.headers.get('origin')
+    // Allow requests with no origin (non-browser clients, e.g. curl, mobile apps)
+    // Allow Bearer token requests (authenticated API clients)
+    const hasBearer = request.headers.get('authorization')?.startsWith('Bearer ')
+    if (origin && !hasBearer) {
+      const isLocalDev = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+      if (!ALLOWED_ORIGINS.has(origin) && !isLocalDev) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+  }
 
   // admin.giftist.ai — rewrite all requests to /admin/* internally
   if (hostname.startsWith('admin.')) {

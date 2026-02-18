@@ -233,11 +233,26 @@ export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
     name = name.split(/\s*[|\-–—]\s*/)[0].trim()
   }
 
+  // Validate image URL — only allow http(s) schemes to prevent data:/file: injection
+  let image = jsonLd?.image || og?.image || dom?.image || null
+  if (image) {
+    try {
+      const imgUrl = new URL(image, url)
+      if (imgUrl.protocol !== 'https:' && imgUrl.protocol !== 'http:') {
+        image = null
+      } else {
+        image = imgUrl.toString()
+      }
+    } catch {
+      image = null
+    }
+  }
+
   return {
     name: cleanText(name),
     price: jsonLd?.price || og?.price || dom?.price || null,
     priceValue: jsonLd?.priceValue || og?.priceValue || dom?.priceValue || null,
-    image: jsonLd?.image || og?.image || dom?.image || null,
+    image,
     url,
     domain,
   }

@@ -170,7 +170,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 90 * 24 * 60 * 60, // 90 days
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
     async signIn({ user, account }) {
@@ -265,7 +265,6 @@ export const authOptions: NextAuthOptions = {
           sameSite: 'lax' as const,
           path: '/',
           secure: !isLocalDev,
-          domain: isLocalDev ? undefined : (process.env.VERCEL ? undefined : '.giftist.ai'),
         },
       },
       csrfToken: {

@@ -88,6 +88,31 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
+    // For non-owners, anonymize contribution details
+    const isOwner = event.userId === userId
+    if (!isOwner) {
+      const sanitized = {
+        ...event,
+        items: event.items.map((ei: any) => ({
+          ...ei,
+          item: {
+            ...ei.item,
+            contributions: ei.item.contributions.map((c: any) => ({
+              id: c.id,
+              amount: c.amount,
+              isAnonymous: c.isAnonymous,
+              createdAt: c.createdAt,
+              // Only show contributor name if not anonymous
+              contributor: c.isAnonymous ? null : c.contributor,
+              // Never show message to non-owners
+              message: null,
+            })),
+          },
+        })),
+      }
+      return NextResponse.json(sanitized)
+    }
+
     return NextResponse.json(event)
   } catch (error) {
     console.error('Error fetching event:', error)
