@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, stripeConnectAccountId: true },
+      select: { email: true, name: true, stripeConnectAccountId: true },
     })
 
     if (!user) {
@@ -26,9 +26,21 @@ export async function POST(request: NextRequest) {
 
     // Create Express account if none exists
     if (!accountId) {
+      // Split name for pre-fill
+      const nameParts = (user.name || '').trim().split(/\s+/)
+      const firstName = nameParts[0] || undefined
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined
+
       const account = await stripe.accounts.create({
         type: 'express',
+        country: 'US',
         email: user.email || undefined,
+        business_type: 'individual',
+        individual: {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email || undefined,
+        },
         capabilities: {
           transfers: { requested: true },
           card_payments: { requested: true },
