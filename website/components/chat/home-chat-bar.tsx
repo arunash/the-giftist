@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Send } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sparkles, Send, Lightbulb } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const quickSuggestions = [
@@ -12,7 +12,20 @@ const quickSuggestions = [
 
 export function HomeChatBar() {
   const [inputValue, setInputValue] = useState('')
+  const [insight, setInsight] = useState<string | null>(null)
+  const fetched = useRef(false)
   const router = useRouter()
+
+  useEffect(() => {
+    if (fetched.current) return
+    fetched.current = true
+    fetch('/api/chat/greeting')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.suggestion) setInsight(data.suggestion)
+      })
+      .catch(() => {})
+  }, [])
 
   const navigateToChat = (message: string) => {
     router.push(`/chat?q=${encodeURIComponent(message)}`)
@@ -55,6 +68,17 @@ export function HomeChatBar() {
           )}
         </div>
       </div>
+
+      {/* AI Insight */}
+      {insight && (
+        <button
+          onClick={() => navigateToChat(`Tell me more: ${insight}`)}
+          className="flex items-start gap-2 mt-3 px-3 py-2.5 w-full text-left bg-amber-50/60 border border-amber-200/40 rounded-xl hover:bg-amber-50 transition"
+        >
+          <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-secondary leading-relaxed line-clamp-2">{insight}</p>
+        </button>
+      )}
 
       {/* Quick suggestions */}
       <div className="flex gap-2 mt-3 overflow-x-auto">
