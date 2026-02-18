@@ -6,7 +6,7 @@ import { AddMoneyButton } from '@/components/wallet/add-money-button'
 import { TransactionRow } from '@/components/wallet/transaction-row'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -16,13 +16,17 @@ export default function WalletPage() {
   const [allUnfundedItems, setAllUnfundedItems] = useState<any[]>([])
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number; pendingBalance?: number } | null>(null)
+  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number; pendingBalance?: number; instantEligible?: boolean } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawError, setWithdrawError] = useState('')
+  const [withdrawMethod, setWithdrawMethod] = useState<'standard' | 'instant'>('standard')
   const [lifetimeReceived, setLifetimeReceived] = useState(0)
   const [receivedContributions, setReceivedContributions] = useState<any[]>([])
+  const [moveAmount, setMoveAmount] = useState('')
+  const [moving, setMoving] = useState(false)
+  const [moveError, setMoveError] = useState('')
   const searchParams = useSearchParams()
 
   const fetchData = useCallback(async () => {
@@ -94,19 +98,46 @@ export default function WalletPage() {
       const res = await fetch('/api/stripe/connect/payout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, method: withdrawMethod }),
       })
       const data = await res.json()
       if (!res.ok) {
         setWithdrawError(data.error || 'Withdrawal failed')
       } else {
         setWithdrawAmount('')
+        setWithdrawMethod('standard')
         fetchData()
       }
     } catch {
       setWithdrawError('Withdrawal failed')
     } finally {
       setWithdrawing(false)
+    }
+  }
+
+  const handleMoveToWallet = async () => {
+    const amount = parseFloat(moveAmount)
+    if (!amount || amount <= 0) return
+
+    setMoving(true)
+    setMoveError('')
+    try {
+      const res = await fetch('/api/wallet/move-to-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMoveError(data.error || 'Transfer failed')
+      } else {
+        setMoveAmount('')
+        fetchData()
+      }
+    } catch {
+      setMoveError('Transfer failed')
+    } finally {
+      setMoving(false)
     }
   }
 
@@ -314,6 +345,47 @@ export default function WalletPage() {
             </div>
           </div>
 
+          {/* Use for Gifts — move received funds to wallet */}
+          {lifetimeReceived > 0 && (
+            <div className="ig-card !transform-none p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Gift className="h-4 w-4 text-primary" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Use for Gifts</h3>
+              </div>
+              <p className="text-sm text-gray-500 mb-3">Move received funds to your wallet to spend on gifts instantly — no fees.</p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    value={moveAmount}
+                    onChange={(e) => setMoveAmount(e.target.value)}
+                    placeholder="0.00"
+                    max={lifetimeReceived}
+                    step="0.01"
+                    className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <button
+                  onClick={() => setMoveAmount(lifetimeReceived.toFixed(2))}
+                  className="px-3 py-2.5 text-xs font-medium text-primary border border-primary/20 rounded-xl hover:bg-primary/10 transition"
+                >
+                  Max
+                </button>
+              </div>
+              <button
+                onClick={handleMoveToWallet}
+                disabled={moving || !moveAmount || parseFloat(moveAmount) <= 0 || parseFloat(moveAmount) > lifetimeReceived}
+                className="mt-3 w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
+              >
+                {moving ? 'Moving...' : `Move ${moveAmount ? formatPrice(parseFloat(moveAmount)) : ''} to Wallet`}
+              </button>
+              {moveError && <p className="text-sm text-red-500 mt-2">{moveError}</p>}
+            </div>
+          )}
+
           {/* Recent contributions list */}
           <div className="ig-card !transform-none p-5">
             <h3 className="font-semibold text-gray-900 mb-4">Recent Contributions</h3>
@@ -376,11 +448,45 @@ export default function WalletPage() {
                 {(() => {
                   const withdrawable = connectStatus?.availableBalance || 0
                   const pending = connectStatus?.pendingBalance || Math.max(0, lifetimeReceived - withdrawable)
+                  const parsedAmount = parseFloat(withdrawAmount) || 0
+                  const instantFee = Math.max(parsedAmount * 0.01, 0.50)
+                  const instantNet = parsedAmount - instantFee
                   return withdrawable > 0 ? (
                     <div className="space-y-3">
                       <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(withdrawable)}</span></p>
                       {pending > 0 && (
                         <p className="text-xs text-amber-600">{formatPrice(pending)} pending — available in 1-2 business days</p>
+                      )}
+                      {/* Method toggle */}
+                      <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                        <button
+                          onClick={() => setWithdrawMethod('standard')}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition ${
+                            withdrawMethod === 'standard'
+                              ? 'bg-white text-gray-900 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          Standard (free)
+                        </button>
+                        <button
+                          onClick={() => connectStatus?.instantEligible && setWithdrawMethod('instant')}
+                          disabled={!connectStatus?.instantEligible}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition ${
+                            withdrawMethod === 'instant'
+                              ? 'bg-white text-gray-900 shadow-sm'
+                              : connectStatus?.instantEligible
+                                ? 'text-gray-500 hover:text-gray-700'
+                                : 'text-gray-300 cursor-not-allowed'
+                          }`}
+                        >
+                          <Zap className="h-3.5 w-3.5" />
+                          Instant (1% fee)
+                        </button>
+                      </div>
+                      {!connectStatus?.instantEligible && withdrawMethod === 'standard' && (
+                        <p className="text-xs text-gray-400">Instant payouts require a debit card — add one during bank setup.</p>
                       )}
                       <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -402,13 +508,24 @@ export default function WalletPage() {
                           Max
                         </button>
                       </div>
+                      {withdrawMethod === 'instant' && parsedAmount > 0 && (
+                        <div className="flex justify-between text-sm px-1">
+                          <span className="text-gray-500">{formatPrice(instantFee)} fee</span>
+                          <span className="font-medium text-gray-900">You receive {formatPrice(Math.max(0, instantNet))}</span>
+                        </div>
+                      )}
                       <button
                         onClick={handleWithdraw}
-                        disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > withdrawable}
+                        disabled={withdrawing || !withdrawAmount || parsedAmount <= 0 || parsedAmount > withdrawable || (withdrawMethod === 'instant' && instantNet < 1)}
                         className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
                       >
-                        {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''}`}
+                        {withdrawing ? 'Processing...' : withdrawMethod === 'instant'
+                          ? `Instant Withdraw ${withdrawAmount ? formatPrice(parsedAmount) : ''}`
+                          : `Withdraw ${withdrawAmount ? formatPrice(parsedAmount) : ''}`}
                       </button>
+                      {withdrawMethod === 'instant' && (
+                        <p className="text-xs text-gray-400 text-center">Arrives in minutes to your debit card</p>
+                      )}
                       {withdrawError && (
                         <p className="text-sm text-red-500">{withdrawError}</p>
                       )}

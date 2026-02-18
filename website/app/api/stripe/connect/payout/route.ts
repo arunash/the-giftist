@@ -8,6 +8,7 @@ import { logError } from '@/lib/api-logger'
 
 const payoutSchema = z.object({
   amount: z.number().positive().min(1),
+  method: z.enum(['standard', 'instant']).default('standard'),
 })
 
 export async function POST(request: NextRequest) {
@@ -19,7 +20,15 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id
     const body = await request.json()
-    const { amount } = payoutSchema.parse(body)
+    const { amount, method } = payoutSchema.parse(body)
+
+    const isInstant = method === 'instant'
+    const fee = isInstant ? Math.max(amount * 0.01, 0.50) : 0
+    const netAmount = amount - fee
+
+    if (isInstant && netAmount < 1) {
+      return NextResponse.json({ error: 'Amount too small for instant payout after fee' }, { status: 400 })
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
@@ -40,14 +49,27 @@ export async function POST(request: NextRequest) {
       const platformAvailable = (usdAvailable?.amount || 0) / 100
       if (platformAvailable < amount) throw new Error('FUNDS_PENDING')
 
-      // Create Stripe transfer to connected account
+      // Transfer net amount (after fee) to connected account
+      const transferAmount = isInstant ? netAmount : amount
       const transfer = await stripe.transfers.create({
-        amount: Math.round(amount * 100), // cents
+        amount: Math.round(transferAmount * 100), // cents
         currency: 'usd',
         destination: user.stripeConnectAccountId,
       })
 
-      // Decrement contributions received balance
+      // For instant payouts, create a payout on the connected account
+      if (isInstant) {
+        await stripe.payouts.create(
+          {
+            amount: Math.round(netAmount * 100),
+            currency: 'usd',
+            method: 'instant',
+          },
+          { stripeAccount: user.stripeConnectAccountId }
+        )
+      }
+
+      // Decrement contributions received balance (full amount including fee)
       await tx.user.update({
         where: { id: userId },
         data: { lifetimeContributionsReceived: { decrement: amount } },
@@ -60,18 +82,22 @@ export async function POST(request: NextRequest) {
         update: {},
       })
 
+      const description = isInstant
+        ? `Instant withdrawal ($${fee.toFixed(2)} fee)`
+        : 'Withdrawal to bank'
+
       await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           type: 'PAYOUT',
           amount: -amount,
           status: 'COMPLETED',
-          description: `Withdrawal to bank`,
+          description,
           stripeSessionId: transfer.id,
         },
       })
 
-      return { balance: availableBalance - amount, transferId: transfer.id }
+      return { balance: availableBalance - amount, transferId: transfer.id, fee: isInstant ? fee : 0 }
     })
 
     return NextResponse.json(result)

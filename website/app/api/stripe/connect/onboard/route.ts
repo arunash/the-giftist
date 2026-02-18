@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         email: user.email || undefined,
         capabilities: {
           transfers: { requested: true },
+          card_payments: { requested: true },
         },
       })
       accountId = account.id
