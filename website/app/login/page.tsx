@@ -267,7 +267,10 @@ function LoginForm() {
         </div>
 
         <p className="text-center text-sm text-muted mt-6">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
+          By signing in, you agree to our{' '}
+          <a href="/terms" target="_blank" className="underline hover:text-gray-900 transition">Terms of Service</a>
+          {' '}and{' '}
+          <a href="/privacy" target="_blank" className="underline hover:text-gray-900 transition">Privacy Policy</a>.
         </p>
       </div>
     </div>

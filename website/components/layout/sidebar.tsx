@@ -90,7 +90,7 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
 
       {/* Funds cards */}
       <div className="mx-4 mb-4 space-y-2">
-        <a href="/wallet" className="group relative block p-4 rounded-xl bg-white border border-gray-200 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden">
+        <Link href="/wallet" className="group relative block p-4 rounded-xl bg-white border border-gray-200 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden">
           <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
             <Wallet className="h-4 w-4 text-primary" />
           </div>
@@ -101,9 +101,9 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
               Ready to send <ArrowUpRight className="h-3 w-3" />
             </p>
           )}
-        </a>
+        </Link>
         {fundsReceived > 0 && (
-          <a href="/wallet" className="group relative block p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer overflow-hidden">
+          <Link href="/wallet" className="group relative block p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer overflow-hidden">
             <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
               <Gift className="h-4 w-4 text-emerald-600" />
             </div>
@@ -113,7 +113,7 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
             </div>
             <p className="text-2xl font-bold text-emerald-700">{formatPrice(fundsReceived)}</p>
             <p className="text-[11px] text-emerald-600/70 mt-1">from friends & family</p>
-          </a>
+          </Link>
         )}
       </div>
 

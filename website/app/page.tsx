@@ -217,22 +217,17 @@ export default async function Home() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full mb-6">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide">AI Concierge</span>
-              </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
                 A personal shopper<br />
                 <span className="text-gray-400">that never clocks out.</span>
               </h2>
               <p className="text-gray-500 leading-relaxed mb-8">
-                Your Gift Concierge learns your taste from everything you save. Ask for gift ideas, get real product recommendations, and add them to your list — all through natural conversation.
+                Tell it who you're shopping for. It suggests real products you can add to your list in one tap.
               </p>
               <div className="space-y-3">
-                <CheckItem text="Knows your taste, budget, and preferences" />
-                <CheckItem text="Suggests real products with prices" />
+                <CheckItem text="Real product suggestions with prices" />
                 <CheckItem text="Works on web and WhatsApp" />
-                <CheckItem text="Gets smarter the more you use it" />
+                <CheckItem text="Learns your taste over time" />
               </div>
             </div>
           </div>
