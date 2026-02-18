@@ -61,6 +61,11 @@ export default function ItemDetailPage() {
   const [editPrice, setEditPrice] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingItem, setDeletingItem] = useState(false)
+  const [showContribute, setShowContribute] = useState(false)
+  const [contributeAmount, setContributeAmount] = useState('')
+  const [contributeMessage, setContributeMessage] = useState('')
+  const [contributeAnonymous, setContributeAnonymous] = useState(false)
+  const [contributingLoading, setContributingLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -260,6 +265,37 @@ export default function ItemDetailPage() {
       alert('Failed to delete item')
     } finally {
       setDeletingItem(false)
+    }
+  }
+
+  const handleContribute = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const numAmount = parseFloat(contributeAmount)
+    if (isNaN(numAmount) || numAmount <= 0) return
+
+    setContributingLoading(true)
+    try {
+      const res = await fetch('/api/contribute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: item?.id,
+          amount: numAmount,
+          message: contributeMessage || null,
+          isAnonymous: contributeAnonymous,
+          returnUrl: `/items/${id}`,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Failed to start payment')
+        setContributingLoading(false)
+      }
+    } catch {
+      alert('Failed to start payment')
+      setContributingLoading(false)
     }
   }
 
@@ -644,18 +680,104 @@ export default function ItemDetailPage() {
 
       {/* Contribute button — sticky at bottom */}
       {!isFullyFunded && goal > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/95 to-transparent">
           <div className="max-w-2xl mx-auto">
             <button
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent('giftist:contribute', { detail: { itemId: item.id } })
-                )
-              }}
-              className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
+              onClick={() => setShowContribute(true)}
+              className="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-colors shadow-lg shadow-primary/20"
             >
               Contribute ({formatPrice(remaining)} remaining)
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contribute modal */}
+      {showContribute && item && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 relative border border-gray-200 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowContribute(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Contribute to Gift</h2>
+            <p className="text-gray-500 text-sm mb-5 line-clamp-2">{item.name}</p>
+
+            <form onSubmit={handleContribute} className="space-y-4">
+              {/* Suggested amounts */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[10, 25, 50, 100].filter((a) => a <= remaining).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setContributeAmount(String(a))}
+                      className={`py-2 rounded-lg font-medium text-sm transition ${
+                        contributeAmount === String(a)
+                          ? 'bg-primary text-white'
+                          : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      }`}
+                    >
+                      ${a}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    value={contributeAmount}
+                    onChange={(e) => setContributeAmount(e.target.value)}
+                    placeholder="Custom amount"
+                    min="1"
+                    max={remaining}
+                    step="0.01"
+                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{formatPrice(remaining)} remaining to fully fund</p>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Message (optional)</label>
+                <textarea
+                  value={contributeMessage}
+                  onChange={(e) => setContributeMessage(e.target.value)}
+                  placeholder="Add a personal message..."
+                  rows={2}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition resize-none"
+                />
+              </div>
+
+              {/* Anonymous */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={contributeAnonymous}
+                  onChange={(e) => setContributeAnonymous(e.target.checked)}
+                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-sm text-gray-500">Contribute anonymously</span>
+              </label>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={contributingLoading || !contributeAmount}
+                className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary-hover transition disabled:opacity-50"
+              >
+                {contributingLoading
+                  ? 'Redirecting to payment...'
+                  : `Pay ${contributeAmount ? formatPrice(parseFloat(contributeAmount)) : ''}`}
+              </button>
+              <p className="text-xs text-gray-400 text-center">Secure payment powered by Stripe</p>
+            </form>
           </div>
         </div>
       )}
