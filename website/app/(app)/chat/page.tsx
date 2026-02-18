@@ -129,8 +129,8 @@ export default function ChatPage() {
 
   return (
     <>
-      {/* Desktop: flex column layout filling viewport height */}
-      <div className="hidden lg:flex flex-col h-screen max-h-screen overflow-hidden">
+      {/* Desktop: fixed to viewport, offset by sidebar */}
+      <div className="hidden lg:flex fixed top-0 bottom-0 left-80 right-0 flex-col overflow-hidden bg-background z-10">
         <div className="p-6 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
         </div>
@@ -159,8 +159,8 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Mobile: flex column, NO fixed positioning — avoids Safari keyboard issues */}
-      <div className="lg:hidden flex flex-col -mb-20 w-full overflow-hidden" style={{ height: 'calc(100dvh - 4rem)' }}>
+      {/* Mobile: fixed to viewport, above bottom nav */}
+      <div className="lg:hidden flex fixed top-0 left-0 right-0 bottom-16 flex-col overflow-hidden bg-background z-10">
         {/* Header */}
         <div className="p-4 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
@@ -183,7 +183,7 @@ export default function ChatPage() {
           <div ref={mobileEndRef} />
         </div>
 
-        {/* Suggestions + Input — pinned to bottom of flex, no position:fixed */}
+        {/* Suggestions + Input — pinned to bottom of flex */}
         {suggestionChips && (
           <div className="px-4 py-1.5 flex gap-2 overflow-x-auto flex-shrink-0">
             {suggestionChips}
