@@ -48,7 +48,7 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
   const [selectedEvent, setSelectedEvent] = useState('')
   const [imgBroken, setImgBroken] = useState(false)
 
-  const itemShareLink = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to check out a gift from ${ownerName || 'your friend'}'s wishlist on The Giftist!\n\nitem ${item.id}`)}`
+  const itemShareLink = `https://giftist.ai/items/${item.id}`
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault()

@@ -8,7 +8,7 @@ export default function ShareItemButton({ itemId, ownerName }: { itemId: string;
   const [copied, setCopied] = useState(false)
 
   const handleShare = async () => {
-    const url = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to check out a gift from ${ownerName}'s wishlist on The Giftist!\n\nitem ${itemId}`)}`
+    const url = `https://giftist.ai/items/${itemId}`
     const didShare = await shareOrCopy(url, 'A gift idea on The Giftist', giftistShareText(ownerName))
     if (didShare) {
       setCopied(true)

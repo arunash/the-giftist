@@ -259,11 +259,8 @@ export async function handleTextMessage(
   if (trimmed === 'share') {
     const sharer = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true, name: true } })
     if (sharer?.shareId) {
-      const sharerName = sharer.name || 'your friend'
-      const prefill = encodeURIComponent(`👋 Tap send to view ${sharerName}'s wishlist on The Giftist!\n\nview ${sharer.shareId}`)
-      const shareLink = `https://wa.me/15014438478?text=${prefill}`
       const webUrl = `https://giftist.ai/u/${sharer.shareId}`
-      return `Here's your shareable link:\n\n${shareLink}\n\nOr share your web wishlist directly:\n${webUrl}\n\nFriends can view your list and contribute to any gift!`
+      return `Here's your shareable link:\n\n${webUrl}\n\nFriends can view your list and contribute to any gift!`
     }
     return "Something went wrong generating your share link. Please try again."
   }

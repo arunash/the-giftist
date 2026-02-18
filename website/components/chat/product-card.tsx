@@ -60,7 +60,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               className="p-1 text-muted hover:text-gray-900 transition flex-shrink-0"
               onClick={async (e) => {
                 e.stopPropagation()
-                const url = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to check out a gift idea on The Giftist!\n\nitem ${product.id}`)}`
+                const url = `https://giftist.ai/items/${product.id}`
                 const didShare = await shareOrCopy(url, product.name, giftistShareText('Your friend'))
                 if (didShare) {
                   setShareCopied(true)

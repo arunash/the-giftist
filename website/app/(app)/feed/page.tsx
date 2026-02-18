@@ -348,7 +348,7 @@ export default function FeedPage() {
                 {shareId && (
                   <button
                     onClick={async () => {
-                      const url = `https://wa.me/15014438478?text=${encodeURIComponent(`👋 Tap send to view ${userName || 'your friend'}'s wishlist on The Giftist!\n\nview ${shareId}`)}`
+                      const url = `https://giftist.ai/u/${shareId}`
                       const didShare = await shareOrCopy(url, 'My Giftist Wishlist', giftistShareText(userName || 'Your friend'))
                       if (didShare) {
                         setShareCopied(true)
