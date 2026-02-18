@@ -43,7 +43,7 @@ export function HomeChatBar() {
               }
             }}
             placeholder="Ask the Gift Concierge..."
-            className="flex-1 text-sm text-gray-900 placeholder-muted outline-none bg-transparent"
+            className="flex-1 text-sm text-gray-900 placeholder-muted placeholder:font-semibold outline-none bg-transparent"
           />
           {inputValue.trim() && (
             <button
