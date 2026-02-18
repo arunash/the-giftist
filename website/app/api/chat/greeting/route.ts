@@ -109,22 +109,18 @@ User context:
 - Is brand new user: ${isNew}
 
 Rules for greeting:
+- ONE short sentence only (under 15 words)
 - If they're missing important dates, ask about upcoming events
-- If they have an upcoming event, reference it
-- If they're new, welcome them warmly
+- If they have an upcoming event, reference it briefly
+- If they're new, welcome them
 - Do NOT use emojis
-- Keep it conversational, 1-2 sentences max
 
 Rules for suggestion:
-- MUST be specific: name a real product/experience and approximate price (e.g. "A Le Creuset Dutch Oven (~$95) would match her love of cooking")
-- If there's an upcoming event within 14 days, tie the suggestion to it (e.g. "Sarah's birthday is in 5 days. A Kindle Paperwhite (~$140) would be perfect for the book lover in your life.")
-- If no upcoming event, base it on user interests
-- If no interests known, suggest something seasonally relevant or universally loved
-- Keep it to 1-2 sentences
+- ONE sentence: name a specific product with price, tied to an event or interest
 - Do NOT use emojis
 
 Example output:
-{"greeting":"Good morning, Alex! You've been building a great list this week.","suggestion":"Mom's birthday is in 8 days. A Le Creuset Dutch Oven (~$95) would be a perfect match for her love of cooking."}`
+{"greeting":"Good morning, Alex!","suggestion":"A Kindle Paperwhite (~$140) for Sarah's birthday in 5 days."}`
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',

@@ -10,9 +10,8 @@ import { MessageCircle } from 'lucide-react'
 
 const defaultSuggestions = [
   'What should I get next?',
-  'Show my unfunded items',
   'Gift ideas for upcoming events',
-  'What\'s trending right now?',
+  'What\'s trending?',
 ]
 
 export default function ChatPage() {
@@ -110,10 +109,9 @@ export default function ChatPage() {
 
   const emptyState = (
     <div className="flex flex-col items-center justify-center text-center">
-      <MessageCircle className="h-16 w-16 text-[#333] mb-4" />
-      <h2 className="text-lg font-medium text-gray-900 mb-2">Your Gift Concierge</h2>
-      <p className="text-sm text-muted max-w-sm mb-6">
-        I know your taste. Ask me for recommendations, help deciding, or what&apos;s trending in your world.
+      <MessageCircle className="h-12 w-12 text-gray-300 mb-3" />
+      <p className="text-sm text-muted max-w-xs mb-5">
+        Ask me for gift ideas, help deciding, or what&apos;s trending.
       </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-md">
         {defaultSuggestions.map((s) => (
@@ -124,7 +122,7 @@ export default function ChatPage() {
   )
 
   const suggestionChips = messages.length > 0 && !streaming ? (
-    defaultSuggestions.slice(0, 3).map((s) => (
+    defaultSuggestions.map((s) => (
       <SuggestionChip key={s} label={s} onClick={sendMessage} />
     ))
   ) : null
@@ -135,7 +133,6 @@ export default function ChatPage() {
       <div className="hidden lg:flex flex-col h-screen max-h-screen overflow-hidden">
         <div className="p-6 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
-          <p className="text-sm text-muted">Your personal shopping assistant — ask about gifts, trends, and your wishlist</p>
         </div>
         <div ref={desktopScrollRef} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
@@ -167,7 +164,6 @@ export default function ChatPage() {
         {/* Header */}
         <div className="p-4 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
-          <p className="text-sm text-muted">Your personal shopping assistant</p>
         </div>
 
         {/* Messages — flex-1 scrollable area */}
