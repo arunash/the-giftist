@@ -34,18 +34,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Request card_payments on existing accounts that don't have it yet
-    const hasCardPayments = account.capabilities?.card_payments === 'active' || account.capabilities?.card_payments === 'pending'
-    if (onboarded && !hasCardPayments) {
-      try {
-        await stripe.accounts.update(user.stripeConnectAccountId, {
-          capabilities: { card_payments: { requested: true } },
-        })
-      } catch {
-        // Non-critical — don't block the response
-      }
-    }
-
     // Per-user available balance: their contributions received, capped by platform's available funds
     let availableBalance = 0
     let pendingBalance = 0
@@ -63,12 +51,10 @@ export async function GET(request: NextRequest) {
         pendingBalance = userBalance
       }
 
-      // Check instant payout eligibility on connected account
+      // Check instant payout eligibility — requires a debit card as external account
       try {
         const connectedBalance = await stripe.balance.retrieve({ stripeAccount: user.stripeConnectAccountId } as any)
-        const instantAvailable = connectedBalance.instant_available?.find((b: any) => b.currency === 'usd')
-        // Eligible if the connected account has instant payouts enabled (even if current instant balance is 0)
-        instantEligible = account.capabilities?.card_payments === 'active' && !!connectedBalance.instant_available
+        instantEligible = Array.isArray(connectedBalance.instant_available) && connectedBalance.instant_available.length > 0
       } catch {
         instantEligible = false
       }
