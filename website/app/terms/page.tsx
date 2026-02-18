@@ -17,7 +17,7 @@ export default function TermsPage() {
         <div className="space-y-8 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Agreement to Terms</h2>
-            <p>By accessing or using The Giftist (&quot;Service&quot;), operated by Giftist Inc. (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a company incorporated in the State of California, United States, you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, do not use the Service.</p>
+            <p>By accessing or using The Giftist (&quot;Service&quot;), operated by North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a limited liability company organized in the State of California, United States, you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, do not use the Service.</p>
             <p className="mt-2">These Terms apply to all visitors, users, and others who access the Service (&quot;Users&quot;). By using the Service, you represent that you are at least 13 years of age. If you are under 18, you represent that your legal guardian has reviewed and agreed to these Terms.</p>
           </section>
 
@@ -108,7 +108,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Intellectual Property</h2>
-            <p>The Service and its original content (excluding user content), features, and functionality are owned by Giftist Inc. and are protected by copyright, trademark, and other intellectual property laws. Our trademarks may not be used without prior written consent.</p>
+            <p>The Service and its original content (excluding user content), features, and functionality are owned by North Beach Technologies LLC and are protected by copyright, trademark, and other intellectual property laws. Our trademarks may not be used without prior written consent.</p>
           </section>
 
           <section>
@@ -123,7 +123,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">13. Indemnification</h2>
-            <p>You agree to indemnify, defend, and hold harmless Giftist Inc. and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys&apos; fees) arising out of or related to your use of the Service, your violation of these Terms, or your violation of any rights of a third party.</p>
+            <p>You agree to indemnify, defend, and hold harmless North Beach Technologies LLC and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys&apos; fees) arising out of or related to your use of the Service, your violation of these Terms, or your violation of any rights of a third party.</p>
           </section>
 
           <section>
@@ -149,7 +149,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">18. Contact</h2>
             <p>If you have questions about these Terms, contact us at:</p>
-            <p className="mt-2">Giftist Inc.<br />California, United States<br />Email: legal@giftist.ai</p>
+            <p className="mt-2">North Beach Technologies LLC<br />California, United States<br />Email: legal@giftist.ai</p>
           </section>
         </div>
 

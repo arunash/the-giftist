@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <div className="space-y-8 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Introduction</h2>
-            <p>Giftist Inc. (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a company incorporated in the State of California, United States, operates The Giftist platform at giftist.ai (&quot;Service&quot;). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Service.</p>
+            <p>North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a limited liability company organized in the State of California, United States, operates The Giftist platform at giftist.ai (&quot;Service&quot;). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Service.</p>
             <p className="mt-2">We are committed to protecting your privacy and complying with applicable data protection laws, including the California Consumer Privacy Act (CCPA), the California Privacy Rights Act (CPRA), and the European Union General Data Protection Regulation (GDPR) where applicable.</p>
           </section>
 
@@ -209,7 +209,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">14. Contact Us</h2>
             <p>For privacy-related questions, requests, or complaints:</p>
             <p className="mt-2">
-              Giftist Inc.<br />
+              North Beach Technologies LLC<br />
               California, United States<br />
               Email: privacy@giftist.ai
             </p>
