@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: checkoutSession.url })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid amount', details: error.errors }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
     console.error('Error creating deposit:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

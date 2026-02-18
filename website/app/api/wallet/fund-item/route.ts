@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
       if (!item) {
         throw new Error('ITEM_NOT_FOUND')
       }
+      if (item.isPurchased) {
+        throw new Error('ALREADY_PURCHASED')
+      }
 
       // Decrement wallet balance
       await tx.wallet.update({
@@ -110,7 +113,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
     }
     if (error.message === 'NO_WALLET') {
       return NextResponse.json({ error: 'Wallet not found. Add money first.' }, { status: 400 })
@@ -120,6 +123,9 @@ export async function POST(request: NextRequest) {
     }
     if (error.message === 'ITEM_NOT_FOUND') {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+    }
+    if (error.message === 'ALREADY_PURCHASED') {
+      return NextResponse.json({ error: 'This item has already been purchased' }, { status: 400 })
     }
     console.error('Error funding item:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

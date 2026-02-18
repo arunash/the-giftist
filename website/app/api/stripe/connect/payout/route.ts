@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid amount', details: error.errors }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
     if (error.message === 'NOT_ONBOARDED') {
       return NextResponse.json({ error: 'Complete bank account setup first' }, { status: 400 })

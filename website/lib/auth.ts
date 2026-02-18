@@ -144,6 +144,8 @@ export const authOptions: NextAuthOptions = {
           createDefaultEventsForUser(user.id).catch(() => {})
         }
 
+        if (!user.isActive) return null
+
         return {
           id: user.id,
           name: user.name,
@@ -159,6 +161,15 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
+      // Block suspended accounts from signing in
+      if (user.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { isActive: true },
+        })
+        if (dbUser && !dbUser.isActive) return false
+      }
+
       if (account?.provider === 'google' && user.email) {
         // Normal Google sign-in (not linking): check if a user already exists with this email
         const existing = await prisma.user.findUnique({
@@ -200,14 +211,18 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.phone = (user as any).phone || null
       }
-      // On subsequent requests, look up phone from DB if not set
+      // On subsequent requests, look up phone and active status from DB
       if (token.id && !token.phone) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { phone: true },
+          select: { phone: true, isActive: true },
         })
         if (dbUser?.phone) {
           token.phone = dbUser.phone
+        }
+        // Invalidate session for suspended users
+        if (dbUser && !dbUser.isActive) {
+          return { ...token, isActive: false }
         }
       }
       // Admin check
@@ -219,6 +234,10 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id
         ;(session.user as any).phone = token.phone || null
         ;(session.user as any).isAdmin = token.isAdmin || false
+        if (token.isActive === false) {
+          // Return empty session for suspended users
+          return { ...session, user: undefined }
+        }
       }
       return session
     },
