@@ -200,10 +200,18 @@ export default async function Home() {
                   </div>
                 </div>
                 <div className="p-4 space-y-3">
-                  <ChatMock role="user" text="I need a birthday gift for my sister, she's into cooking" />
-                  <ChatMock role="assistant" text="Great taste runs in the family! I'd go with the Le Creuset Dutch Oven in Marseille — stunning and lasts forever. $350 but your friends can chip in." />
-                  <ChatMock role="user" text="Add it to my list" />
-                  <ChatMock role="assistant" text="Done! Added Le Creuset Dutch Oven. Want me to find more options at different price points?" />
+                  <ChatMock role="user" text="Birthday gift for my sister — she loves cooking" />
+                  <ChatMock role="assistant" text="I'd go with the Le Creuset Dutch Oven in Marseille — stunning and lasts forever. $350 but your friends can chip in." />
+                  <ChatMock role="user" text="Add it to my list!" />
+                </div>
+                {/* Input composer */}
+                <div className="px-4 pb-4 pt-1">
+                  <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-4 py-2.5">
+                    <span className="text-[13px] text-gray-400 flex-1">Ask your concierge anything...</span>
+                    <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                      <ArrowRight className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
