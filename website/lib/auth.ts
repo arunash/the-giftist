@@ -26,59 +26,72 @@ const baseAdapter = PrismaAdapter(prisma) as any
 const adapter = {
   ...baseAdapter,
   createUser: async (user: any) => {
-    // Check if any user has a pending linking token (set by /api/account/prepare-link)
+    // Check if any user has a pending linking token (set by /api/account/prepare-link or /link-google)
     // Token format: "link_{userId}_{timestamp}_{hmac}"
     try {
-      const linkingUser = await prisma.user.findFirst({
-        where: {
-          linkingToken: { not: null },
-        },
-        orderBy: { updatedAt: 'desc' },
+      const usersWithTokens = await prisma.user.findMany({
+        where: { linkingToken: { not: null } },
       })
 
-      if (linkingUser && linkingUser.linkingToken) {
-        const parts = linkingUser.linkingToken.split('_')
-        // Validate format: link_{userId}_{timestamp}_{hmac}
-        if (parts.length === 4 && parts[0] === 'link') {
-          const [, tokenUserId, timestampStr, tokenHmac] = parts
-          const timestamp = parseInt(timestampStr, 10)
-          const secret = process.env.NEXTAUTH_SECRET || ''
+      let validLinkingUser: typeof usersWithTokens[0] | null = null
 
-          // Verify HMAC
-          const expectedHmac = crypto
-            .createHmac('sha256', secret)
-            .update(`link_${tokenUserId}_${timestampStr}`)
-            .digest('hex')
-            .slice(0, 16)
-
-          let isValidHmac = false
-          try {
-            isValidHmac = crypto.timingSafeEqual(Buffer.from(tokenHmac), Buffer.from(expectedHmac))
-          } catch {
-            isValidHmac = false
-          }
-          const isRecent = Date.now() - timestamp < 5 * 60 * 1000
-          const isCorrectUser = tokenUserId === linkingUser.id
-
-          if (isValidHmac && isRecent && isCorrectUser) {
-            // Return existing user instead of creating a new one
-            const updated = await prisma.user.update({
-              where: { id: linkingUser.id },
-              data: {
-                email: linkingUser.email || user.email,
-                name: linkingUser.name || user.name,
-                image: linkingUser.image || user.image,
-                linkingToken: null,
-              },
-            })
-            return updated
-          }
+      for (const candidate of usersWithTokens) {
+        const parts = candidate.linkingToken!.split('_')
+        if (parts.length !== 4 || parts[0] !== 'link') {
+          // Invalid format — clear stale token
+          await prisma.user.update({ where: { id: candidate.id }, data: { linkingToken: null } })
+          continue
         }
-        // Invalid/expired — clear it
-        await prisma.user.update({
-          where: { id: linkingUser.id },
-          data: { linkingToken: null },
+
+        const [, tokenUserId, timestampStr, tokenHmac] = parts
+        const timestamp = parseInt(timestampStr, 10)
+        const secret = process.env.NEXTAUTH_SECRET || ''
+
+        // Verify HMAC
+        const expectedHmac = crypto
+          .createHmac('sha256', secret)
+          .update(`link_${tokenUserId}_${timestampStr}`)
+          .digest('hex')
+          .slice(0, 16)
+
+        let isValidHmac = false
+        try {
+          isValidHmac = crypto.timingSafeEqual(Buffer.from(tokenHmac), Buffer.from(expectedHmac))
+        } catch {
+          isValidHmac = false
+        }
+        const isRecent = Date.now() - timestamp < 5 * 60 * 1000
+        const isCorrectUser = tokenUserId === candidate.id
+
+        if (!isValidHmac || !isRecent || !isCorrectUser) {
+          // Invalid or expired — clear token
+          await prisma.user.update({ where: { id: candidate.id }, data: { linkingToken: null } })
+          continue
+        }
+
+        if (validLinkingUser) {
+          // Race condition: multiple valid tokens — clear all and refuse to link
+          await prisma.user.update({ where: { id: validLinkingUser.id }, data: { linkingToken: null } })
+          await prisma.user.update({ where: { id: candidate.id }, data: { linkingToken: null } })
+          validLinkingUser = null
+          break
+        }
+
+        validLinkingUser = candidate
+      }
+
+      if (validLinkingUser) {
+        // Return existing user instead of creating a new one
+        const updated = await prisma.user.update({
+          where: { id: validLinkingUser.id },
+          data: {
+            email: validLinkingUser.email || user.email,
+            name: validLinkingUser.name || user.name,
+            image: validLinkingUser.image || user.image,
+            linkingToken: null,
+          },
         })
+        return updated
       }
     } catch (e) {
       console.error('[Auth] createUser linking check failed:', e)

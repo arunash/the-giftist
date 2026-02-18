@@ -12,10 +12,18 @@ export async function GET() {
 
   const userId = (session.user as any).id
 
-  // Set linking token in DB
+  // Set HMAC-signed linking token bound to this user (expires in 5 minutes)
+  const timestamp = Date.now().toString()
+  const secret = process.env.NEXTAUTH_SECRET || ''
+  const hmac = crypto
+    .createHmac('sha256', secret)
+    .update(`link_${userId}_${timestamp}`)
+    .digest('hex')
+    .slice(0, 16)
+
   await prisma.user.update({
     where: { id: userId },
-    data: { linkingToken: `link_${Date.now()}` },
+    data: { linkingToken: `link_${userId}_${timestamp}_${hmac}` },
   })
 
   // Build Google OAuth URL directly
