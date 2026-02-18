@@ -123,12 +123,18 @@ export async function resolveUserAndList(phone: string, profileName?: string) {
   return { userId: user.id, listId: list.id, isNewUser }
 }
 
+const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
+
 export async function handleTextMessage(
   userId: string,
   listId: string,
   text: string,
   phone: string,
 ): Promise<string> {
+  // Truncate excessively long messages to prevent token abuse
+  if (text.length > MAX_WHATSAPP_MESSAGE_LENGTH) {
+    text = text.slice(0, MAX_WHATSAPP_MESSAGE_LENGTH)
+  }
   const trimmed = text.trim().toLowerCase()
 
   // Check for pending product confirmation/rejection
@@ -289,18 +295,23 @@ export async function handleTextMessage(
     return `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.\n\n🎁 *${ownerName}'s Wishlist*\n\n${itemLines.join('\n')}${moreText}\n\nView the full list and contribute:\nhttps://giftist.ai/u/${targetShareId}\n\nWant to create your own wishlist? Sign up free at *giftist.ai* — save gifts from any store, create event wishlists, and share with friends!`
   }
 
-  // Command: item {itemId} — view a single item
+  // Command: item {itemId} — view a single item (only items the user owns or from public profiles)
   const itemMatch = text.match(/\bitem\s+(\S+)/i)
   if (itemMatch) {
     const targetItemId = itemMatch[1]
     const item = await prisma.item.findUnique({
       where: { id: targetItemId },
       include: {
-        user: { select: { name: true, shareId: true } },
+        user: { select: { id: true, name: true, shareId: true } },
       },
     })
 
     if (!item) {
+      return "I couldn't find that item. The link may have expired or be invalid."
+    }
+
+    // Only allow viewing own items or items from users with public share links
+    if (item.user.id !== userId && !item.user.shareId) {
       return "I couldn't find that item. The link may have expired or be invalid."
     }
 

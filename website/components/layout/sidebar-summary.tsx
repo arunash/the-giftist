@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, Calendar, MessageCircle } from 'lucide-react'
 
@@ -73,7 +73,7 @@ export function SidebarSummary() {
             <div key={i} className="px-3 py-2 rounded-lg bg-surface-hover/50 hover:bg-surface-hover transition">
               <div className="flex items-start gap-2 text-xs text-secondary leading-relaxed">
                 <span className="shrink-0 mt-0.5">{card.emoji}</span>
-                <span dangerouslySetInnerHTML={{ __html: formatCardText(card.text) }} />
+                <span>{formatCardText(card.text)}</span>
               </div>
               {isEventCard ? (
                 <div className="flex gap-2 mt-2 ml-5">
@@ -120,7 +120,10 @@ function formatUpdatedAt(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-function formatCardText(text: string): string {
+function formatCardText(text: string): React.ReactNode {
   // Bold text wrapped in * (e.g. *Taylor's birthday*)
-  return text.replace(/\*([^*]+)\*/g, '<strong class="text-primary">$1</strong>')
+  const parts = text.split(/\*([^*]+)\*/g)
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i} className="text-primary">{part}</strong> : part
+  )
 }

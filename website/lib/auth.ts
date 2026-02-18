@@ -51,7 +51,12 @@ const adapter = {
             .digest('hex')
             .slice(0, 16)
 
-          const isValidHmac = tokenHmac === expectedHmac
+          let isValidHmac = false
+          try {
+            isValidHmac = crypto.timingSafeEqual(Buffer.from(tokenHmac), Buffer.from(expectedHmac))
+          } catch {
+            isValidHmac = false
+          }
           const isRecent = Date.now() - timestamp < 5 * 60 * 1000
           const isCorrectUser = tokenUserId === linkingUser.id
 

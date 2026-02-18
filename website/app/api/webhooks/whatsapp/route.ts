@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/db'
 import { normalizePhone, sendTextMessage, markAsRead } from '@/lib/whatsapp'
 import {
@@ -13,12 +13,16 @@ import { logError } from '@/lib/api-logger'
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
   const appSecret = process.env.WHATSAPP_APP_SECRET
   if (!appSecret) {
-    console.warn('WHATSAPP_APP_SECRET not set — skipping signature verification')
-    return true // Allow in dev if secret not configured
+    console.error('WHATSAPP_APP_SECRET not set — rejecting webhook')
+    return false
   }
-  if (!signature) return false
-  const expectedSig = createHmac('sha256', appSecret).update(body).digest('hex')
-  return signature === `sha256=${expectedSig}`
+  if (!signature || !signature.startsWith('sha256=')) return false
+  const expectedSig = `sha256=${createHmac('sha256', appSecret).update(body).digest('hex')}`
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))
+  } catch {
+    return false
+  }
 }
 
 // Meta webhook verification

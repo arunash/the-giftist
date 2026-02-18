@@ -8,6 +8,22 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
 
+const MAX_MESSAGE_LENGTH = 4000
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const RATE_LIMIT_MAX = 15 // max requests per minute per user
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return true
+  }
+  entry.count++
+  return entry.count <= RATE_LIMIT_MAX
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,10 +32,23 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = (session.user as any).id
+
+    // Per-request rate limit
+    if (!checkRateLimit(userId)) {
+      return new Response(
+        JSON.stringify({ error: 'rate_limited', message: 'Too many requests. Please slow down.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { message } = await request.json()
 
     if (!message || typeof message !== 'string') {
       return new Response('Message is required', { status: 400 })
+    }
+
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return new Response('Message is too long', { status: 400 })
     }
 
     // Check daily message limit for free users
