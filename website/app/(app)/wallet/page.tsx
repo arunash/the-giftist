@@ -16,7 +16,7 @@ export default function WalletPage() {
   const [allUnfundedItems, setAllUnfundedItems] = useState<any[]>([])
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number } | null>(null)
+  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number; pendingBalance?: number } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
@@ -375,7 +375,7 @@ export default function WalletPage() {
                 </div>
                 {(() => {
                   const withdrawable = connectStatus?.availableBalance || 0
-                  const pending = lifetimeReceived - withdrawable
+                  const pending = connectStatus?.pendingBalance || Math.max(0, lifetimeReceived - withdrawable)
                   return withdrawable > 0 ? (
                     <div className="space-y-3">
                       <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(withdrawable)}</span></p>

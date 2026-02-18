@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const userId = (session.user as any).id
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { stripeConnectAccountId: true, stripeConnectOnboarded: true },
+      select: { stripeConnectAccountId: true, stripeConnectOnboarded: true, lifetimeContributionsReceived: true },
     })
 
     if (!user?.stripeConnectAccountId) {
@@ -34,15 +34,22 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get platform available balance to determine withdrawable amount
+    // Per-user available balance: their contributions received, capped by platform's available funds
     let availableBalance = 0
+    let pendingBalance = 0
     if (onboarded) {
+      const userBalance = user.lifetimeContributionsReceived || 0
       try {
         const balance = await stripe.balance.retrieve()
         const usdAvailable = balance.available.find((b) => b.currency === 'usd')
-        availableBalance = (usdAvailable?.amount || 0) / 100 // cents to dollars
+        const usdPending = balance.pending.find((b) => b.currency === 'usd')
+        const platformAvailable = (usdAvailable?.amount || 0) / 100
+        const platformPending = (usdPending?.amount || 0) / 100
+        availableBalance = Math.min(userBalance, platformAvailable)
+        pendingBalance = Math.max(0, userBalance - availableBalance)
       } catch {
-        // If balance check fails, leave at 0
+        availableBalance = 0
+        pendingBalance = userBalance
       }
     }
 
@@ -51,6 +58,7 @@ export async function GET(request: NextRequest) {
       onboarded: !!onboarded,
       payoutsEnabled: account.payouts_enabled,
       availableBalance,
+      pendingBalance,
     })
   } catch (error) {
     console.error('Error checking Connect status:', error)
