@@ -320,7 +320,7 @@ export default function WalletPage() {
             {receivedContributions.length > 0 ? (
               <div className="space-y-3">
                 {receivedContributions.map((c: any) => (
-                  <div key={c.id} className="flex items-center gap-3">
+                  <Link key={c.id} href={c.itemId ? `/items/${c.itemId}` : '#'} className="flex items-center gap-3 hover:bg-surface-hover rounded-lg px-1 -mx-1 py-1 transition">
                     <div className="w-10 h-10 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 ig-image-wrap">
                       {c.itemImage ? (
                         <img src={c.itemImage} alt={c.itemName || ''} className="w-full h-full object-cover" />
@@ -335,7 +335,7 @@ export default function WalletPage() {
                       <p className="text-xs text-gray-400">{c.contributorName || 'Anonymous'} &middot; {new Date(c.createdAt).toLocaleDateString()}</p>
                     </div>
                     <span className="text-sm font-semibold text-emerald-600 flex-shrink-0">+{formatPrice(c.amount)}</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (

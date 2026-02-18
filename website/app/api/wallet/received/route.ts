@@ -37,6 +37,7 @@ export async function GET() {
         id: c.id,
         amount: c.amount,
         createdAt: c.createdAt,
+        itemId: c.itemId,
         itemName: c.item?.name || null,
         itemImage: c.item?.image || null,
         eventName: c.event?.name || null,
