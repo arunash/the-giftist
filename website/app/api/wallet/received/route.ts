@@ -17,27 +17,49 @@ export async function GET() {
       select: { lifetimeContributionsReceived: true },
     })
 
-    const contributions = await prisma.contribution.findMany({
-      where: {
-        item: { userId },
-        status: 'COMPLETED',
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        item: { select: { name: true, image: true } },
-        contributor: { select: { name: true } },
-        event: { select: { name: true } },
-      },
-    })
+    // Fetch both item-based and event-based contributions
+    const [itemContributions, eventContributions] = await Promise.all([
+      prisma.contribution.findMany({
+        where: {
+          item: { userId },
+          status: 'COMPLETED',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          item: { select: { name: true, image: true } },
+          contributor: { select: { name: true } },
+          event: { select: { name: true } },
+        },
+      }),
+      prisma.contribution.findMany({
+        where: {
+          event: { userId },
+          itemId: null,
+          status: 'COMPLETED',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          item: { select: { name: true, image: true } },
+          contributor: { select: { name: true } },
+          event: { select: { name: true } },
+        },
+      }),
+    ])
+
+    const allContributions = [...itemContributions, ...eventContributions]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 20)
 
     return NextResponse.json({
       lifetime: user?.lifetimeContributionsReceived || 0,
-      contributions: contributions.map((c) => ({
+      contributions: allContributions.map((c) => ({
         id: c.id,
         amount: c.amount,
         createdAt: c.createdAt,
         itemId: c.itemId,
+        eventId: c.eventId,
         itemName: c.item?.name || null,
         itemImage: c.item?.image || null,
         eventName: c.event?.name || null,
