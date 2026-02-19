@@ -135,7 +135,7 @@ export default async function EventPage({
   const totalFunded = event.items.reduce(
     (sum, ei) => sum + ei.item.fundedAmount,
     0
-  )
+  ) + event.fundedAmount
 
   // Build item names list for AI suggestion prompt
   const itemNames = event.items.map((ei) => ei.item.name)
