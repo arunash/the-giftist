@@ -18,7 +18,7 @@ const contributionSchema = z.object({
   message: 'Either itemId or eventId is required',
 })
 
-// POST create a contribution via Stripe Checkout
+// POST create a contribution via Stripe Checkout or Braintree
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -29,11 +29,13 @@ export async function POST(request: NextRequest) {
 
     let productName: string
     let productDescription: string
+    let ownerPayoutMethod: string | null = null
 
     if (data.itemId) {
       // Item-level contribution
       const item = await prisma.item.findUnique({
         where: { id: data.itemId },
+        include: { user: { select: { preferredPayoutMethod: true } } },
       })
 
       if (!item) {
@@ -66,10 +68,12 @@ export async function POST(request: NextRequest) {
 
       productName = `Contribution: ${item.name}`
       productDescription = data.message || `Gift contribution for ${item.name}`
+      ownerPayoutMethod = item.user.preferredPayoutMethod
     } else {
       // Event-level contribution
       const event = await prisma.event.findUnique({
         where: { id: data.eventId! },
+        include: { user: { select: { preferredPayoutMethod: true } } },
       })
 
       if (!event) {
@@ -78,7 +82,13 @@ export async function POST(request: NextRequest) {
 
       productName = `Contribution: ${event.name}`
       productDescription = data.message || `Gift fund contribution for ${event.name}`
+      ownerPayoutMethod = event.user.preferredPayoutMethod
     }
+
+    // Determine payment provider based on owner's payout method
+    const paymentProvider = ownerPayoutMethod === 'VENMO' ? 'VENMO'
+      : ownerPayoutMethod === 'PAYPAL' ? 'PAYPAL'
+      : 'STRIPE'
 
     // Create a PENDING contribution
     const contribution = await prisma.contribution.create({
@@ -90,11 +100,33 @@ export async function POST(request: NextRequest) {
         amount: data.amount,
         message: data.message,
         isAnonymous: data.isAnonymous,
+        paymentProvider,
         status: 'PENDING',
       },
     })
 
-    // Create Stripe Checkout Session
+    // For Venmo/PayPal: return Braintree client token so frontend handles inline payment
+    if (paymentProvider === 'VENMO' || paymentProvider === 'PAYPAL') {
+      const { gateway } = await import('@/lib/braintree')
+      const tokenResponse = await gateway.clientToken.generate({})
+
+      logApiCall({
+        provider: 'BRAINTREE',
+        endpoint: '/client_token/generate',
+        userId: contributorId,
+        source: 'WEB',
+        amount: data.amount,
+      }).catch(() => {})
+
+      return NextResponse.json({
+        provider: 'BRAINTREE',
+        paymentProvider,
+        clientToken: tokenResponse.clientToken,
+        contributionId: contribution.id,
+      }, { status: 200 })
+    }
+
+    // For Stripe: create Checkout Session (existing flow)
     const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
     const returnPath = data.returnUrl || '/'
 

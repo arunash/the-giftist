@@ -52,22 +52,22 @@ export async function POST(request: NextRequest) {
       // Transfer net amount (after fee) to connected account
       const transferAmount = isInstant ? netAmount : amount
       const transfer = await stripe.transfers.create({
-        amount: Math.round(transferAmount * 100), // cents
+        amount: Math.round(transferAmount * 100),
         currency: 'usd',
         destination: user.stripeConnectAccountId,
       })
 
-      // For instant payouts, create a payout on the connected account
-      if (isInstant) {
-        await stripe.payouts.create(
-          {
-            amount: Math.round(netAmount * 100),
-            currency: 'usd',
-            method: 'instant',
-          },
-          { stripeAccount: user.stripeConnectAccountId }
-        )
-      }
+      // Custom accounts need explicit payout creation
+      // For standard method: create a standard payout on the connected account
+      // For instant method: create an instant payout on the connected account
+      await stripe.payouts.create(
+        {
+          amount: Math.round((isInstant ? netAmount : amount) * 100),
+          currency: 'usd',
+          method: isInstant ? 'instant' : 'standard',
+        },
+        { stripeAccount: user.stripeConnectAccountId }
+      )
 
       // Decrement contributions received balance (full amount including fee)
       await tx.user.update({
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         data: { lifetimeContributionsReceived: { decrement: amount } },
       })
 
-      // Record transaction in wallet (create wallet if needed)
+      // Record transaction in wallet
       const wallet = await tx.wallet.upsert({
         where: { userId },
         create: { userId, balance: 0 },
@@ -107,9 +107,6 @@ export async function POST(request: NextRequest) {
     }
     if (error.message === 'NOT_ONBOARDED') {
       return NextResponse.json({ error: 'Complete bank account setup first' }, { status: 400 })
-    }
-    if (error.message === 'NO_WALLET') {
-      return NextResponse.json({ error: 'Wallet not found' }, { status: 400 })
     }
     if (error.message === 'INSUFFICIENT_BALANCE') {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })

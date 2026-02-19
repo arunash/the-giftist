@@ -5,8 +5,10 @@ import { useSearchParams } from 'next/navigation'
 import { AddMoneyButton } from '@/components/wallet/add-money-button'
 import { TransactionRow } from '@/components/wallet/transaction-row'
 import { FundItemModal } from '@/components/wallet/fund-item-modal'
+import BankOnboardingForm from '@/components/wallet/bank-onboarding-form'
+import PayoutMethodPrompt from '@/components/payout-method-prompt'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock, Settings } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -16,7 +18,7 @@ export default function WalletPage() {
   const [allUnfundedItems, setAllUnfundedItems] = useState<any[]>([])
   const [fundingItem, setFundingItem] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [connectStatus, setConnectStatus] = useState<{ connected: boolean; onboarded: boolean; availableBalance?: number; pendingBalance?: number; instantEligible?: boolean } | null>(null)
+  const [connectStatus, setConnectStatus] = useState<any>(null)
   const [connectLoading, setConnectLoading] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
@@ -27,6 +29,9 @@ export default function WalletPage() {
   const [moveAmount, setMoveAmount] = useState('')
   const [moving, setMoving] = useState(false)
   const [moveError, setMoveError] = useState('')
+  const [showPayoutPrompt, setShowPayoutPrompt] = useState(false)
+  const [userName, setUserName] = useState('')
+  const [userEmail, setUserEmail] = useState('')
   const searchParams = useSearchParams()
 
   const fetchData = useCallback(async () => {
@@ -62,6 +67,11 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchData()
+    // Fetch user info for payout prompt
+    fetch('/api/auth/session').then(r => r.json()).then(data => {
+      setUserName(data?.user?.name || '')
+      setUserEmail(data?.user?.email || '')
+    }).catch(() => {})
   }, [fetchData])
 
   useEffect(() => {
@@ -74,32 +84,35 @@ export default function WalletPage() {
   }, [searchParams])
 
   const handleConnectBank = async () => {
-    setConnectLoading(true)
-    try {
-      const res = await fetch('/api/stripe/connect/onboard', { method: 'POST' })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      }
-    } catch (error) {
-      console.error('Error starting Connect onboarding:', error)
-    } finally {
-      setConnectLoading(false)
-    }
+    // Show the payout method selector instead of going straight to Stripe
+    setShowPayoutPrompt(true)
   }
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount)
     if (!amount || amount <= 0) return
 
+    const payoutMethod = connectStatus?.preferredPayoutMethod
+
     setWithdrawing(true)
     setWithdrawError('')
     try {
-      const res = await fetch('/api/stripe/connect/payout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, method: withdrawMethod }),
-      })
+      let res: Response
+
+      if (payoutMethod === 'VENMO' || payoutMethod === 'PAYPAL') {
+        res = await fetch('/api/paypal/payout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method: payoutMethod, amount }),
+        })
+      } else {
+        res = await fetch('/api/stripe/connect/payout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, method: withdrawMethod }),
+        })
+      }
+
       const data = await res.json()
       if (!res.ok) {
         setWithdrawError(data.error || 'Withdrawal failed')
@@ -160,6 +173,8 @@ export default function WalletPage() {
   }
 
   const balance = wallet?.balance || 0
+  const payoutMethod = connectStatus?.preferredPayoutMethod
+  const payoutSetup = connectStatus?.payoutSetupComplete || connectStatus?.onboarded
 
   // Smart Fund Matching: find items where remaining <= balance
   const smartMatch = balance > 0
@@ -178,6 +193,10 @@ export default function WalletPage() {
     const goal = item.goalAmount || item.priceValue || 0
     return goal > 50
   })
+
+  const withdrawMethodLabel = payoutMethod === 'VENMO' ? 'Venmo'
+    : payoutMethod === 'PAYPAL' ? 'PayPal'
+    : 'Bank'
 
   return (
     <div className="p-6 lg:p-8">
@@ -420,30 +439,75 @@ export default function WalletPage() {
             )}
           </div>
 
-          {/* Withdraw to Bank */}
+          {/* Withdraw Section — method-specific */}
           <div className="ig-card !transform-none p-5">
-            {!connectStatus?.onboarded ? (
+            {!payoutSetup ? (
+              /* No payout method configured */
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
+                  <ArrowDownToLine className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-gray-900">Withdraw Funds</h3>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">
-                  Connect your bank account to withdraw funded money.
+                  Set up a payout method to withdraw your gift funds.
                 </p>
                 <button
                   onClick={handleConnectBank}
                   disabled={connectLoading}
                   className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
                 >
-                  {connectLoading ? 'Connecting...' : 'Connect Bank Account'}
+                  {connectLoading ? 'Loading...' : 'Set Up Payout Method'}
                 </button>
               </div>
-            ) : (
+            ) : payoutMethod === 'VENMO' ? (
+              /* Venmo withdraw */
               <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
-                  <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">V</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Withdraw to Venmo</h3>
+                      <p className="text-xs text-gray-400">{connectStatus?.venmoHandle}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowPayoutPrompt(true)} className="text-gray-400 hover:text-gray-600">
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </div>
+                {renderWithdrawForm()}
+              </div>
+            ) : payoutMethod === 'PAYPAL' ? (
+              /* PayPal withdraw */
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">P</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Withdraw to PayPal</h3>
+                      <p className="text-xs text-gray-400">{connectStatus?.paypalEmail}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowPayoutPrompt(true)} className="text-gray-400 hover:text-gray-600">
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </div>
+                {renderWithdrawForm()}
+              </div>
+            ) : connectStatus?.onboarded ? (
+              /* Stripe bank withdraw (existing flow with standard/instant) */
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
+                    <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
+                  </div>
+                  <button onClick={() => setShowPayoutPrompt(true)} className="text-gray-400 hover:text-gray-600">
+                    <Settings className="h-4 w-4" />
+                  </button>
                 </div>
                 {(() => {
                   const withdrawable = connectStatus?.availableBalance || 0
@@ -542,6 +606,16 @@ export default function WalletPage() {
                   )
                 })()}
               </div>
+            ) : (
+              /* Stripe method selected but not yet onboarded */
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-gray-900">Connect Bank Account</h3>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">Complete your bank setup to start withdrawing.</p>
+                <BankOnboardingForm userName={userName} onSuccess={() => fetchData()} />
+              </div>
             )}
           </div>
         </div>
@@ -558,6 +632,68 @@ export default function WalletPage() {
           }}
         />
       )}
+
+      {showPayoutPrompt && (
+        <PayoutMethodPrompt
+          userName={userName}
+          userEmail={userEmail}
+          onComplete={() => {
+            setShowPayoutPrompt(false)
+            fetchData()
+          }}
+          onDismiss={() => setShowPayoutPrompt(false)}
+        />
+      )}
     </div>
   )
+
+  // Shared withdraw form for Venmo/PayPal
+  function renderWithdrawForm() {
+    const withdrawable = lifetimeReceived
+    const parsedAmount = parseFloat(withdrawAmount) || 0
+
+    return withdrawable > 0 ? (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(withdrawable)}</span></p>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+            <input
+              type="number"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+              placeholder="0.00"
+              max={withdrawable}
+              step="0.01"
+              className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500/30"
+            />
+          </div>
+          <button
+            onClick={() => setWithdrawAmount(withdrawable.toFixed(2))}
+            className="px-3 py-2.5 text-xs font-medium text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition"
+          >
+            Max
+          </button>
+        </div>
+        <button
+          onClick={handleWithdraw}
+          disabled={withdrawing || !withdrawAmount || parsedAmount <= 0 || parsedAmount > withdrawable}
+          className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
+        >
+          {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parsedAmount) : ''} to ${withdrawMethodLabel}`}
+        </button>
+        <p className="text-xs text-gray-400 text-center">Free — arrives within minutes</p>
+        {withdrawError && <p className="text-sm text-red-500">{withdrawError}</p>}
+      </div>
+    ) : lifetimeReceived > 0 ? (
+      <div className="space-y-2">
+        <p className="text-sm text-amber-600 font-medium">{formatPrice(lifetimeReceived)} pending</p>
+        <p className="text-xs text-gray-400">Funds will be available to withdraw shortly.</p>
+      </div>
+    ) : (
+      <p className="text-sm text-gray-400">
+        Funds will appear here when friends contribute.
+      </p>
+    )
+  }
 }

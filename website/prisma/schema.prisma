@@ -33,6 +33,10 @@ model User {
   followUpSentAt                DateTime?
   followUpStage                 Int             @default(0)
   timezone                      String?
+  preferredPayoutMethod         String?
+  venmoHandle                   String?
+  paypalEmail                   String?
+  payoutSetupComplete           Boolean         @default(false)
   isActive                      Boolean         @default(true)
   suspendedAt                   DateTime?
   suspendedReason               String?
@@ -167,6 +171,7 @@ model Contribution {
   message           String?
   isAnonymous       Boolean   @default(false)
   stripePaymentId   String?
+  paymentProvider   String    @default("STRIPE")
   status            String    @default("PENDING")
   platformFeeRate   Float     @default(0)
   platformFeeAmount Float     @default(0)
