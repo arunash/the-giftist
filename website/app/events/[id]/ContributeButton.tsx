@@ -2,7 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { formatPrice } from '@/lib/utils'
-import { DollarSign, X, Info, Loader2, CheckCircle2 } from 'lucide-react'
+import { DollarSign, X, Info, Loader2, CheckCircle2, CreditCard } from 'lucide-react'
+
+type PaymentMethodChoice = 'STRIPE' | 'VENMO' | 'PAYPAL'
 
 interface ContributeButtonProps {
   itemId: string
@@ -23,6 +25,7 @@ export default function ContributeButton({
   const [message, setMessage] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [contributorEmail, setContributorEmail] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>('STRIPE')
 
   // Braintree inline flow state
   const [braintreeState, setBraintreeState] = useState<{
@@ -124,6 +127,7 @@ export default function ContributeButton({
           isAnonymous,
           contributorEmail: contributorEmail || null,
           returnUrl: window.location.pathname,
+          paymentMethod,
         }),
       })
 
@@ -291,12 +295,38 @@ export default function ContributeButton({
                     <span className="text-sm text-muted">Contribute anonymously</span>
                   </label>
 
+                  {/* Pay with */}
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-2">Pay with</label>
+                    <div className="flex gap-2">
+                      {([
+                        { key: 'STRIPE' as const, label: 'Card', icon: <CreditCard className="h-3.5 w-3.5" /> },
+                        { key: 'VENMO' as const, label: 'Venmo', icon: <span className="text-xs font-bold">V</span> },
+                        { key: 'PAYPAL' as const, label: 'PayPal', icon: <span className="text-xs font-bold">P</span> },
+                      ]).map((m) => (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => setPaymentMethod(m.key)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition border ${
+                            paymentMethod === m.key
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-surface-hover text-secondary border-border hover:border-primary/40'
+                          }`}
+                        >
+                          {m.icon}
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading || !amount}
                     className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-hover transition disabled:opacity-50"
                   >
-                    {loading ? 'Processing...' : `Contribute ${amount ? formatPrice(parseFloat(amount)) : ''}`}
+                    {loading ? 'Processing...' : `Pay ${amount ? formatPrice(parseFloat(amount)) : ''} with ${paymentMethod === 'STRIPE' ? 'Card' : paymentMethod === 'VENMO' ? 'Venmo' : 'PayPal'}`}
                   </button>
 
                   <p className="text-xs text-muted text-center">Secure payment processing</p>

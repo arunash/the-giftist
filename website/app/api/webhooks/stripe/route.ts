@@ -5,6 +5,7 @@ import { createActivity } from '@/lib/activity'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { attemptAutoPayout } from '@/lib/auto-payout'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -72,8 +73,8 @@ export async function POST(request: NextRequest) {
           const contribution = await prisma.contribution.findUnique({
             where: { id: contributionId },
             include: {
-              item: true,
-              event: { include: { user: true } },
+              item: { include: { user: { select: { id: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
+              event: { include: { user: { select: { id: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
               contributor: { select: { name: true, phone: true } },
             },
           })
@@ -148,6 +149,12 @@ export async function POST(request: NextRequest) {
                   `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward "${item.name}"! Purchase it yourself and withdraw the funds: ${baseUrl}/items/${item.id}`
                 ).catch((err) => console.error('WhatsApp notification failed:', err))
               }
+
+              // Auto-payout if contributor's payment method matches owner's payout method
+              attemptAutoPayout(
+                { id: contribution.id, amount: contribution.amount, paymentProvider: contribution.paymentProvider, platformFeeAmount: fee.feeAmount },
+                item.user,
+              ).catch(() => {})
             } else if (contribution.eventId && contribution.event) {
               // Event-level contribution
               const evt = contribution.event
@@ -214,6 +221,12 @@ export async function POST(request: NextRequest) {
                   `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward your "${evt.name}" gift fund! Allocate the funds to specific items: ${baseUrl}/events/${evt.id}`
                 ).catch((err) => console.error('WhatsApp notification failed:', err))
               }
+
+              // Auto-payout if contributor's payment method matches owner's payout method
+              attemptAutoPayout(
+                { id: contribution.id, amount: contribution.amount, paymentProvider: contribution.paymentProvider, platformFeeAmount: fee.feeAmount },
+                evt.user,
+              ).catch(() => {})
             }
           }
         }

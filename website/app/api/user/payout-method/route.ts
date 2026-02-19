@@ -26,8 +26,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = payoutMethodSchema.parse(body)
 
-    const updateData: any = {
-      preferredPayoutMethod: data.method,
+    // Check if user already has a preferred method — don't overwrite it
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferredPayoutMethod: true },
+    })
+
+    const updateData: any = {}
+
+    // Only set preferredPayoutMethod if not already set
+    if (!currentUser?.preferredPayoutMethod) {
+      updateData.preferredPayoutMethod = data.method
     }
 
     if (data.method === 'VENMO') {
@@ -72,6 +81,7 @@ export async function GET(request: NextRequest) {
         preferredPayoutMethod: true,
         venmoHandle: true,
         paypalEmail: true,
+        stripeConnectAccountId: true,
         payoutSetupComplete: true,
       },
     })

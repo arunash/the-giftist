@@ -5,6 +5,7 @@ import { createActivity } from '@/lib/activity'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logError } from '@/lib/api-logger'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { attemptAutoPayout } from '@/lib/auto-payout'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +23,8 @@ export async function POST(request: NextRequest) {
       const contribution = await prisma.contribution.findFirst({
         where: { stripePaymentId: txId, status: 'PENDING' },
         include: {
-          item: true,
-          event: { include: { user: true } },
+          item: { include: { user: { select: { id: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
+          event: { include: { user: { select: { id: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
           contributor: { select: { name: true, phone: true } },
         },
       })
@@ -87,6 +88,12 @@ export async function POST(request: NextRequest) {
             `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward "${item.name}"! View: ${baseUrl}/items/${item.id}`
           ).catch(() => {})
         }
+
+        // Auto-payout if contributor's payment method matches owner's payout method
+        attemptAutoPayout(
+          { id: contribution.id, amount: contribution.amount, paymentProvider: contribution.paymentProvider, platformFeeAmount: fee.feeAmount },
+          item.user,
+        ).catch(() => {})
       } else if (contribution.eventId && contribution.event) {
         const evt = contribution.event
         const fee = calculateFeeFromContribution(contribution.amount, null, null)
@@ -139,6 +146,12 @@ export async function POST(request: NextRequest) {
             `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward "${evt.name}"! View: ${baseUrl}/events/${evt.id}`
           ).catch(() => {})
         }
+
+        // Auto-payout if contributor's payment method matches owner's payout method
+        attemptAutoPayout(
+          { id: contribution.id, amount: contribution.amount, paymentProvider: contribution.paymentProvider, platformFeeAmount: fee.feeAmount },
+          evt.user,
+        ).catch(() => {})
       }
     }
 

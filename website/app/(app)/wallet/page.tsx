@@ -8,7 +8,7 @@ import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import BankOnboardingForm from '@/components/wallet/bank-onboarding-form'
 import PayoutMethodPrompt from '@/components/payout-method-prompt'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock, Settings } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock, Settings, CheckCircle2 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -438,6 +438,54 @@ export default function WalletPage() {
               />
             )}
           </div>
+
+          {/* Payout Method Status + Nudge */}
+          {payoutSetup && (() => {
+            const methodsConfigured = [
+              connectStatus?.venmoHandle ? 'Venmo' : null,
+              connectStatus?.paypalEmail ? 'PayPal' : null,
+              connectStatus?.onboarded ? 'Bank' : null,
+            ].filter(Boolean)
+            const methodsMissing = [
+              !connectStatus?.venmoHandle ? 'Venmo' : null,
+              !connectStatus?.paypalEmail ? 'PayPal' : null,
+              !connectStatus?.onboarded ? 'Bank' : null,
+            ].filter(Boolean)
+            return methodsMissing.length > 0 ? (
+              <div className="ig-card !transform-none p-5 bg-amber-500/5 border-amber-200">
+                <h3 className="font-semibold text-gray-900 mb-3">Payout Methods</h3>
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    {connectStatus?.venmoHandle
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
+                    <span className="text-sm text-gray-700">Venmo {connectStatus?.venmoHandle ? <span className="text-gray-400">({connectStatus.venmoHandle})</span> : <span className="text-gray-400">(not set up)</span>}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {connectStatus?.paypalEmail
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
+                    <span className="text-sm text-gray-700">PayPal {connectStatus?.paypalEmail ? <span className="text-gray-400">({connectStatus.paypalEmail})</span> : <span className="text-gray-400">(not set up)</span>}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {connectStatus?.onboarded
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
+                    <span className="text-sm text-gray-700">Bank {connectStatus?.onboarded ? <span className="text-gray-400">(connected)</span> : <span className="text-gray-400">(not set up)</span>}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-amber-700 mb-3">
+                  Set up {methodsMissing.join(' & ')} to receive direct transfers from contributors using {methodsMissing.length === 1 ? 'that method' : 'those methods'}.
+                </p>
+                <button
+                  onClick={() => setShowPayoutPrompt(true)}
+                  className="w-full py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-xl hover:bg-amber-50 transition"
+                >
+                  Add {methodsMissing.join(' & ')}
+                </button>
+              </div>
+            ) : null
+          })()}
 
           {/* Withdraw Section — method-specific */}
           <div className="ig-card !transform-none p-5">

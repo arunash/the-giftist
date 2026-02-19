@@ -14,6 +14,7 @@ const contributionSchema = z.object({
   isAnonymous: z.boolean().optional().default(false),
   contributorEmail: z.string().email().optional().nullable(),
   returnUrl: z.string().optional(),
+  paymentMethod: z.enum(['STRIPE', 'VENMO', 'PAYPAL']).default('STRIPE'),
 }).refine(data => data.itemId || data.eventId, {
   message: 'Either itemId or eventId is required',
 })
@@ -29,13 +30,11 @@ export async function POST(request: NextRequest) {
 
     let productName: string
     let productDescription: string
-    let ownerPayoutMethod: string | null = null
 
     if (data.itemId) {
       // Item-level contribution
       const item = await prisma.item.findUnique({
         where: { id: data.itemId },
-        include: { user: { select: { preferredPayoutMethod: true } } },
       })
 
       if (!item) {
@@ -68,12 +67,10 @@ export async function POST(request: NextRequest) {
 
       productName = `Contribution: ${item.name}`
       productDescription = data.message || `Gift contribution for ${item.name}`
-      ownerPayoutMethod = item.user.preferredPayoutMethod
     } else {
       // Event-level contribution
       const event = await prisma.event.findUnique({
         where: { id: data.eventId! },
-        include: { user: { select: { preferredPayoutMethod: true } } },
       })
 
       if (!event) {
@@ -82,13 +79,10 @@ export async function POST(request: NextRequest) {
 
       productName = `Contribution: ${event.name}`
       productDescription = data.message || `Gift fund contribution for ${event.name}`
-      ownerPayoutMethod = event.user.preferredPayoutMethod
     }
 
-    // Determine payment provider based on owner's payout method
-    const paymentProvider = ownerPayoutMethod === 'VENMO' ? 'VENMO'
-      : ownerPayoutMethod === 'PAYPAL' ? 'PAYPAL'
-      : 'STRIPE'
+    // Use contributor's chosen payment method
+    const paymentProvider = data.paymentMethod
 
     // Create a PENDING contribution
     const contribution = await prisma.contribution.create({
