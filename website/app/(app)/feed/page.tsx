@@ -341,10 +341,54 @@ export default function FeedPage() {
               <TrendingCarousel onAdd={() => fetchFeed(true)} />
             </div>
 
-            {/* Your Giftist section */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Your Giftist</h2>
-              <div className="flex items-center gap-3">
+            {/* Your Giftist — single-line header with all controls */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <h2 className="text-lg font-bold text-gray-900 mr-1">Your Giftist</h2>
+
+              {userInterests.length > 0 ? (
+                <Link href="/settings" className="flex items-center gap-1 text-xs text-secondary hover:text-gray-900 transition mr-1">
+                  <span>✨</span>
+                  <span>You love <strong>{userInterests.slice(0, 3).join(', ')}</strong></span>
+                  <span className="text-primary font-semibold ml-0.5">Edit →</span>
+                </Link>
+              ) : (
+                <Link href="/settings" className="flex items-center gap-1 text-xs text-muted hover:text-gray-900 transition mr-1">
+                  <span>✨</span>
+                  <span>Tell us what you love</span>
+                  <span className="text-primary font-semibold ml-0.5">Set up →</span>
+                </Link>
+              )}
+
+              <ItemFilters filter={filter} onFilterChange={setFilter} sort={sort} onSortChange={setSort} search={search} onSearchChange={setSearch} mode={viewMode} />
+
+              <span className="w-px h-6 bg-border self-center mx-0.5" />
+
+              <button
+                onClick={() => setViewMode('events')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all',
+                  viewMode === 'events'
+                    ? 'bg-primary text-white'
+                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
+                )}
+              >
+                <ListTree className="h-3.5 w-3.5" />
+                By Event
+              </button>
+              <button
+                onClick={() => setViewMode('items')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all',
+                  viewMode === 'items'
+                    ? 'bg-primary text-white'
+                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                By Item
+              </button>
+
+              <div className="flex items-center gap-2 ml-auto">
                 {shareId && (
                   <button
                     onClick={async () => {
@@ -381,56 +425,6 @@ export default function FeedPage() {
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-            </div>
-
-            {/* Taste profile teaser */}
-            <div className="mb-4">
-              {userInterests.length > 0 ? (
-                <Link href="/settings" className="flex items-center gap-1.5 text-xs text-secondary hover:text-gray-900 transition">
-                  <span>✨</span>
-                  <span>You love <strong>{userInterests.slice(0, 3).join(', ')}</strong></span>
-                  <span className="text-primary font-semibold ml-1">Edit →</span>
-                </Link>
-              ) : (
-                <Link href="/settings" className="flex items-center gap-1.5 text-xs text-muted hover:text-gray-900 transition">
-                  <span>✨</span>
-                  <span>Tell us what you love</span>
-                  <span className="text-primary font-semibold ml-1">Set up →</span>
-                </Link>
-              )}
-            </div>
-
-            {/* Search + Sort + Filter */}
-            <div className="mb-4">
-              <ItemFilters filter={filter} onFilterChange={setFilter} sort={sort} onSortChange={setSort} search={search} onSearchChange={setSearch} mode={viewMode} />
-            </div>
-
-            {/* View mode toggle pills */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setViewMode('events')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
-                  viewMode === 'events'
-                    ? 'bg-primary text-white'
-                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
-                )}
-              >
-                <ListTree className="h-3.5 w-3.5" />
-                By Event
-              </button>
-              <button
-                onClick={() => setViewMode('items')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
-                  viewMode === 'items'
-                    ? 'bg-primary text-white'
-                    : 'bg-surface text-muted hover:text-gray-900 border border-border'
-                )}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                By Item
-              </button>
             </div>
 
             {/* Stories-style event circles — future events only */}
