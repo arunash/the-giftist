@@ -20,7 +20,9 @@ export async function POST() {
 
   const results: { id: string; amount: number; ownerEmail: string | null; ownerPhone: string | null; emailResult?: string; whatsappResult?: string }[] = []
 
-  for (const c of contributions) {
+  for (let i = 0; i < contributions.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, 600)) // avoid Resend rate limit (2/sec)
+    const c = contributions[i]
     const owner = c.item?.user || c.event?.user
     if (!owner) {
       results.push({ id: c.id, amount: c.amount, ownerEmail: null, ownerPhone: null, emailResult: 'skipped: no owner' })

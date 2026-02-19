@@ -24,7 +24,7 @@ interface ContributionReceiptData {
   }
 }
 
-export function sendContributionReceipts(data: ContributionReceiptData) {
+export async function sendContributionReceipts(data: ContributionReceiptData) {
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const giftLabel = data.itemName || data.eventName || 'a gift'
   const viewUrl = data.itemId
@@ -37,7 +37,7 @@ export function sendContributionReceipts(data: ContributionReceiptData) {
 
   // Email to contributor
   if (data.contributor.email) {
-    sendEmail({
+    await sendEmail({
       to: data.contributor.email,
       subject: `Contribution receipt — $${data.amount.toFixed(2)} toward ${giftLabel}`,
       html: `
@@ -66,13 +66,16 @@ export function sendContributionReceipts(data: ContributionReceiptData) {
     ).catch((err) => console.error('Failed to send contributor WhatsApp receipt:', err))
   }
 
+  // Small delay to avoid Resend rate limit (2 req/sec)
+  await new Promise(r => setTimeout(r, 600))
+
   // ── Receipt to gift owner ──
 
   const displayName = data.isAnonymous ? 'Someone' : data.contributorName
 
   // Email to owner
   if (data.owner.email) {
-    sendEmail({
+    await sendEmail({
       to: data.owner.email,
       subject: `${displayName} contributed $${data.amount.toFixed(2)} toward ${giftLabel}`,
       html: `
