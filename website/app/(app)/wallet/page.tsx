@@ -183,151 +183,10 @@ export default function WalletPage() {
     <div className="p-6 lg:p-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Funds</h1>
 
-      {/* Two-panel layout */}
+      {/* Two-panel layout: Funds Received first (left on desktop, top on mobile), Funds Balance second */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
 
-        {/* LEFT PANEL: Funds Balance */}
-        <div className="space-y-5">
-          {/* Balance hero card */}
-          <div className="ig-card !transform-none overflow-hidden">
-            <div className="bg-gradient-to-br from-primary to-primary-hover p-6 text-white">
-              <div className="flex items-center gap-2 mb-1">
-                <ArrowUpRight className="h-5 w-5 text-white/70" />
-                <span className="text-sm font-medium text-white/70">Funds Balance</span>
-              </div>
-              <p className="text-4xl font-bold tracking-tight">{formatPrice(balance)}</p>
-              <p className="text-sm text-white/60 mt-1">Available to send toward gifts</p>
-            </div>
-            <div className="p-4">
-              <AddMoneyButton />
-            </div>
-          </div>
-
-          {/* Smart Fund Match Card */}
-          {smartMatch && (
-            <div className="ig-card !transform-none overflow-hidden border-emerald-200">
-              <div className="bg-emerald-500/5 border-b border-emerald-200 p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <Sparkles className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <h3 className="font-semibold text-emerald-800">Perfect Match</h3>
-                </div>
-                <p className="text-sm text-emerald-700">
-                  You have <span className="font-semibold">{formatPrice(balance)}</span> and{' '}
-                  <span className="font-semibold">&ldquo;{smartMatch.name}&rdquo;</span> needs just{' '}
-                  <span className="font-semibold">{formatPrice(smartMatch.remaining)}</span> &mdash; use your funds?
-                </p>
-                <button
-                  onClick={() => setFundingItem(smartMatch)}
-                  className="mt-3 w-full py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-500 transition text-sm"
-                >
-                  Fund This Item
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Fund */}
-          {unfundedItems.length > 0 && (
-            <div className="ig-card !transform-none p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">Quick Fund</h3>
-              <div className="space-y-3">
-                {unfundedItems.map((item) => {
-                  const goal = item.goalAmount || item.priceValue || 0
-                  const remaining = Math.max(0, goal - item.fundedAmount)
-                  return (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 ig-image-wrap">
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <Gift className="h-4 w-4 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                        <p className="text-xs text-gray-400">{formatPrice(remaining)} left</p>
-                      </div>
-                      <button
-                        onClick={() => setFundingItem(item)}
-                        className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/10 transition"
-                      >
-                        Fund
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Wallet Insights */}
-          {allUnfundedItems.length > 0 && (
-            <div className="ig-card !transform-none p-5 bg-blue-500/5 border-blue-200">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MessageSquare className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  {balance === 0 && allUnfundedItems.length > 0 ? (
-                    <p className="text-sm text-blue-800">
-                      Add funds to quickly contribute to items on your list.
-                    </p>
-                  ) : hasHighValueItems ? (
-                    <>
-                      <p className="text-sm text-blue-800">
-                        Have expensive items? Split the cost among friends for faster funding.
-                      </p>
-                      <Link
-                        href="/chat?q=Help me split the cost of an expensive gift among friends"
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Ask your concierge
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-blue-800">
-                        Items get funded 3x faster when shared on WhatsApp. Share your event links!
-                      </p>
-                      <Link
-                        href="/events"
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
-                      >
-                        View events
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Transaction History */}
-          <div className="ig-card !transform-none p-5">
-            <h3 className="font-semibold text-gray-900 mb-4">Transaction History</h3>
-            {wallet?.transactions?.length > 0 ? (
-              <div>
-                {wallet.transactions.map((tx: any) => (
-                  <TransactionRow key={tx.id} transaction={tx} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={<Wallet className="h-12 w-12" />}
-                title="No transactions yet"
-                description="Add funds to start funding items"
-                className="py-8"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT PANEL: Funds Received */}
+        {/* LEFT PANEL (desktop) / TOP (mobile): Funds Received */}
         <div className="space-y-5">
           {/* Received hero card */}
           <div className="ig-card !transform-none overflow-hidden">
@@ -554,6 +413,147 @@ export default function WalletPage() {
                   )
                 })()}
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL (desktop) / BOTTOM (mobile): Funds Balance */}
+        <div className="space-y-5">
+          {/* Balance hero card */}
+          <div className="ig-card !transform-none overflow-hidden">
+            <div className="bg-gradient-to-br from-primary to-primary-hover p-6 text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowUpRight className="h-5 w-5 text-white/70" />
+                <span className="text-sm font-medium text-white/70">Funds Balance</span>
+              </div>
+              <p className="text-4xl font-bold tracking-tight">{formatPrice(balance)}</p>
+              <p className="text-sm text-white/60 mt-1">Available to send toward gifts</p>
+            </div>
+            <div className="p-4">
+              <AddMoneyButton />
+            </div>
+          </div>
+
+          {/* Smart Fund Match Card */}
+          {smartMatch && (
+            <div className="ig-card !transform-none overflow-hidden border-emerald-200">
+              <div className="bg-emerald-500/5 border-b border-emerald-200 p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h3 className="font-semibold text-emerald-800">Perfect Match</h3>
+                </div>
+                <p className="text-sm text-emerald-700">
+                  You have <span className="font-semibold">{formatPrice(balance)}</span> and{' '}
+                  <span className="font-semibold">&ldquo;{smartMatch.name}&rdquo;</span> needs just{' '}
+                  <span className="font-semibold">{formatPrice(smartMatch.remaining)}</span> &mdash; use your funds?
+                </p>
+                <button
+                  onClick={() => setFundingItem(smartMatch)}
+                  className="mt-3 w-full py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-500 transition text-sm"
+                >
+                  Fund This Item
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Fund */}
+          {unfundedItems.length > 0 && (
+            <div className="ig-card !transform-none p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Quick Fund</h3>
+              <div className="space-y-3">
+                {unfundedItems.map((item) => {
+                  const goal = item.goalAmount || item.priceValue || 0
+                  const remaining = Math.max(0, goal - item.fundedAmount)
+                  return (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 overflow-hidden flex-shrink-0 ig-image-wrap">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <Gift className="h-4 w-4 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400">{formatPrice(remaining)} left</p>
+                      </div>
+                      <button
+                        onClick={() => setFundingItem(item)}
+                        className="text-sm font-medium text-primary hover:text-primary-hover px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/10 transition"
+                      >
+                        Fund
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Wallet Insights */}
+          {allUnfundedItems.length > 0 && (
+            <div className="ig-card !transform-none p-5 bg-blue-500/5 border-blue-200">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  {balance === 0 && allUnfundedItems.length > 0 ? (
+                    <p className="text-sm text-blue-800">
+                      Add funds to quickly contribute to items on your list.
+                    </p>
+                  ) : hasHighValueItems ? (
+                    <>
+                      <p className="text-sm text-blue-800">
+                        Have expensive items? Split the cost among friends for faster funding.
+                      </p>
+                      <Link
+                        href="/chat?q=Help me split the cost of an expensive gift among friends"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Ask your concierge
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-blue-800">
+                        Items get funded 3x faster when shared on WhatsApp. Share your event links!
+                      </p>
+                      <Link
+                        href="/events"
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 mt-1.5 transition"
+                      >
+                        View events
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transaction History */}
+          <div className="ig-card !transform-none p-5">
+            <h3 className="font-semibold text-gray-900 mb-4">Transaction History</h3>
+            {wallet?.transactions?.length > 0 ? (
+              <div>
+                {wallet.transactions.map((tx: any) => (
+                  <TransactionRow key={tx.id} transaction={tx} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Wallet className="h-12 w-12" />}
+                title="No transactions yet"
+                description="Add funds to start funding items"
+                className="py-8"
+              />
             )}
           </div>
         </div>
