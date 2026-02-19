@@ -228,9 +228,17 @@ function ItemCard({ item, ownerName, isOwner, allItems }: { item: EventItem; own
             </Link>
           )}
         </div>
-        <p className="text-xl font-bold text-primary mb-3">
-          {formatPrice(goalAmount)}
+        <p className="text-xl font-bold text-primary">
+          {item.goalAmount && item.priceValue && item.goalAmount > item.priceValue
+            ? formatPrice(item.priceValue)
+            : formatPrice(goalAmount)}
         </p>
+        {item.goalAmount && item.priceValue && item.goalAmount > item.priceValue && (
+          <p className="text-xs text-muted mb-3">+ {formatPrice(item.goalAmount - item.priceValue)} fee</p>
+        )}
+        {!(item.goalAmount && item.priceValue && item.goalAmount > item.priceValue) && (
+          <div className="mb-3" />
+        )}
 
         <div className="mb-3">
           <div className="h-2 bg-surface-hover rounded-full overflow-hidden">

@@ -179,6 +179,9 @@ export default function ContributeButton({
                 {loading ? 'Processing...' : `Contribute ${amount ? formatPrice(parseFloat(amount)) : ''}`}
               </button>
 
+              <p className="text-xs text-muted text-center">
+                A 3% Giftist fee applies when the gift is fully funded. Your first $50 received is fee-free.
+              </p>
               <p className="text-xs text-muted text-center">Secure payment via Stripe</p>
             </form>
           </div>
