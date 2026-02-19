@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { sendPayout } from '@/lib/paypal'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
+import { sendEmail } from '@/lib/email'
 
 const payoutSchema = z.object({
   method: z.enum(['VENMO', 'PAYPAL']),
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: {
+          name: true,
+          email: true,
           lifetimeContributionsReceived: true,
           venmoHandle: true,
           paypalEmail: true,
@@ -92,10 +95,36 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return { balance: availableBalance - amount, payoutBatchId: payoutResult.payoutBatchId }
+      return { balance: availableBalance - amount, payoutBatchId: payoutResult.payoutBatchId, userName: user.name, userEmail: user.email, receiver }
     })
 
-    return NextResponse.json(result)
+    // Send email receipt (non-blocking)
+    if (result.userEmail) {
+      const dest = method === 'VENMO' ? `Venmo (${result.receiver})` : `PayPal (${result.receiver})`
+      const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      sendEmail({
+        to: result.userEmail,
+        subject: `Withdrawal receipt — $${amount.toFixed(2)} to ${method === 'VENMO' ? 'Venmo' : 'PayPal'}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+            <h2 style="margin: 0 0 4px; font-size: 20px; color: #111;">Withdrawal Confirmed</h2>
+            <p style="margin: 0 0 24px; color: #666; font-size: 14px;">${date}</p>
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <p style="margin: 0 0 12px; font-size: 14px; color: #666;">Amount</p>
+              <p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; color: #111;">$${amount.toFixed(2)}</p>
+              <p style="margin: 0 0 4px; font-size: 14px; color: #666;">Destination</p>
+              <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111;">${dest}</p>
+            </div>
+            <p style="margin: 0 0 4px; font-size: 13px; color: #666;">Reference: ${result.payoutBatchId}</p>
+            <p style="margin: 0; font-size: 13px; color: #666;">Funds typically arrive within minutes.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="margin: 0; font-size: 12px; color: #999;">Giftist &middot; <a href="https://giftist.ai/wallet" style="color: #999;">View your funds</a></p>
+          </div>
+        `,
+      }).catch((err) => console.error('Failed to send withdrawal receipt:', err))
+    }
+
+    return NextResponse.json({ balance: result.balance, payoutBatchId: result.payoutBatchId })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
