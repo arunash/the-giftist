@@ -8,7 +8,7 @@ import { FundItemModal } from '@/components/wallet/fund-item-modal'
 import BankOnboardingForm from '@/components/wallet/bank-onboarding-form'
 import PayoutMethodPrompt from '@/components/payout-method-prompt'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, DollarSign, Zap, Clock, Settings, CheckCircle2 } from 'lucide-react'
+import { Wallet, Gift, Building2, ArrowDownToLine, ArrowUpRight, ArrowDownLeft, Heart, Sparkles, MessageSquare, Zap, Clock, Settings } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -24,7 +24,6 @@ export default function WalletPage() {
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawError, setWithdrawError] = useState('')
   const [withdrawMethod, setWithdrawMethod] = useState<'standard' | 'instant'>('standard')
-  const [withdrawDestination, setWithdrawDestination] = useState<'VENMO' | 'PAYPAL' | 'STRIPE' | null>(null)
   const [lifetimeReceived, setLifetimeReceived] = useState(0)
   const [receivedContributions, setReceivedContributions] = useState<any[]>([])
   const [moveAmount, setMoveAmount] = useState('')
@@ -68,24 +67,11 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchData()
-    // Fetch user info for payout prompt
     fetch('/api/auth/session').then(r => r.json()).then(data => {
       setUserName(data?.user?.name || '')
       setUserEmail(data?.user?.email || '')
     }).catch(() => {})
   }, [fetchData])
-
-  // Default withdraw destination to preferred method once loaded
-  useEffect(() => {
-    if (connectStatus && !withdrawDestination) {
-      const pref = connectStatus.preferredPayoutMethod
-      if (pref === 'VENMO' && connectStatus.venmoHandle) setWithdrawDestination('VENMO')
-      else if (pref === 'PAYPAL' && connectStatus.paypalEmail) setWithdrawDestination('PAYPAL')
-      else if (connectStatus.onboarded) setWithdrawDestination('STRIPE')
-      else if (connectStatus.venmoHandle) setWithdrawDestination('VENMO')
-      else if (connectStatus.paypalEmail) setWithdrawDestination('PAYPAL')
-    }
-  }, [connectStatus, withdrawDestination])
 
   useEffect(() => {
     if (searchParams.get('connect') === 'complete') {
@@ -97,32 +83,21 @@ export default function WalletPage() {
   }, [searchParams])
 
   const handleConnectBank = async () => {
-    // Show the payout method selector instead of going straight to Stripe
     setShowPayoutPrompt(true)
   }
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount)
-    if (!amount || amount <= 0 || !withdrawDestination) return
+    if (!amount || amount <= 0) return
 
     setWithdrawing(true)
     setWithdrawError('')
     try {
-      let res: Response
-
-      if (withdrawDestination === 'VENMO' || withdrawDestination === 'PAYPAL') {
-        res = await fetch('/api/paypal/payout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: withdrawDestination, amount }),
-        })
-      } else {
-        res = await fetch('/api/stripe/connect/payout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, method: withdrawMethod }),
-        })
-      }
+      const res = await fetch('/api/stripe/connect/payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, method: withdrawMethod }),
+      })
 
       const data = await res.json()
       if (!res.ok) {
@@ -184,8 +159,7 @@ export default function WalletPage() {
   }
 
   const balance = wallet?.balance || 0
-  const payoutMethod = connectStatus?.preferredPayoutMethod
-  const payoutSetup = connectStatus?.payoutSetupComplete || connectStatus?.onboarded
+  const bankOnboarded = connectStatus?.onboarded
 
   // Smart Fund Matching: find items where remaining <= balance
   const smartMatch = balance > 0
@@ -204,10 +178,6 @@ export default function WalletPage() {
     const goal = item.goalAmount || item.priceValue || 0
     return goal > 50
   })
-
-  const withdrawMethodLabel = withdrawDestination === 'VENMO' ? 'Venmo'
-    : withdrawDestination === 'PAYPAL' ? 'PayPal'
-    : 'Bank'
 
   return (
     <div className="p-6 lg:p-8">
@@ -450,72 +420,24 @@ export default function WalletPage() {
             )}
           </div>
 
-          {/* Payout Method Status + Nudge */}
-          {payoutSetup && (() => {
-            const methodsConfigured = [
-              connectStatus?.venmoHandle ? 'Venmo' : null,
-              connectStatus?.paypalEmail ? 'PayPal' : null,
-              connectStatus?.onboarded ? 'Bank' : null,
-            ].filter(Boolean)
-            const methodsMissing = [
-              !connectStatus?.venmoHandle ? 'Venmo' : null,
-              !connectStatus?.paypalEmail ? 'PayPal' : null,
-              !connectStatus?.onboarded ? 'Bank' : null,
-            ].filter(Boolean)
-            return methodsMissing.length > 0 ? (
-              <div className="ig-card !transform-none p-5 bg-amber-500/5 border-amber-200">
-                <h3 className="font-semibold text-gray-900 mb-3">Payout Methods</h3>
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    {connectStatus?.venmoHandle
-                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
-                    <span className="text-sm text-gray-700">Venmo {connectStatus?.venmoHandle ? <span className="text-gray-400">({connectStatus.venmoHandle})</span> : <span className="text-gray-400">(not set up)</span>}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {connectStatus?.paypalEmail
-                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
-                    <span className="text-sm text-gray-700">PayPal {connectStatus?.paypalEmail ? <span className="text-gray-400">({connectStatus.paypalEmail})</span> : <span className="text-gray-400">(not set up)</span>}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {connectStatus?.onboarded
-                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      : <div className="h-4 w-4 rounded-full border-2 border-gray-300" />}
-                    <span className="text-sm text-gray-700">Bank {connectStatus?.onboarded ? <span className="text-gray-400">(connected)</span> : <span className="text-gray-400">(not set up)</span>}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-amber-700 mb-3">
-                  Set up {methodsMissing.join(' & ')} to receive direct transfers from contributors using {methodsMissing.length === 1 ? 'that method' : 'those methods'}.
-                </p>
-                <button
-                  onClick={() => setShowPayoutPrompt(true)}
-                  className="w-full py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-xl hover:bg-amber-50 transition"
-                >
-                  Add {methodsMissing.join(' & ')}
-                </button>
-              </div>
-            ) : null
-          })()}
-
           {/* Withdraw Section */}
           <div className="ig-card !transform-none p-5">
-            {!payoutSetup ? (
-              /* No payout method configured */
+            {!bankOnboarded ? (
+              /* No bank connected */
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <ArrowDownToLine className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-gray-900">Withdraw Funds</h3>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">
-                  Set up a payout method to withdraw your gift funds.
+                  Connect your bank account to withdraw your gift funds.
                 </p>
                 <button
                   onClick={handleConnectBank}
                   disabled={connectLoading}
                   className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
                 >
-                  {connectLoading ? 'Loading...' : 'Set Up Payout Method'}
+                  {connectLoading ? 'Loading...' : 'Connect Bank Account'}
                 </button>
               </div>
             ) : (
@@ -523,67 +445,24 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
-                    <h3 className="font-semibold text-gray-900">Withdraw Funds</h3>
+                    <h3 className="font-semibold text-gray-900">Withdraw to Bank</h3>
                   </div>
                   <button onClick={() => setShowPayoutPrompt(true)} className="text-gray-400 hover:text-gray-600">
                     <Settings className="h-4 w-4" />
                   </button>
                 </div>
 
-                {/* Destination picker */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
+                    <Building2 className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Bank Account</p>
+                    <p className="text-xs text-gray-400">Direct deposit</p>
+                  </div>
+                </div>
+
                 {(() => {
-                  const destinations: { key: 'VENMO' | 'PAYPAL' | 'STRIPE'; label: string; detail: string; icon: React.ReactNode }[] = []
-                  if (connectStatus?.venmoHandle) destinations.push({ key: 'VENMO', label: 'Venmo', detail: connectStatus.venmoHandle, icon: <span className="text-white font-bold text-xs">V</span> })
-                  if (connectStatus?.paypalEmail) destinations.push({ key: 'PAYPAL', label: 'PayPal', detail: connectStatus.paypalEmail, icon: <span className="text-white font-bold text-xs">P</span> })
-                  if (connectStatus?.onboarded) destinations.push({ key: 'STRIPE', label: 'Bank', detail: 'Direct deposit', icon: <Building2 className="h-3.5 w-3.5 text-white" /> })
-
-                  return destinations.length > 1 ? (
-                    <div className="mb-4">
-                      <label className="block text-xs font-medium text-gray-500 mb-2">Transfer to</label>
-                      <div className="flex gap-2">
-                        {destinations.map((d) => (
-                          <button
-                            key={d.key}
-                            type="button"
-                            onClick={() => setWithdrawDestination(d.key)}
-                            className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-sm font-medium transition border ${
-                              withdrawDestination === d.key
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-emerald-200'
-                            }`}
-                          >
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                              d.key === 'VENMO' ? 'bg-blue-500' : d.key === 'PAYPAL' ? 'bg-blue-700' : 'bg-gray-500'
-                            }`}>
-                              {d.icon}
-                            </div>
-                            <span>{d.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {withdrawDestination && (
-                        <p className="text-xs text-gray-400 mt-1.5">
-                          {destinations.find(d => d.key === withdrawDestination)?.detail}
-                        </p>
-                      )}
-                    </div>
-                  ) : destinations.length === 1 ? (
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        destinations[0].key === 'VENMO' ? 'bg-blue-500' : destinations[0].key === 'PAYPAL' ? 'bg-blue-700' : 'bg-gray-500'
-                      }`}>
-                        {destinations[0].icon}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Withdraw to {destinations[0].label}</p>
-                        <p className="text-xs text-gray-400">{destinations[0].detail}</p>
-                      </div>
-                    </div>
-                  ) : null
-                })()}
-
-                {/* Bank: standard/instant toggle */}
-                {withdrawDestination === 'STRIPE' && connectStatus?.onboarded && (() => {
                   const withdrawable = connectStatus?.availableBalance || 0
                   const pending = connectStatus?.pendingBalance || Math.max(0, lifetimeReceived - withdrawable)
                   const parsedAmount = parseFloat(withdrawAmount) || 0
@@ -674,17 +553,6 @@ export default function WalletPage() {
                     <p className="text-sm text-gray-400">Funds will appear here when friends contribute.</p>
                   )
                 })()}
-
-                {/* Venmo / PayPal withdraw form */}
-                {(withdrawDestination === 'VENMO' || withdrawDestination === 'PAYPAL') && renderWithdrawForm()}
-
-                {/* Stripe not yet onboarded but selected as preferred */}
-                {withdrawDestination === 'STRIPE' && !connectStatus?.onboarded && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Complete your bank setup to start withdrawing.</p>
-                    <BankOnboardingForm userName={userName} onSuccess={() => fetchData()} />
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -716,54 +584,4 @@ export default function WalletPage() {
       )}
     </div>
   )
-
-  // Shared withdraw form for Venmo/PayPal
-  function renderWithdrawForm() {
-    const withdrawable = lifetimeReceived
-    const parsedAmount = parseFloat(withdrawAmount) || 0
-
-    return withdrawable > 0 ? (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(withdrawable)}</span></p>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-            <input
-              type="number"
-              value={withdrawAmount}
-              onChange={(e) => setWithdrawAmount(e.target.value)}
-              placeholder="0.00"
-              max={withdrawable}
-              step="0.01"
-              className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500/30"
-            />
-          </div>
-          <button
-            onClick={() => setWithdrawAmount(withdrawable.toFixed(2))}
-            className="px-3 py-2.5 text-xs font-medium text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition"
-          >
-            Max
-          </button>
-        </div>
-        <button
-          onClick={handleWithdraw}
-          disabled={withdrawing || !withdrawAmount || parsedAmount <= 0 || parsedAmount > withdrawable}
-          className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition disabled:opacity-50"
-        >
-          {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parsedAmount) : ''} to ${withdrawMethodLabel}`}
-        </button>
-        <p className="text-xs text-gray-400 text-center">Free — arrives within minutes</p>
-        {withdrawError && <p className="text-sm text-red-500">{withdrawError}</p>}
-      </div>
-    ) : lifetimeReceived > 0 ? (
-      <div className="space-y-2">
-        <p className="text-sm text-amber-600 font-medium">{formatPrice(lifetimeReceived)} pending</p>
-        <p className="text-xs text-gray-400">Funds will be available to withdraw shortly.</p>
-      </div>
-    ) : (
-      <p className="text-sm text-gray-400">
-        Funds will appear here when friends contribute.
-      </p>
-    )
-  }
 }

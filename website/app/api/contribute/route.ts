@@ -14,12 +14,11 @@ const contributionSchema = z.object({
   isAnonymous: z.boolean().optional().default(false),
   contributorEmail: z.string().email().optional().nullable(),
   returnUrl: z.string().optional(),
-  paymentMethod: z.enum(['STRIPE', 'VENMO', 'PAYPAL']).default('STRIPE'),
 }).refine(data => data.itemId || data.eventId, {
   message: 'Either itemId or eventId is required',
 })
 
-// POST create a contribution via Stripe Checkout or Braintree
+// POST create a contribution via Stripe Checkout
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -81,9 +80,6 @@ export async function POST(request: NextRequest) {
       productDescription = data.message || `Gift fund contribution for ${event.name}`
     }
 
-    // Use contributor's chosen payment method
-    const paymentProvider = data.paymentMethod
-
     // Create a PENDING contribution
     const contribution = await prisma.contribution.create({
       data: {
@@ -94,33 +90,12 @@ export async function POST(request: NextRequest) {
         amount: data.amount,
         message: data.message,
         isAnonymous: data.isAnonymous,
-        paymentProvider,
+        paymentProvider: 'STRIPE',
         status: 'PENDING',
       },
     })
 
-    // For Venmo/PayPal: return Braintree client token so frontend handles inline payment
-    if (paymentProvider === 'VENMO' || paymentProvider === 'PAYPAL') {
-      const { gateway } = await import('@/lib/braintree')
-      const tokenResponse = await gateway.clientToken.generate({})
-
-      logApiCall({
-        provider: 'BRAINTREE',
-        endpoint: '/client_token/generate',
-        userId: contributorId,
-        source: 'WEB',
-        amount: data.amount,
-      }).catch(() => {})
-
-      return NextResponse.json({
-        provider: 'BRAINTREE',
-        paymentProvider,
-        clientToken: tokenResponse.clientToken,
-        contributionId: contribution.id,
-      }, { status: 200 })
-    }
-
-    // For Stripe: create Checkout Session (existing flow)
+    // Create Stripe Checkout Session
     const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
     const returnPath = data.returnUrl || '/'
 
