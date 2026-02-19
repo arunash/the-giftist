@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
-import { sendContributionReceipts } from '@/lib/receipts'
+import { sendEmail } from '@/lib/email'
+import { sendTextMessage } from '@/lib/whatsapp'
 
 export async function POST() {
   const admin = await requireAdmin()
@@ -17,39 +18,51 @@ export async function POST() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const results: { id: string; status: string; error?: string }[] = []
+  const results: { id: string; amount: number; ownerEmail: string | null; ownerPhone: string | null; emailResult?: string; whatsappResult?: string }[] = []
 
   for (const c of contributions) {
-    try {
-      const owner = c.item?.user || c.event?.user
-      if (!owner) {
-        results.push({ id: c.id, status: 'skipped', error: 'no owner found' })
-        continue
-      }
-
-      sendContributionReceipts({
-        amount: c.amount,
-        itemName: c.item?.name,
-        eventName: c.event?.name,
-        itemId: c.itemId,
-        eventId: c.eventId,
-        contributorName: c.contributor?.name || 'Someone',
-        isAnonymous: c.isAnonymous,
-        contributor: {
-          email: c.contributorEmail || c.contributor?.email,
-          phone: c.contributor?.phone,
-        },
-        owner: {
-          name: owner.name,
-          email: owner.email,
-          phone: owner.phone,
-        },
-      })
-
-      results.push({ id: c.id, status: 'sent' })
-    } catch (err: any) {
-      results.push({ id: c.id, status: 'error', error: err.message })
+    const owner = c.item?.user || c.event?.user
+    if (!owner) {
+      results.push({ id: c.id, amount: c.amount, ownerEmail: null, ownerPhone: null, emailResult: 'skipped: no owner' })
+      continue
     }
+
+    const giftLabel = c.item?.name || c.event?.name || 'a gift'
+    const displayName = c.isAnonymous ? 'Someone' : (c.contributor?.name || 'Someone')
+    const entry: typeof results[number] = { id: c.id, amount: c.amount, ownerEmail: owner.email, ownerPhone: owner.phone }
+
+    // Test email
+    if (owner.email) {
+      try {
+        await sendEmail({
+          to: owner.email,
+          subject: `${displayName} contributed $${c.amount.toFixed(2)} toward ${giftLabel}`,
+          html: `<p>${displayName} contributed <strong>$${c.amount.toFixed(2)}</strong> toward <strong>${giftLabel}</strong>.</p><p><a href="https://giftist.ai/wallet">View your funds</a></p>`,
+        })
+        entry.emailResult = 'ok'
+      } catch (err: any) {
+        entry.emailResult = `error: ${err.message}`
+      }
+    } else {
+      entry.emailResult = 'skipped: no email'
+    }
+
+    // Test WhatsApp
+    if (owner.phone) {
+      try {
+        await sendTextMessage(
+          owner.phone,
+          `🎁 ${displayName} contributed $${c.amount.toFixed(2)} toward "${giftLabel}"! View your funds: https://giftist.ai/wallet`
+        )
+        entry.whatsappResult = 'ok'
+      } catch (err: any) {
+        entry.whatsappResult = `error: ${err.message}`
+      }
+    } else {
+      entry.whatsappResult = 'skipped: no phone'
+    }
+
+    results.push(entry)
   }
 
   return NextResponse.json({ total: contributions.length, results })
