@@ -205,9 +205,23 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
           </a>
         </h3>
         {goalAmount > 0 && (
-          <p className="text-xl font-bold text-primary mb-3">
-            {formatPrice(goalAmount)}
-          </p>
+          <>
+            <p className="text-xl font-bold text-primary">
+              {formatPrice(item.priceValue || goalAmount)}
+            </p>
+            {item.priceValue && item.priceValue > 0 ? (
+              item.goalAmount && item.goalAmount > item.priceValue ? (
+                <p className="text-xs text-muted mb-3">+ {formatPrice(item.goalAmount - item.priceValue)} fee (3%)</p>
+              ) : (
+                <p className="text-xs text-muted mb-3">
+                  <span className="line-through opacity-60">+ {formatPrice(Math.round(item.priceValue * 0.03 * 100) / 100)} fee</span>{' '}
+                  Free on first $50
+                </p>
+              )
+            ) : (
+              <div className="mb-3" />
+            )}
+          </>
         )}
 
         {/* Progress Bar */}
@@ -263,6 +277,7 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
               itemName={item.name}
               remaining={remaining}
               shareId={shareId}
+              hasFee={!!(item.goalAmount && item.priceValue && item.goalAmount > item.priceValue)}
             />
           )}
           <ShareItemButton itemId={item.id} ownerName={ownerName} />

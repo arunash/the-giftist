@@ -9,6 +9,7 @@ interface ContributeButtonProps {
   itemName: string
   remaining: number
   ownerName?: string
+  hasFee?: boolean
 }
 
 export default function ContributeButton({
@@ -16,6 +17,7 @@ export default function ContributeButton({
   itemName,
   remaining,
   ownerName,
+  hasFee,
 }: ContributeButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -180,7 +182,11 @@ export default function ContributeButton({
               </button>
 
               <p className="text-xs text-muted text-center">
-                A 3% Giftist fee applies when the gift is fully funded. Your first $50 received is fee-free.
+                {hasFee ? (
+                  <>3% Giftist fee applies when fully funded</>
+                ) : (
+                  <><span className="line-through opacity-60">3% Giftist fee</span> No fees on your first $50 received</>
+                )}
               </p>
               <p className="text-xs text-muted text-center">Secure payment via Stripe</p>
             </form>

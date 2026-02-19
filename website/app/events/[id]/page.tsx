@@ -250,9 +250,14 @@ export default async function EventPage({
               />
             </div>
             <p className="text-xs text-muted mt-2">
-              {totalFee > 0
-                ? `Includes ${formatPrice(totalFee)} Giftist fee (3%) · Only charged when fully funded`
-                : 'No fees on your first $50 in contributions received'}
+              {totalFee > 0 ? (
+                <>Includes {formatPrice(totalFee)} Giftist fee (3%) · Only charged when fully funded</>
+              ) : totalPrices > 0 ? (
+                <>
+                  <span className="line-through opacity-60">{formatPrice(Math.round(totalPrices * 0.03 * 100) / 100)} fee (3%)</span>
+                  {' · '}No fees on your first $50 in contributions received
+                </>
+              ) : null}
             </p>
           </div>
 
@@ -262,6 +267,7 @@ export default async function EventPage({
               eventId={event.id}
               eventName={event.name}
               ownerName={event.user.name || 'Someone'}
+              hasFee={totalFee > 0}
             />
           </div>
         </div>

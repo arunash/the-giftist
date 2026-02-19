@@ -229,14 +229,18 @@ function ItemCard({ item, ownerName, isOwner, allItems }: { item: EventItem; own
           )}
         </div>
         <p className="text-xl font-bold text-primary">
-          {item.goalAmount && item.priceValue && item.goalAmount > item.priceValue
-            ? formatPrice(item.priceValue)
-            : formatPrice(goalAmount)}
+          {formatPrice(item.priceValue || goalAmount)}
         </p>
-        {item.goalAmount && item.priceValue && item.goalAmount > item.priceValue && (
-          <p className="text-xs text-muted mb-3">+ {formatPrice(item.goalAmount - item.priceValue)} fee</p>
-        )}
-        {!(item.goalAmount && item.priceValue && item.goalAmount > item.priceValue) && (
+        {item.priceValue && item.priceValue > 0 ? (
+          item.goalAmount && item.goalAmount > item.priceValue ? (
+            <p className="text-xs text-muted mb-3">+ {formatPrice(item.goalAmount - item.priceValue)} fee (3%)</p>
+          ) : (
+            <p className="text-xs text-muted mb-3">
+              <span className="line-through opacity-60">+ {formatPrice(Math.round(item.priceValue * 0.03 * 100) / 100)} fee</span>{' '}
+              Free on first $50
+            </p>
+          )
+        ) : (
           <div className="mb-3" />
         )}
 
@@ -288,6 +292,7 @@ function ItemCard({ item, ownerName, isOwner, allItems }: { item: EventItem; own
               itemName={item.name}
               remaining={remaining}
               ownerName={ownerName}
+              hasFee={!!(item.goalAmount && item.priceValue && item.goalAmount > item.priceValue)}
             />
           )}
           <ShareItemButton itemId={item.id} ownerName={ownerName} />
