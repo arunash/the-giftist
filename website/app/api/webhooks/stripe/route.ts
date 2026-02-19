@@ -4,8 +4,8 @@ import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logApiCall, logError } from '@/lib/api-logger'
-import { sendTextMessage } from '@/lib/whatsapp'
 import { attemptAutoPayout } from '@/lib/auto-payout'
+import { sendContributionReceipts } from '@/lib/receipts'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
           const contribution = await prisma.contribution.findUnique({
             where: { id: contributionId },
             include: {
-              item: { include: { user: { select: { id: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
-              event: { include: { user: { select: { id: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
-              contributor: { select: { name: true, phone: true } },
+              item: { include: { user: { select: { id: true, name: true, email: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
+              event: { include: { user: { select: { id: true, name: true, email: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
+              contributor: { select: { name: true, email: true, phone: true } },
             },
           })
 
@@ -136,19 +136,24 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // WhatsApp notification to giftee
-              const giftee = await prisma.user.findUnique({
-                where: { id: item.userId },
-                select: { phone: true, name: true },
+              // Send receipts to both contributor and owner (email + WhatsApp)
+              sendContributionReceipts({
+                amount: contribution.amount,
+                itemName: item.name,
+                itemId: item.id,
+                eventId: null,
+                contributorName: contribution.contributor?.name || 'Someone',
+                isAnonymous: contribution.isAnonymous,
+                contributor: {
+                  email: contribution.contributorEmail || contribution.contributor?.email,
+                  phone: contribution.contributor?.phone,
+                },
+                owner: {
+                  name: item.user.name,
+                  email: item.user.email,
+                  phone: item.user.phone,
+                },
               })
-              if (giftee?.phone) {
-                const contributorName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
-                const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
-                sendTextMessage(
-                  giftee.phone,
-                  `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward "${item.name}"! Purchase it yourself and withdraw the funds: ${baseUrl}/items/${item.id}`
-                ).catch((err) => console.error('WhatsApp notification failed:', err))
-              }
 
               // Auto-payout if contributor's payment method matches owner's payout method
               attemptAutoPayout(
@@ -211,16 +216,24 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // WhatsApp notification to giftee
-              const giftee = evt.user
-              if (giftee?.phone) {
-                const contributorName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
-                const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
-                sendTextMessage(
-                  giftee.phone,
-                  `🎁 ${contributorName} contributed $${contribution.amount.toFixed(2)} toward your "${evt.name}" gift fund! Allocate the funds to specific items: ${baseUrl}/events/${evt.id}`
-                ).catch((err) => console.error('WhatsApp notification failed:', err))
-              }
+              // Send receipts to both contributor and owner (email + WhatsApp)
+              sendContributionReceipts({
+                amount: contribution.amount,
+                eventName: evt.name,
+                eventId: evt.id,
+                itemId: null,
+                contributorName: contribution.contributor?.name || 'Someone',
+                isAnonymous: contribution.isAnonymous,
+                contributor: {
+                  email: contribution.contributorEmail || contribution.contributor?.email,
+                  phone: contribution.contributor?.phone,
+                },
+                owner: {
+                  name: evt.user.name,
+                  email: evt.user.email,
+                  phone: evt.user.phone,
+                },
+              })
 
               // Auto-payout if contributor's payment method matches owner's payout method
               attemptAutoPayout(

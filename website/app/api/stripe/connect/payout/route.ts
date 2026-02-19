@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
-import { sendEmail } from '@/lib/email'
+import { sendWithdrawalReceipts } from '@/lib/receipts'
 
 const payoutSchema = z.object({
   amount: z.number().positive().min(1),
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { name: true, email: true, stripeConnectAccountId: true, stripeConnectOnboarded: true, lifetimeContributionsReceived: true },
+        select: { name: true, email: true, phone: true, stripeConnectAccountId: true, stripeConnectOnboarded: true, lifetimeContributionsReceived: true },
       })
 
       if (!user?.stripeConnectAccountId || !user.stripeConnectOnboarded) {
@@ -98,39 +98,22 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      return { balance: availableBalance - amount, transferId: transfer.id, fee: isInstant ? fee : 0, userName: user.name, userEmail: user.email }
+      return { balance: availableBalance - amount, transferId: transfer.id, fee: isInstant ? fee : 0, userName: user.name, userEmail: user.email, userPhone: user.phone }
     })
 
-    // Send email receipt (non-blocking)
-    if (result.userEmail) {
-      const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      const feeLine = result.fee > 0
-        ? `<p style="margin: 0 0 4px; font-size: 14px; color: #666;">Fee</p><p style="margin: 0 0 20px; font-size: 16px; font-weight: 600; color: #111;">$${result.fee.toFixed(2)}</p><p style="margin: 0 0 4px; font-size: 14px; color: #666;">You receive</p><p style="margin: 0 0 20px; font-size: 16px; font-weight: 600; color: #111;">$${netAmount.toFixed(2)}</p>`
-        : ''
-      const methodDesc = isInstant ? 'Bank (instant)' : 'Bank (standard)'
-      const arrivalNote = isInstant ? 'Funds typically arrive within minutes.' : 'Standard payouts arrive in 1-2 business days.'
-      sendEmail({
-        to: result.userEmail,
-        subject: `Withdrawal receipt — $${amount.toFixed(2)} to bank`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-            <h2 style="margin: 0 0 4px; font-size: 20px; color: #111;">Withdrawal Confirmed</h2>
-            <p style="margin: 0 0 24px; color: #666; font-size: 14px;">${date}</p>
-            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-              <p style="margin: 0 0 12px; font-size: 14px; color: #666;">Amount</p>
-              <p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; color: #111;">$${amount.toFixed(2)}</p>
-              ${feeLine}
-              <p style="margin: 0 0 4px; font-size: 14px; color: #666;">Destination</p>
-              <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111;">${methodDesc}</p>
-            </div>
-            <p style="margin: 0 0 4px; font-size: 13px; color: #666;">Reference: ${result.transferId}</p>
-            <p style="margin: 0; font-size: 13px; color: #666;">${arrivalNote}</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="margin: 0; font-size: 12px; color: #999;">Giftist &middot; <a href="https://giftist.ai/wallet" style="color: #999;">View your funds</a></p>
-          </div>
-        `,
-      }).catch((err) => console.error('Failed to send withdrawal receipt:', err))
-    }
+    // Send receipts (email + WhatsApp, non-blocking)
+    sendWithdrawalReceipts({
+      amount,
+      fee: result.fee,
+      netAmount,
+      method,
+      transferId: result.transferId,
+      user: {
+        name: result.userName,
+        email: result.userEmail,
+        phone: result.userPhone,
+      },
+    })
 
     return NextResponse.json({ balance: result.balance, transferId: result.transferId, fee: result.fee })
   } catch (error: any) {
