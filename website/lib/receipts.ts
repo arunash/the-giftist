@@ -1,5 +1,5 @@
 import { sendEmail } from '@/lib/email'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendTextMessage, sendTemplateMessage } from '@/lib/whatsapp'
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://giftist.ai'
 const LOGO_URL = `${BASE_URL}/logo-light.png`
@@ -76,11 +76,13 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
     }).catch((err) => console.error('Failed to send contributor email receipt:', err))
   }
 
-  // WhatsApp to contributor
+  // WhatsApp to contributor (template: contribution_receipt)
+  // Body: "Receipt: You contributed ${{2}} towards "{{3}}". {{1}} will be notified. Thank you!"
   if (data.contributor.phone) {
-    sendTextMessage(
+    sendTemplateMessage(
       data.contributor.phone,
-      `✅ Receipt: You contributed $${data.amount.toFixed(2)} toward "${giftLabel}". ${data.owner.name || 'The recipient'} will be notified. Thank you!`
+      'contribution_receipt',
+      [data.owner.name || 'The recipient', data.amount.toFixed(2), giftLabel]
     ).catch((err) => console.error('Failed to send contributor WhatsApp receipt:', err))
   }
 
@@ -111,11 +113,13 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
     }).catch((err) => console.error('Failed to send owner email receipt:', err))
   }
 
-  // WhatsApp to owner
+  // WhatsApp to owner (template: contribution_received)
+  // Body: "Great news! {{1}} contributed ${{2}} toward "{{3}}" on your Giftist wishlist. Your funds are ready to view and withdraw at giftist.ai/wallet"
   if (data.owner.phone) {
-    sendTextMessage(
+    sendTemplateMessage(
       data.owner.phone,
-      `🎁 ${displayName} contributed $${data.amount.toFixed(2)} toward "${giftLabel}"! View and withdraw your funds: ${viewUrl}`
+      'contribution_received',
+      [displayName, data.amount.toFixed(2), giftLabel]
     ).catch((err) => console.error('Failed to send owner WhatsApp receipt:', err))
   }
 }

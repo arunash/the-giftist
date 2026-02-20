@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendTemplateMessage } from '@/lib/whatsapp'
 import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
 
@@ -69,16 +69,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send WhatsApp to contributor if they have a phone
+    // Send WhatsApp to contributor if they have a phone (template: thank_you_note)
+    // Body: "Hi! {{1}} sent you a thank-you for your contribution: {{2}}. You can visit http://giftist.ai to view the note"
     if (contribution.contributor?.phone) {
       const giftee = await prisma.user.findUnique({
         where: { id: userId },
         select: { name: true },
       })
       const gifteeName = giftee?.name || 'Someone'
-      sendTextMessage(
+      sendTemplateMessage(
         contribution.contributor.phone,
-        `💌 ${gifteeName} sent you a thank-you for your contribution to "${giftName}": "${data.message}"`
+        'thank_you_note',
+        [gifteeName, data.message]
       ).catch((err) => console.error('Thank-you WhatsApp failed:', err))
     }
 

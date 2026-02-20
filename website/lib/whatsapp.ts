@@ -31,6 +31,26 @@ export async function sendTextMessage(to: string, body: string) {
   return result
 }
 
+export async function sendTemplateMessage(to: string, templateName: string, parameters: string[]) {
+  const result = await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'en' },
+      components: parameters.length > 0 ? [
+        {
+          type: 'body',
+          parameters: parameters.map(text => ({ type: 'text', text })),
+        },
+      ] : [],
+    },
+  })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages/template', source: 'WHATSAPP' }).catch(() => {})
+  return result
+}
+
 export async function sendImageMessage(to: string, imageUrl: string, caption: string) {
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',

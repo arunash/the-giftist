@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendTemplateMessage } from '@/lib/whatsapp'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -141,16 +141,18 @@ export async function PATCH(
         metadata: { itemName: item.name },
       }).catch(() => {})
 
-      // Notify all contributors via WhatsApp
+      // Notify all contributors via WhatsApp (template: item_purchased)
+      // Body: "Great news! "{{1}}" has been marked for purchase on Giftist. Thank you for contributing toward this gift — your generosity made it happen!"
       const contributions = await prisma.contribution.findMany({
         where: { itemId: id, status: 'COMPLETED' },
         include: { contributor: { select: { phone: true, name: true } } },
       })
       for (const c of contributions) {
         if (c.contributor?.phone) {
-          sendTextMessage(
+          sendTemplateMessage(
             c.contributor.phone,
-            `🎉 Great news! "${item.name}" has been purchased. Thank you for contributing!`
+            'item_purchased',
+            [item.name]
           ).catch((err) => console.error('Purchase notification failed:', err))
         }
       }
