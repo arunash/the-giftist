@@ -7,19 +7,17 @@ const LOGO_URL = `${BASE_URL}/logo-light.png`
 function emailWrapper(body: string): string {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 0;">
-      <div style="text-align: center; padding: 32px 24px 20px;">
-        <a href="${BASE_URL}" style="text-decoration: none;">
-          <img src="${LOGO_URL}" alt="The Giftist" width="56" height="56" style="border-radius: 12px; display: inline-block;" />
+      <div style="padding: 24px 24px 16px; display: flex; align-items: center;">
+        <a href="${BASE_URL}" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+          <img src="${LOGO_URL}" alt="The Giftist" width="36" height="36" style="border-radius: 8px;" />
+          <span style="font-size: 16px; font-weight: 700; color: #111; letter-spacing: -0.3px;">The Giftist</span>
         </a>
-        <p style="margin: 10px 0 0; font-size: 18px; font-weight: 700; color: #111; letter-spacing: -0.3px;">
-          <a href="${BASE_URL}" style="color: #111; text-decoration: none;">The Giftist</a>
-        </p>
       </div>
-      <div style="padding: 0 24px 32px;">
+      <div style="padding: 0 24px 24px;">
         ${body}
       </div>
-      <div style="border-top: 1px solid #eee; padding: 20px 24px; text-align: center;">
-        <p style="margin: 0; font-size: 12px; color: #999;">
+      <div style="border-top: 1px solid #eee; padding: 16px 24px; text-align: center;">
+        <p style="margin: 0; font-size: 11px; color: #999;">
           <a href="${BASE_URL}" style="color: #999; text-decoration: none;">The Giftist</a> &middot; Your personal gift concierge
         </p>
       </div>
@@ -65,13 +63,13 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
       to: data.contributor.email,
       subject: `Contribution receipt — $${data.amount.toFixed(2)} toward ${giftLabel}`,
       html: emailWrapper(`
-        <h2 style="margin: 0 0 4px; font-size: 20px; color: #111;">Thank you for your contribution!</h2>
-        <p style="margin: 0 0 24px; color: #666; font-size: 14px;">${date}</p>
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <p style="margin: 0 0 12px; font-size: 14px; color: #666;">Amount</p>
-          <p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</p>
-          <p style="margin: 0 0 4px; font-size: 14px; color: #666;">Gift</p>
-          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111;">${giftLabel}</p>
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Thank you for your contribution!</p>
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666; width: 70px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Gift</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${giftLabel}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Date</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${date}</td></tr>
+          </table>
         </div>
         <p style="margin: 0; font-size: 13px; color: #666;">${data.owner.name || 'The recipient'} will be notified and can use these funds to purchase the gift.</p>
       `),
@@ -99,17 +97,16 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
       to: data.owner.email,
       subject: `${displayName} contributed $${data.amount.toFixed(2)} toward ${giftLabel}`,
       html: emailWrapper(`
-        <h2 style="margin: 0 0 4px; font-size: 20px; color: #111;">You received a contribution!</h2>
-        <p style="margin: 0 0 24px; color: #666; font-size: 14px;">${date}</p>
-        <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <p style="margin: 0 0 12px; font-size: 14px; color: #166534;">Amount</p>
-          <p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; color: #166534;">+$${data.amount.toFixed(2)}</p>
-          <p style="margin: 0 0 4px; font-size: 14px; color: #166534;">From</p>
-          <p style="margin: 0 0 20px; font-size: 16px; font-weight: 600; color: #111;">${displayName}</p>
-          <p style="margin: 0 0 4px; font-size: 14px; color: #166534;">Gift</p>
-          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111;">${giftLabel}</p>
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">You received a contribution!</p>
+        <div style="background: #f0fdf4; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534; width: 70px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #166534;">+$${data.amount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">From</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${displayName}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Gift</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${giftLabel}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Date</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${date}</td></tr>
+          </table>
         </div>
-        <a href="${viewUrl}" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px;">View &amp; Withdraw Funds</a>
+        <a href="${viewUrl}" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px;">View &amp; Withdraw Funds</a>
       `),
     }).catch((err) => console.error('Failed to send owner email receipt:', err))
   }
@@ -144,8 +141,8 @@ export function sendWithdrawalReceipts(data: WithdrawalReceiptData) {
   const methodDesc = isInstant ? 'Bank (instant)' : 'Bank (standard)'
   const arrivalNote = isInstant ? 'Funds typically arrive within minutes.' : 'Standard payouts arrive in 1-2 business days.'
 
-  const feeLine = data.fee > 0
-    ? `<p style="margin: 0 0 4px; font-size: 14px; color: #666;">Fee</p><p style="margin: 0 0 20px; font-size: 16px; font-weight: 600; color: #111;">$${data.fee.toFixed(2)}</p><p style="margin: 0 0 4px; font-size: 14px; color: #666;">You receive</p><p style="margin: 0 0 20px; font-size: 16px; font-weight: 600; color: #111;">$${data.netAmount.toFixed(2)}</p>`
+  const feeRows = data.fee > 0
+    ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Fee</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">$${data.fee.toFixed(2)}</td></tr><tr><td style="padding: 4px 0; font-size: 13px; color: #666;">You receive</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${data.netAmount.toFixed(2)}</td></tr>`
     : ''
 
   // Email receipt
@@ -154,16 +151,15 @@ export function sendWithdrawalReceipts(data: WithdrawalReceiptData) {
       to: data.user.email,
       subject: `Withdrawal receipt — $${data.amount.toFixed(2)} to bank`,
       html: emailWrapper(`
-        <h2 style="margin: 0 0 4px; font-size: 20px; color: #111;">Withdrawal Confirmed</h2>
-        <p style="margin: 0 0 24px; color: #666; font-size: 14px;">${date}</p>
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <p style="margin: 0 0 12px; font-size: 14px; color: #666;">Amount</p>
-          <p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</p>
-          ${feeLine}
-          <p style="margin: 0 0 4px; font-size: 14px; color: #666;">Destination</p>
-          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111;">${methodDesc}</p>
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Withdrawal Confirmed</p>
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666; width: 90px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</td></tr>
+            ${feeRows}
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Destination</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${methodDesc}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Reference</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${data.transferId}</td></tr>
+          </table>
         </div>
-        <p style="margin: 0 0 4px; font-size: 13px; color: #666;">Reference: ${data.transferId}</p>
         <p style="margin: 0; font-size: 13px; color: #666;">${arrivalNote}</p>
       `),
     }).catch((err) => console.error('Failed to send withdrawal email receipt:', err))

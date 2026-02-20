@@ -16,7 +16,7 @@ export async function sendEmail({
   html: string
 }) {
   const { data, error } = await getResend().emails.send({
-    from: 'Giftist <digest@giftist.ai>',
+    from: 'The Giftist <digest@giftist.ai>',
     to,
     subject,
     html,
