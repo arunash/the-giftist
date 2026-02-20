@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
-import { sendEmail } from '@/lib/email'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendContributionReceipts } from '@/lib/receipts'
 
 export async function POST() {
   const admin = await requireAdmin()
@@ -18,53 +17,40 @@ export async function POST() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const results: { id: string; amount: number; ownerEmail: string | null; ownerPhone: string | null; emailResult?: string; whatsappResult?: string }[] = []
+  const results: { id: string; amount: number; result: string }[] = []
 
   for (let i = 0; i < contributions.length; i++) {
-    if (i > 0) await new Promise(r => setTimeout(r, 600)) // avoid Resend rate limit (2/sec)
+    if (i > 0) await new Promise(r => setTimeout(r, 1500)) // avoid Resend rate limit
     const c = contributions[i]
     const owner = c.item?.user || c.event?.user
     if (!owner) {
-      results.push({ id: c.id, amount: c.amount, ownerEmail: null, ownerPhone: null, emailResult: 'skipped: no owner' })
+      results.push({ id: c.id, amount: c.amount, result: 'skipped: no owner' })
       continue
     }
 
-    const giftLabel = c.item?.name || c.event?.name || 'a gift'
-    const displayName = c.isAnonymous ? 'Someone' : (c.contributor?.name || 'Someone')
-    const entry: typeof results[number] = { id: c.id, amount: c.amount, ownerEmail: owner.email, ownerPhone: owner.phone }
-
-    // Test email
-    if (owner.email) {
-      try {
-        await sendEmail({
-          to: owner.email,
-          subject: `${displayName} contributed $${c.amount.toFixed(2)} toward ${giftLabel}`,
-          html: `<p>${displayName} contributed <strong>$${c.amount.toFixed(2)}</strong> toward <strong>${giftLabel}</strong>.</p><p><a href="https://giftist.ai/wallet">View your funds</a></p>`,
-        })
-        entry.emailResult = 'ok'
-      } catch (err: any) {
-        entry.emailResult = `error: ${err.message}`
-      }
-    } else {
-      entry.emailResult = 'skipped: no email'
+    try {
+      await sendContributionReceipts({
+        amount: c.amount,
+        itemName: c.item?.name || undefined,
+        eventName: c.event?.name || undefined,
+        itemId: c.itemId,
+        eventId: c.eventId,
+        contributorName: c.contributor?.name || 'Someone',
+        isAnonymous: c.isAnonymous,
+        contributor: {
+          email: c.contributor?.email,
+          phone: c.contributor?.phone,
+        },
+        owner: {
+          name: owner.name,
+          email: owner.email,
+          phone: owner.phone,
+        },
+      })
+      results.push({ id: c.id, amount: c.amount, result: 'ok' })
+    } catch (err: any) {
+      results.push({ id: c.id, amount: c.amount, result: `error: ${err.message}` })
     }
-
-    // Test WhatsApp
-    if (owner.phone) {
-      try {
-        await sendTextMessage(
-          owner.phone,
-          `🎁 ${displayName} contributed $${c.amount.toFixed(2)} toward "${giftLabel}"! View your funds: https://giftist.ai/wallet`
-        )
-        entry.whatsappResult = 'ok'
-      } catch (err: any) {
-        entry.whatsappResult = `error: ${err.message}`
-      }
-    } else {
-      entry.whatsappResult = 'skipped: no phone'
-    }
-
-    results.push(entry)
   }
 
   return NextResponse.json({ total: contributions.length, results })

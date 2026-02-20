@@ -12,12 +12,18 @@ export default function PrivacyPage() {
         <Link href="/" className="text-primary hover:text-primary-hover text-sm mb-8 inline-block">&larr; Back to The Giftist</Link>
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-        <p className="text-muted text-sm mb-10">Last updated: February 14, 2026</p>
+        <p className="text-muted text-sm mb-4">Last updated: February 14, 2026</p>
+
+        <p className="text-sm leading-relaxed mb-10">
+          This Privacy Policy describes how Giftist.ai collects, uses, and protects your information.
+          Giftist.ai is owned and operated by North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;).
+          If you have any questions about this Privacy Policy, you may contact us at privacy@giftist.ai.
+        </p>
 
         <div className="space-y-8 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Introduction</h2>
-            <p>North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a limited liability company organized in the State of California, United States, operates The Giftist platform at giftist.ai (&quot;Service&quot;). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Service.</p>
+            <p>North Beach Technologies LLC, a limited liability company organized in the State of California, United States, operates The Giftist platform at giftist.ai (&quot;Service&quot;). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Service.</p>
             <p className="mt-2">We are committed to protecting your privacy and complying with applicable data protection laws, including the California Consumer Privacy Act (CCPA), the California Privacy Rights Act (CPRA), and the European Union General Data Protection Regulation (GDPR) where applicable.</p>
           </section>
 
@@ -217,9 +223,13 @@ export default function PrivacyPage() {
           </section>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border flex gap-6 text-xs text-muted">
-          <Link href="/terms" className="hover:text-gray-900 transition">Terms of Service</Link>
-          <Link href="/" className="hover:text-gray-900 transition">Home</Link>
+        <div className="mt-12 pt-8 border-t border-border">
+          <div className="flex gap-6 text-xs text-muted">
+            <Link href="/terms" className="hover:text-gray-900 transition">Terms of Service</Link>
+            <Link href="/about" className="hover:text-gray-900 transition">About</Link>
+            <Link href="/" className="hover:text-gray-900 transition">Home</Link>
+          </div>
+          <p className="text-xs text-muted mt-3">© 2026 Giftist.ai. All rights reserved. Giftist.ai is a product of North Beach Technologies LLC.</p>
         </div>
       </div>
     </div>

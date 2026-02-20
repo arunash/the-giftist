@@ -353,10 +353,11 @@ export default async function Home() {
             <div className="flex items-center gap-6">
               <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-900 transition">Terms</Link>
               <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-900 transition">Privacy</Link>
-              <p className="text-xs text-gray-400">
-                © 2026 The Giftist. All rights reserved.
-              </p>
+              <Link href="/about" className="text-xs text-gray-400 hover:text-gray-900 transition">About</Link>
             </div>
+            <p className="text-xs text-gray-400 mt-3 sm:mt-0">
+              © 2026 Giftist.ai. All rights reserved. A product of North Beach Technologies LLC.
+            </p>
           </div>
         </div>
       </footer>

@@ -12,12 +12,18 @@ export default function TermsPage() {
         <Link href="/" className="text-primary hover:text-primary-hover text-sm mb-8 inline-block">&larr; Back to The Giftist</Link>
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-        <p className="text-muted text-sm mb-10">Last updated: February 14, 2026</p>
+        <p className="text-muted text-sm mb-4">Last updated: February 14, 2026</p>
+
+        <p className="text-sm leading-relaxed mb-10">
+          These Terms of Service (&quot;Terms&quot;) govern your use of Giftist.ai and related services (the &quot;Service&quot;).
+          Giftist.ai is owned and operated by North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a registered limited liability company.
+          By accessing or using the Service, you agree to be bound by these Terms.
+        </p>
 
         <div className="space-y-8 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Agreement to Terms</h2>
-            <p>By accessing or using The Giftist (&quot;Service&quot;), operated by North Beach Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a limited liability company organized in the State of California, United States, you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, do not use the Service.</p>
+            <p>By accessing or using The Giftist (&quot;Service&quot;), operated by North Beach Technologies LLC, a limited liability company organized in the State of California, United States, you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, do not use the Service.</p>
             <p className="mt-2">These Terms apply to all visitors, users, and others who access the Service (&quot;Users&quot;). By using the Service, you represent that you are at least 13 years of age. If you are under 18, you represent that your legal guardian has reviewed and agreed to these Terms.</p>
           </section>
 
@@ -153,9 +159,13 @@ export default function TermsPage() {
           </section>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border flex gap-6 text-xs text-muted">
-          <Link href="/privacy" className="hover:text-gray-900 transition">Privacy Policy</Link>
-          <Link href="/" className="hover:text-gray-900 transition">Home</Link>
+        <div className="mt-12 pt-8 border-t border-border">
+          <div className="flex gap-6 text-xs text-muted">
+            <Link href="/privacy" className="hover:text-gray-900 transition">Privacy Policy</Link>
+            <Link href="/about" className="hover:text-gray-900 transition">About</Link>
+            <Link href="/" className="hover:text-gray-900 transition">Home</Link>
+          </div>
+          <p className="text-xs text-muted mt-3">© 2026 Giftist.ai. All rights reserved. Giftist.ai is a product of North Beach Technologies LLC.</p>
         </div>
       </div>
     </div>
