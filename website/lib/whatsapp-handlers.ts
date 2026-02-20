@@ -108,6 +108,12 @@ export async function resolveUserAndList(phone: string, profileName?: string) {
     })
     // Fire-and-forget: create default events for new WhatsApp user
     createDefaultEventsForUser(user.id).catch(() => {})
+  } else if (profileName && (!user.name || /^User \d{4}$/.test(user.name))) {
+    // Update name from WhatsApp profile if current name is missing or a placeholder
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { name: profileName },
+    })
   }
 
   // Find or create "WhatsApp Saves" list

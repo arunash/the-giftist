@@ -15,6 +15,18 @@ const EVENT_TYPE_EMOJI: Record<string, string> = {
   OTHER: '📅',
 }
 
+// Curated Unsplash photos for each event type (free to use, reliable CDN)
+const EVENT_TYPE_IMAGE: Record<string, string> = {
+  BIRTHDAY: 'https://images.unsplash.com/photo-1558636508-e0db3814bd1d?w=600&h=340&fit=crop',
+  ANNIVERSARY: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600&h=340&fit=crop',
+  WEDDING: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=340&fit=crop',
+  BABY_SHOWER: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=600&h=340&fit=crop',
+  CHRISTMAS: 'https://images.unsplash.com/photo-1512389142860-9c449e58a814?w=600&h=340&fit=crop',
+  HOLIDAY: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600&h=340&fit=crop',
+  GRADUATION: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=340&fit=crop',
+  OTHER: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=600&h=340&fit=crop',
+}
+
 function getAiSuggestion(event: EventCardProps['event']): { text: string; href: string } {
   const days = daysUntil(new Date(event.date))
 
@@ -68,13 +80,11 @@ export function EventCard({ event }: EventCardProps) {
     <Link href={`/events/${event.id}`} className="ig-card group overflow-hidden block">
       {/* Thumbnail */}
       <div className="aspect-[16/9] relative overflow-hidden">
-        {firstImage ? (
-          <img src={firstImage} alt={event.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-            <span className="text-5xl">{EVENT_TYPE_EMOJI[event.type] || '📅'}</span>
-          </div>
-        )}
+        <img
+          src={firstImage || EVENT_TYPE_IMAGE[event.type] || EVENT_TYPE_IMAGE.OTHER}
+          alt={event.name}
+          className="w-full h-full object-cover"
+        />
         {/* Countdown badge */}
         <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold ${countdownColor}`}>
           {countdownText}
