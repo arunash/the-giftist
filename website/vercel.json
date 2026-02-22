@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/onboarding-followup",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/archive-funded",
+      "schedule": "0 6 * * *"
     }
   ]
 }
