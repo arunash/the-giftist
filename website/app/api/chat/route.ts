@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
+import { parseChatContent, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
+import { createActivity } from '@/lib/activity'
+import { calculateGoalAmount } from '@/lib/platform-fee'
+import { enrichItem } from '@/lib/enrich-item'
 import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -113,6 +117,11 @@ export async function POST(request: NextRequest) {
             await prisma.chatMessage.create({
               data: { userId, role: 'ASSISTANT', content: fullContent },
             })
+
+            // Process structured blocks (events, add-to-event)
+            processStructuredBlocks(userId, fullContent).catch((err) => {
+              console.error('Error processing chat blocks:', err)
+            })
           }
 
           // Log after stream completes
@@ -149,5 +158,98 @@ export async function POST(request: NextRequest) {
     console.error('Error in chat:', error)
     logError({ source: 'CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return new Response('Internal error', { status: 500 })
+  }
+}
+
+async function processStructuredBlocks(userId: string, content: string) {
+  const segments = parseChatContent(content)
+
+  for (const seg of segments) {
+    if (seg.type === 'event') {
+      const eventData = seg.data as EventData
+      try {
+        const existing = await prisma.event.findFirst({
+          where: { userId, name: eventData.name },
+        })
+        if (!existing) {
+          await prisma.event.create({
+            data: {
+              userId,
+              name: eventData.name,
+              type: eventData.type,
+              date: new Date(eventData.date),
+              isPublic: true,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('Web chat EVENT create error:', err)
+      }
+    }
+
+    if (seg.type === 'add_to_event') {
+      const ateData = seg.data as AddToEventData
+      try {
+        let itemId = ateData.itemId
+
+        if (!itemId || itemId === 'TBD' || itemId === 'new') {
+          let priceValue: number | null = null
+          if (ateData.price) {
+            const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
+            if (match) priceValue = parseFloat(match[0])
+          }
+
+          const feeCalc = calculateGoalAmount(priceValue, 0)
+
+          const newItem = await prisma.item.create({
+            data: {
+              userId,
+              name: ateData.itemName,
+              price: ateData.price || null,
+              priceValue,
+              url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
+              domain: 'google.com',
+              source: 'WEB',
+              goalAmount: feeCalc.goalAmount,
+            },
+          })
+          itemId = newItem.id
+
+          enrichItem(itemId, ateData.itemName).catch(() => {})
+
+          createActivity({
+            userId,
+            type: 'ITEM_ADDED',
+            visibility: 'PUBLIC',
+            itemId,
+            metadata: { itemName: ateData.itemName, source: 'WEB' },
+          }).catch(() => {})
+        }
+
+        let eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })
+        if (!eventExists && ateData.eventName) {
+          eventExists = await prisma.event.findFirst({
+            where: { userId, name: { contains: ateData.eventName, mode: 'insensitive' } },
+            orderBy: { date: 'asc' },
+          })
+        }
+        if (eventExists && itemId) {
+          await prisma.eventItem.deleteMany({ where: { itemId } })
+          await prisma.eventItem.create({
+            data: { eventId: eventExists.id, itemId, priority: 0 },
+          })
+
+          createActivity({
+            userId,
+            type: 'EVENT_ITEM_ADDED',
+            visibility: 'PUBLIC',
+            itemId,
+            metadata: { itemName: ateData.itemName, eventName: eventExists.name },
+          }).catch(() => {})
+        }
+      } catch (err) {
+        console.error('Web chat ADD_TO_EVENT error:', err)
+      }
+    }
   }
 }
