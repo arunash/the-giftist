@@ -101,9 +101,15 @@ export async function POST(request: NextRequest) {
               })
 
               const newFundedAmount = item.fundedAmount + contribution.amount
+              const goalAmount = item.goalAmount || item.priceValue || 0
+              const justFullyFunded = goalAmount > 0 && newFundedAmount >= goalAmount && item.fundedAmount < goalAmount
+
               await prisma.item.update({
                 where: { id: item.id },
-                data: { fundedAmount: newFundedAmount },
+                data: {
+                  fundedAmount: newFundedAmount,
+                  ...(justFullyFunded && { fullyFundedAt: new Date() }),
+                },
               })
 
               await prisma.user.update({

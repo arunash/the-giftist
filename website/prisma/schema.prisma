@@ -110,6 +110,7 @@ model Item {
   fundedAmount       Float               @default(0)
   isPurchased        Boolean             @default(false)
   purchasedAt        DateTime?
+  fullyFundedAt      DateTime?
   activityEvents     ActivityEvent[]
   contributions      Contribution[]
   eventItems         EventItem[]

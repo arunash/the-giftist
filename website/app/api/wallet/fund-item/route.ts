@@ -57,10 +57,16 @@ export async function POST(request: NextRequest) {
       // Calculate platform fee based on owner's contribution count
       const fee = calculateFeeFromContribution(amount, item.user.contributionsReceivedCount)
 
-      // Increment item funded amount
+      // Increment item funded amount, set fullyFundedAt if just became fully funded
+      const goalAmount = item.goalAmount || item.priceValue || 0
+      const justFullyFunded = goalAmount > 0 && (item.fundedAmount + amount) >= goalAmount && item.fundedAmount < goalAmount
+
       const updatedItem = await tx.item.update({
         where: { id: itemId },
-        data: { fundedAmount: { increment: amount } },
+        data: {
+          fundedAmount: { increment: amount },
+          ...(justFullyFunded && { fullyFundedAt: new Date() }),
+        },
       })
 
       // Create contribution record with fee tracking
