@@ -1,6 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
+import { createHmac } from 'crypto'
 import { prismaMock } from '../../../../test/mocks/prisma'
-import { createRequest } from '../../../../test/helpers'
+
+const TEST_APP_SECRET = 'test-app-secret'
+const TEST_VERIFY_TOKEN = 'test-verify-token'
+
+// Set env vars before any imports
+beforeAll(() => {
+  process.env.WHATSAPP_APP_SECRET = TEST_APP_SECRET
+  process.env.WHATSAPP_VERIFY_TOKEN = TEST_VERIFY_TOKEN
+})
 
 // Mock whatsapp module
 vi.mock('@/lib/whatsapp', () => ({
@@ -17,9 +26,33 @@ vi.mock('@/lib/whatsapp-handlers', () => ({
   getWelcomeMessage: vi.fn().mockReturnValue('Welcome!'),
 }))
 
+vi.mock('@/lib/api-logger', () => ({
+  logError: vi.fn().mockResolvedValue({}),
+}))
+
 import { GET, POST } from './route'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveUserAndList, handleTextMessage } from '@/lib/whatsapp-handlers'
+import { NextRequest } from 'next/server'
+
+function createSignedRequest(url: string, body: any): NextRequest {
+  const fullUrl = url.startsWith('http') ? url : `http://localhost:3000${url}`
+  const rawBody = JSON.stringify(body)
+  const sig = `sha256=${createHmac('sha256', TEST_APP_SECRET).update(rawBody).digest('hex')}`
+  return new NextRequest(fullUrl, {
+    method: 'POST',
+    body: rawBody,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hub-signature-256': sig,
+    },
+  })
+}
+
+function createGetRequest(url: string): NextRequest {
+  const fullUrl = url.startsWith('http') ? url : `http://localhost:3000${url}`
+  return new NextRequest(fullUrl)
+}
 
 beforeEach(() => {
   prismaMock.whatsAppMessage.findUnique.mockResolvedValue(null) // No dedup
@@ -30,7 +63,7 @@ beforeEach(() => {
 
 describe('GET /api/webhooks/whatsapp', () => {
   it('responds to webhook verification', async () => {
-    const res = await GET(createRequest(
+    const res = await GET(createGetRequest(
       '/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=test-verify-token&hub.challenge=challenge123'
     ))
 
@@ -39,7 +72,7 @@ describe('GET /api/webhooks/whatsapp', () => {
   })
 
   it('returns 403 for invalid verify token', async () => {
-    const res = await GET(createRequest(
+    const res = await GET(createGetRequest(
       '/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=challenge'
     ))
     expect(res.status).toBe(403)
@@ -68,10 +101,7 @@ describe('POST /api/webhooks/whatsapp', () => {
   it('processes text message', async () => {
     const body = makeWebhookBody('text', { text: { body: 'https://example.com/product' } })
 
-    const res = await POST(createRequest('/api/webhooks/whatsapp', {
-      method: 'POST',
-      body,
-    }))
+    const res = await POST(createSignedRequest('/api/webhooks/whatsapp', body))
     const data = await res.json()
 
     expect(data.status).toBe('ok')
@@ -86,10 +116,7 @@ describe('POST /api/webhooks/whatsapp', () => {
     vi.mocked(handleTextMessage).mockClear()
 
     const body = makeWebhookBody('text', { text: { body: 'hello' } })
-    const res = await POST(createRequest('/api/webhooks/whatsapp', {
-      method: 'POST',
-      body,
-    }))
+    const res = await POST(createSignedRequest('/api/webhooks/whatsapp', body))
 
     expect(handleTextMessage).not.toHaveBeenCalled()
     expect((await res.json()).status).toBe('ok')
@@ -100,10 +127,7 @@ describe('POST /api/webhooks/whatsapp', () => {
       entry: [{ changes: [{ value: { statuses: [{ status: 'delivered' }] } }] }],
     }
 
-    const res = await POST(createRequest('/api/webhooks/whatsapp', {
-      method: 'POST',
-      body,
-    }))
+    const res = await POST(createSignedRequest('/api/webhooks/whatsapp', body))
 
     expect((await res.json()).status).toBe('ok')
   })
@@ -112,22 +136,32 @@ describe('POST /api/webhooks/whatsapp', () => {
     vi.mocked(resolveUserAndList).mockResolvedValue({ userId: 'user-1', listId: 'list-1', isNewUser: true })
 
     const body = makeWebhookBody('text', { text: { body: 'hello' } })
-    await POST(createRequest('/api/webhooks/whatsapp', {
-      method: 'POST',
-      body,
-    }))
+    await POST(createSignedRequest('/api/webhooks/whatsapp', body))
 
     // Welcome message should be sent (first call), then reply (second call)
     expect(sendTextMessage).toHaveBeenCalledWith('15551234567', 'Welcome!')
   })
 
+  it('returns 401 for invalid signature', async () => {
+    const body = makeWebhookBody('text', { text: { body: 'hello' } })
+    const rawBody = JSON.stringify(body)
+    const req = new NextRequest('http://localhost:3000/api/webhooks/whatsapp', {
+      method: 'POST',
+      body: rawBody,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hub-signature-256': 'sha256=invalid',
+      },
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(401)
+  })
+
   it('always returns 200 even on error', async () => {
     const body = { invalid: 'structure' }
 
-    const res = await POST(createRequest('/api/webhooks/whatsapp', {
-      method: 'POST',
-      body,
-    }))
+    const res = await POST(createSignedRequest('/api/webhooks/whatsapp', body))
 
     expect(res.status).toBe(200)
   })

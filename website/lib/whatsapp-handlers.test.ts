@@ -27,14 +27,51 @@ vi.mock('@/lib/whatsapp', () => ({
   sendTextMessage: vi.fn().mockResolvedValue({}),
   sendImageMessage: vi.fn().mockResolvedValue({}),
   downloadMedia: vi.fn().mockResolvedValue(Buffer.from('fake-image')),
+  normalizePhone: vi.fn((phone: string) => {
+    const digits = phone.replace(/\D/g, '')
+    return digits.length === 10 ? '1' + digits : digits
+  }),
 }))
 
 vi.mock('@/lib/chat-context', () => ({
   buildChatContext: vi.fn().mockResolvedValue('System prompt'),
+  checkChatLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 10 }),
+}))
+
+vi.mock('@/lib/search-retailers', () => ({
+  searchRetailers: vi.fn().mockResolvedValue({
+    bestResult: {
+      url: 'https://amazon.com/product',
+      retailer: 'Amazon',
+      price: '$199.99',
+      priceValue: 199.99,
+    },
+    results: [{ url: 'https://amazon.com/product', retailer: 'Amazon', price: '$199.99', priceValue: 199.99 }],
+  }),
+}))
+
+vi.mock('@/lib/activity', () => ({
+  createActivity: vi.fn().mockResolvedValue({}),
+}))
+
+vi.mock('@/lib/enrich-item', () => ({
+  enrichItem: vi.fn().mockResolvedValue({}),
+}))
+
+vi.mock('@/lib/platform-fee', () => ({
+  calculateGoalAmount: vi.fn((price: number | null) => ({
+    goalAmount: price ? Math.ceil(price * 1.05) : null,
+  })),
+}))
+
+vi.mock('@/lib/api-logger', () => ({
+  logApiCall: vi.fn().mockResolvedValue({}),
+  logError: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/lib/parse-chat-content', () => ({
   stripSpecialBlocks: vi.fn((text: string) => text),
+  parseChatContent: vi.fn(() => []),
 }))
 
 vi.mock('@anthropic-ai/sdk', () => {
@@ -59,6 +96,11 @@ beforeEach(() => {
   prismaMock.giftListItem.create.mockResolvedValue({} as any)
   prismaMock.chatMessage.create.mockResolvedValue({} as any)
   prismaMock.chatMessage.findMany.mockResolvedValue([])
+  prismaMock.event.findMany.mockResolvedValue([])
+  prismaMock.item.count.mockResolvedValue(1)
+  prismaMock.chatMessage.count.mockResolvedValue(1)
+  prismaMock.user.update.mockResolvedValue({ id: 'user-1', pendingProduct: null, lifetimeContributionsReceived: 0 } as any)
+  prismaMock.user.findUnique.mockResolvedValue({ id: 'user-1', phone: '15551234567', pendingProduct: null } as any)
 })
 
 describe('resolveUserAndList', () => {
@@ -151,19 +193,19 @@ describe('handleTextMessage', () => {
 })
 
 describe('handleImageMessage', () => {
-  it('extracts product from image', async () => {
+  it('extracts product from image and asks for confirmation', async () => {
     const reply = await handleImageMessage('user-1', 'list-1', 'media-1', 'image/jpeg', undefined, '15551234567')
 
     expect(downloadMedia).toHaveBeenCalledWith('media-1')
     expect(extractProductFromImage).toHaveBeenCalled()
-    expect(prismaMock.item.create).toHaveBeenCalledWith(
+    // Product is stored as pending for user confirmation
+    expect(prismaMock.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          name: 'Canon Camera',
+          pendingProduct: expect.stringContaining('Canon Camera'),
         }),
       })
     )
-    expect(reply).toContain('Camera')
   })
 
   it('falls back to text handler when caption contains URL', async () => {

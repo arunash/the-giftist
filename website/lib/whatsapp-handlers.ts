@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
-import { downloadMedia, sendTextMessage, sendImageMessage } from '@/lib/whatsapp'
+import { downloadMedia, sendTextMessage, sendImageMessage, normalizePhone } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
 import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
@@ -88,6 +88,121 @@ async function linkLastItemToEvent(userId: string, eventIndex: number): Promise<
   }).catch(() => {})
 
   return `Linked *${lastItem.name}* to *${event.name}*`
+}
+
+// ================================================================
+// GIFT CIRCLE COMMANDS
+// ================================================================
+
+async function listCircleMembers(userId: string): Promise<string> {
+  const members = await prisma.circleMember.findMany({
+    where: { userId },
+    orderBy: { name: 'asc' },
+  })
+  if (members.length === 0) {
+    return "Your Gift Circle is empty! Add people who gift with you:\n\n*add circle <phone> <name>*\nExample: *add circle 555-123-4567 Mom*"
+  }
+  const lines = members.map((m, i) => {
+    const rel = m.relationship ? ` (${m.relationship})` : ''
+    return `${i + 1}. ${m.name || m.phone}${rel}`
+  })
+  return `Your Gift Circle:\n\n${lines.join('\n')}\n\nTo remove: *remove circle <number>*\nTo add: *add circle <phone> <name>*`
+}
+
+async function addCircleMember(userId: string, phone: string, name?: string): Promise<string> {
+  const normalized = normalizePhone(phone)
+  const existing = await prisma.circleMember.findUnique({
+    where: { userId_phone: { userId, phone: normalized } },
+  })
+  if (existing) {
+    return `${existing.name || normalized} is already in your Gift Circle.`
+  }
+  await prisma.circleMember.create({
+    data: {
+      userId,
+      phone: normalized,
+      name: name || null,
+      source: 'WHATSAPP',
+    },
+  })
+  return `Added ${name || normalized} to your Gift Circle!`
+}
+
+async function removeCircleMember(userId: string, index: number): Promise<string> {
+  const members = await prisma.circleMember.findMany({
+    where: { userId },
+    orderBy: { name: 'asc' },
+  })
+  if (index < 0 || index >= members.length) {
+    return `Invalid number. You have ${members.length} people in your circle. Reply *circle* to see them.`
+  }
+  const target = members[index]
+  await prisma.circleMember.delete({ where: { id: target.id } })
+  return `Removed ${target.name || target.phone} from your Gift Circle.`
+}
+
+// ================================================================
+// EVENT REMINDERS
+// ================================================================
+
+async function sendEventReminders(userId: string, phone: string): Promise<string> {
+  const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+
+  const upcomingEvents = await prisma.event.findMany({
+    where: {
+      userId,
+      date: { gte: now, lte: twoWeeksFromNow },
+    },
+    include: {
+      items: {
+        include: { item: { select: { name: true, price: true } } },
+        take: 5,
+      },
+    },
+    orderBy: { date: 'asc' },
+  })
+
+  if (upcomingEvents.length === 0) {
+    return "No events within the next 2 weeks. I'll let you know when something's coming up!"
+  }
+
+  const members = await prisma.circleMember.findMany({
+    where: { userId },
+  })
+
+  if (members.length === 0) {
+    return `You have ${upcomingEvents.length} event(s) coming up but no one in your Gift Circle yet.\n\nAdd people: *add circle <phone> <name>*`
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, shareId: true },
+  })
+  const userName = user?.name || 'Your friend'
+  const shareUrl = user?.shareId ? `https://giftist.ai/u/${user.shareId}` : 'https://giftist.ai'
+
+  let sentCount = 0
+  for (const event of upcomingEvents) {
+    const daysUntil = Math.ceil((new Date(event.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    const itemList = event.items.map(ei => {
+      const p = ei.item.price ? ` (${ei.item.price})` : ''
+      return `- ${ei.item.name}${p}`
+    }).join('\n')
+
+    const message = `Hi! ${userName} has ${event.name} coming up in ${daysUntil} days and shared their wishlist with you!\n\n${itemList ? `Gift ideas:\n${itemList}\n\n` : ''}View the full list and contribute:\n${shareUrl}`
+
+    for (const member of members) {
+      try {
+        await sendTextMessage(member.phone, message)
+        sentCount++
+      } catch (err) {
+        console.error(`Failed to send reminder to ${member.phone}:`, err)
+      }
+    }
+  }
+
+  return `Sent reminders to ${sentCount} people about ${upcomingEvents.length} upcoming event(s)!`
 }
 
 async function getWebCTA(userId: string): Promise<string> {
@@ -276,6 +391,31 @@ export async function handleTextMessage(
   if (eventLinkMatch) {
     const index = parseInt(eventLinkMatch[1]) - 1
     return linkLastItemToEvent(userId, index)
+  }
+
+  // Command: circle — list gift circle members
+  if (trimmed === 'circle') {
+    return listCircleMembers(userId)
+  }
+
+  // Command: add circle <phone> <name>
+  const addCircleMatch = text.match(/^add\s+circle\s+([\d\s()+\-]+)\s*(.*)$/i)
+  if (addCircleMatch) {
+    const phone = addCircleMatch[1].trim()
+    const name = addCircleMatch[2]?.trim() || undefined
+    return addCircleMember(userId, phone, name)
+  }
+
+  // Command: remove circle <n>
+  const removeCircleMatch = trimmed.match(/^remove\s+circle\s+(\d+)$/)
+  if (removeCircleMatch) {
+    const index = parseInt(removeCircleMatch[1]) - 1
+    return removeCircleMember(userId, index)
+  }
+
+  // Command: remind — send event reminders to gift circle
+  if (trimmed === 'remind') {
+    return sendEventReminders(userId, phone)
   }
 
   // Command: edit <n> <field> <value>
@@ -824,6 +964,62 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           console.error('WhatsApp ADD_TO_EVENT error:', err)
         }
       }
+
+      if (seg.type === 'add_circle') {
+        const data = seg.data as import('@/lib/parse-chat-content').AddCircleData
+        try {
+          const phone = normalizePhone(data.phone)
+          await prisma.circleMember.upsert({
+            where: { userId_phone: { userId, phone } },
+            update: { name: data.name ?? undefined, relationship: data.relationship ?? undefined },
+            create: { userId, phone, name: data.name || null, relationship: data.relationship || null, source: 'WHATSAPP' },
+          })
+          addToEventConfirmations.push(`Added ${data.name || phone} to your Gift Circle`)
+        } catch (err) {
+          console.error('WhatsApp ADD_CIRCLE error:', err)
+        }
+      }
+
+      if (seg.type === 'remove_circle') {
+        const data = seg.data as import('@/lib/parse-chat-content').RemoveCircleData
+        try {
+          const member = await prisma.circleMember.findFirst({
+            where: { userId, name: { contains: data.name, mode: 'insensitive' } },
+          })
+          if (member) {
+            await prisma.circleMember.delete({ where: { id: member.id } })
+            addToEventConfirmations.push(`Removed ${member.name || member.phone} from your Gift Circle`)
+          }
+        } catch (err) {
+          console.error('WhatsApp REMOVE_CIRCLE error:', err)
+        }
+      }
+
+      if (seg.type === 'send_reminders') {
+        const data = seg.data as import('@/lib/parse-chat-content').SendRemindersData
+        try {
+          const members = await prisma.circleMember.findMany({ where: { userId } })
+          const reminderUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true, shareId: true },
+          })
+          if (members.length > 0 && reminderUser?.shareId) {
+            const shareUrl = `https://giftist.ai/u/${reminderUser.shareId}`
+            const userName = reminderUser.name || 'Your friend'
+            const msg = `Hi! ${userName} shared their wishlist for ${data.eventName} with you!\n\nView and contribute:\n${shareUrl}`
+            let sent = 0
+            for (const m of members) {
+              try {
+                await sendTextMessage(m.phone, msg)
+                sent++
+              } catch {}
+            }
+            addToEventConfirmations.push(`Sent reminders to ${sent} people about ${data.eventName}`)
+          }
+        } catch (err) {
+          console.error('WhatsApp SEND_REMINDERS error:', err)
+        }
+      }
     }
 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
@@ -970,22 +1166,31 @@ Try it now — send me a link to something you've been eyeing, or tell me about 
 export function getHelpMessage(): string {
   return `*The Giftist* — Your Gift Concierge
 
-*Commands:*
+*Items:*
 - *Send a link* — I'll save it to your list
 - *Send a photo* — I'll identify it and add it
-- *Ask me anything* — Gift ideas, trends, recommendations
 - *list* — See your recent saves
-- *share* — Get a link to share your wishlist
-- *remove <number>* — Remove an item (e.g. "remove 3")
+- *remove <number>* — Remove an item
 - *edit <number> name <new name>* — Rename an item
-- *edit <number> price <new price>* — Update item price
+- *edit <number> price <new price>* — Update price
+
+*Events:*
 - *events* — See your events
-- *event <number>* — Link your last-added item to an event
+- *event <number>* — Link last item to an event
 - *remove event <number>* — Delete an event
 
+*Gift Circle:*
+- *circle* — See your gift circle
+- *add circle <phone> <name>* — Add someone
+- *remove circle <number>* — Remove someone
+- *remind* — Send reminders to your circle about upcoming events
+
+*Other:*
+- *Ask me anything* — Gift ideas, trends, recs
+- *share* — Get your shareable wishlist link
+
 *On the web (giftist.ai):*
-- Visual wishlist feed with trending gifts
-- Create event wishlists (birthdays, holidays)
-- Let friends contribute to your gifts
+- Visual wishlist with trending gifts
+- Event wishlists and group gifting
 - AI-powered gift recommendations`
 }

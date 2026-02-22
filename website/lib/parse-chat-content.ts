@@ -14,12 +14,30 @@ export interface AddToEventData {
   url?: string
 }
 
+export interface AddCircleData {
+  phone: string
+  name?: string
+  relationship?: string
+}
+
+export interface RemoveCircleData {
+  name: string
+}
+
+export interface SendRemindersData {
+  eventRef?: string
+  eventName: string
+}
+
 export type ChatSegment =
   | { type: 'text'; content: string }
   | { type: 'product'; data: ProductData }
   | { type: 'preferences'; data: Record<string, any> }
   | { type: 'event'; data: EventData }
   | { type: 'add_to_event'; data: AddToEventData }
+  | { type: 'add_circle'; data: AddCircleData }
+  | { type: 'remove_circle'; data: RemoveCircleData }
+  | { type: 'send_reminders'; data: SendRemindersData }
 
 export interface ProductData {
   name: string
@@ -33,13 +51,16 @@ const PRODUCT_REGEX = /\[PRODUCT\]([\s\S]*?)\[\/PRODUCT\]/g
 const PREFERENCES_REGEX = /\[PREFERENCES\]([\s\S]*?)\[\/PREFERENCES\]/g
 const EVENT_REGEX = /\[EVENT\]([\s\S]*?)\[\/EVENT\]/g
 const ADD_TO_EVENT_REGEX = /\[ADD_TO_EVENT\]([\s\S]*?)\[\/ADD_TO_EVENT\]/g
+const ADD_CIRCLE_REGEX = /\[ADD_CIRCLE\]([\s\S]*?)\[\/ADD_CIRCLE\]/g
+const REMOVE_CIRCLE_REGEX = /\[REMOVE_CIRCLE\]([\s\S]*?)\[\/REMOVE_CIRCLE\]/g
+const SEND_REMINDERS_REGEX = /\[SEND_REMINDERS\]([\s\S]*?)\[\/SEND_REMINDERS\]/g
 
 export function parseChatContent(content: string): ChatSegment[] {
   const segments: ChatSegment[] = []
   let lastIndex = 0
 
   // Combine all special blocks with their positions
-  const blocks: { start: number; end: number; type: 'product' | 'preferences' | 'event' | 'add_to_event'; raw: string }[] = []
+  const blocks: { start: number; end: number; type: ChatSegment['type']; raw: string }[] = []
 
   let match: RegExpExecArray | null
 
@@ -83,6 +104,36 @@ export function parseChatContent(content: string): ChatSegment[] {
     })
   }
 
+  const addCircleRegex = new RegExp(ADD_CIRCLE_REGEX.source, 'g')
+  while ((match = addCircleRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'add_circle',
+      raw: match[1],
+    })
+  }
+
+  const removeCircleRegex = new RegExp(REMOVE_CIRCLE_REGEX.source, 'g')
+  while ((match = removeCircleRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'remove_circle',
+      raw: match[1],
+    })
+  }
+
+  const sendRemindersRegex = new RegExp(SEND_REMINDERS_REGEX.source, 'g')
+  while ((match = sendRemindersRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'send_reminders',
+      raw: match[1],
+    })
+  }
+
   // Sort by position
   blocks.sort((a, b) => a.start - b.start)
 
@@ -103,6 +154,12 @@ export function parseChatContent(content: string): ChatSegment[] {
         segments.push({ type: 'event', data: parsed as EventData })
       } else if (block.type === 'add_to_event') {
         segments.push({ type: 'add_to_event', data: parsed as AddToEventData })
+      } else if (block.type === 'add_circle') {
+        segments.push({ type: 'add_circle', data: parsed as AddCircleData })
+      } else if (block.type === 'remove_circle') {
+        segments.push({ type: 'remove_circle', data: parsed as RemoveCircleData })
+      } else if (block.type === 'send_reminders') {
+        segments.push({ type: 'send_reminders', data: parsed as SendRemindersData })
       } else {
         segments.push({ type: 'preferences', data: parsed })
       }
@@ -131,6 +188,9 @@ export function stripSpecialBlocks(content: string): string {
     .replace(PREFERENCES_REGEX, '')
     .replace(EVENT_REGEX, '')
     .replace(ADD_TO_EVENT_REGEX, '')
+    .replace(ADD_CIRCLE_REGEX, '')
+    .replace(REMOVE_CIRCLE_REGEX, '')
+    .replace(SEND_REMINDERS_REGEX, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { parseChatContent, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
+import { parseChatContent, type EventData, type AddToEventData, type AddCircleData, type RemoveCircleData, type SendRemindersData } from '@/lib/parse-chat-content'
+import { normalizePhone, sendTextMessage } from '@/lib/whatsapp'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
@@ -249,6 +250,71 @@ async function processStructuredBlocks(userId: string, content: string) {
         }
       } catch (err) {
         console.error('Web chat ADD_TO_EVENT error:', err)
+      }
+    }
+
+    if (seg.type === 'add_circle') {
+      const data = seg.data as AddCircleData
+      try {
+        const phone = normalizePhone(data.phone)
+        await prisma.circleMember.upsert({
+          where: { userId_phone: { userId, phone } },
+          update: {
+            name: data.name ?? undefined,
+            relationship: data.relationship ?? undefined,
+          },
+          create: {
+            userId,
+            phone,
+            name: data.name || null,
+            relationship: data.relationship || null,
+            source: 'WEB',
+          },
+        })
+      } catch (err) {
+        console.error('Web chat ADD_CIRCLE error:', err)
+      }
+    }
+
+    if (seg.type === 'remove_circle') {
+      const data = seg.data as RemoveCircleData
+      try {
+        const member = await prisma.circleMember.findFirst({
+          where: {
+            userId,
+            name: { contains: data.name, mode: 'insensitive' },
+          },
+        })
+        if (member) {
+          await prisma.circleMember.delete({ where: { id: member.id } })
+        }
+      } catch (err) {
+        console.error('Web chat REMOVE_CIRCLE error:', err)
+      }
+    }
+
+    if (seg.type === 'send_reminders') {
+      const data = seg.data as SendRemindersData
+      try {
+        const members = await prisma.circleMember.findMany({ where: { userId } })
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, shareId: true },
+        })
+
+        if (members.length > 0 && user?.shareId) {
+          const shareUrl = `https://giftist.ai/u/${user.shareId}`
+          const userName = user.name || 'Your friend'
+          const message = `Hi! ${userName} shared their wishlist for ${data.eventName} with you!\n\nView the list and contribute:\n${shareUrl}`
+
+          for (const member of members) {
+            sendTextMessage(member.phone, message).catch((err) => {
+              console.error(`Failed to send reminder to ${member.phone}:`, err)
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Web chat SEND_REMINDERS error:', err)
       }
     }
   }
