@@ -1,0 +1,341 @@
+import { prisma } from './db'
+import { sendEmail } from './email'
+import { sendTextMessage, sendTemplateMessage } from './whatsapp'
+
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+const LOGO_URL = `${BASE_URL}/logo-light.png`
+
+// ── Branded email wrapper (shared with receipts.ts) ──
+
+export function emailWrapper(body: string): string {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 0;">
+      <div style="padding: 24px 24px 16px; display: flex; align-items: center;">
+        <a href="${BASE_URL}" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+          <img src="${LOGO_URL}" alt="The Giftist" width="36" height="36" style="border-radius: 8px;" />
+          <span style="font-size: 16px; font-weight: 700; color: #111; letter-spacing: -0.3px;">The Giftist</span>
+        </a>
+      </div>
+      <div style="padding: 0 24px 24px;">
+        ${body}
+      </div>
+      <div style="border-top: 1px solid #eee; padding: 16px 24px; text-align: center;">
+        <p style="margin: 0; font-size: 11px; color: #999;">
+          <a href="${BASE_URL}" style="color: #999; text-decoration: none;">The Giftist</a> &middot; Your personal gift concierge
+        </p>
+      </div>
+    </div>
+  `
+}
+
+// ── Smart WhatsApp Send (24h window optimization) ──
+
+export async function smartWhatsAppSend(
+  phone: string,
+  textBody: string,
+  templateName: string,
+  templateParams: string[]
+): Promise<void> {
+  if (!phone) return
+
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const recentInbound = await prisma.whatsAppMessage.findFirst({
+    where: { phone, createdAt: { gte: cutoff } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  if (recentInbound) {
+    await sendTextMessage(phone, textBody)
+  } else {
+    await sendTemplateMessage(phone, templateName, templateParams)
+  }
+}
+
+// ── Core notify() dispatcher ──
+
+export type NotificationType =
+  | 'CONTRIBUTION_COMPLETED'
+  | 'CONTRIBUTION_RECEIVED'
+  | 'WITHDRAWAL'
+  | 'ITEM_PURCHASED'
+  | 'THANK_YOU_SENT'
+  | 'WELCOME'
+  | 'LIST_VIEWED'
+  | 'EVENT_CREATED'
+  | 'EVENT_EDITED'
+  | 'EVENT_DELETED'
+  | 'ITEM_ADDED'
+  | 'ITEM_EDITED'
+  | 'ITEM_DELETED'
+  | 'FUNDS_ALLOCATED'
+  | 'FUNDS_MOVED'
+
+interface NotifyOptions {
+  userId: string
+  type: NotificationType
+  title: string
+  body: string
+  metadata?: Record<string, any>
+  email?: {
+    to: string
+    subject: string
+    html: string
+  }
+  whatsapp?: {
+    phone: string
+    text: string
+    template: string
+    templateParams: string[]
+  }
+}
+
+export async function notify(opts: NotifyOptions): Promise<void> {
+  // 1. Create in-app notification
+  await prisma.notification.create({
+    data: {
+      userId: opts.userId,
+      type: opts.type,
+      title: opts.title,
+      body: opts.body,
+      metadata: opts.metadata ? JSON.stringify(opts.metadata) : null,
+      channel: opts.email && opts.whatsapp ? 'ALL' : opts.email ? 'EMAIL' : opts.whatsapp ? 'WHATSAPP' : 'IN_APP',
+    },
+  })
+
+  // 2. Send email (fire-and-forget)
+  if (opts.email) {
+    sendEmail(opts.email).catch((err) =>
+      console.error(`[Notify] Email failed for ${opts.type}:`, err)
+    )
+  }
+
+  // 3. Send WhatsApp (fire-and-forget)
+  if (opts.whatsapp) {
+    smartWhatsAppSend(
+      opts.whatsapp.phone,
+      opts.whatsapp.text,
+      opts.whatsapp.template,
+      opts.whatsapp.templateParams
+    ).catch((err) =>
+      console.error(`[Notify] WhatsApp failed for ${opts.type}:`, err)
+    )
+  }
+}
+
+// ── Per-action notification helpers ──
+
+export async function notifyWelcome(userId: string, email?: string | null, phone?: string | null, name?: string | null) {
+  const displayName = name || 'there'
+  await notify({
+    userId,
+    type: 'WELCOME',
+    title: 'Welcome to The Giftist!',
+    body: `Hi ${displayName}! Your AI Gift Concierge is ready to help you find the perfect gifts.`,
+    email: email ? {
+      to: email,
+      subject: 'Welcome to The Giftist!',
+      html: emailWrapper(`
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Welcome to The Giftist!</p>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">Hi ${displayName}, I'm your AI Gift Concierge. Here's what I can help you with:</p>
+        <ul style="margin: 0 0 16px; padding-left: 20px; font-size: 14px; color: #444;">
+          <li>Save gift ideas from any store</li>
+          <li>Create events and organize gifts</li>
+          <li>Get personalized gift suggestions</li>
+          <li>Share your wishlist with friends and family</li>
+        </ul>
+        <a href="${BASE_URL}" style="display: inline-block; background: #111; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px;">Get Started</a>
+      `),
+    } : undefined,
+    whatsapp: phone ? {
+      phone,
+      text: `Hi ${displayName}! Welcome to The Giftist — I'm your AI Gift Concierge.\n\nHere's what I can do:\n- Send me any product link and I'll save it\n- Send me a photo of something you like\n- Tell me who you're shopping for and I'll suggest gifts\n- Type *help* for all commands\n\nWhat's the first gift on your mind?`,
+      template: 'welcome_message',
+      templateParams: [displayName],
+    } : undefined,
+  })
+}
+
+export async function notifyListViewed(ownerId: string, viewerName: string) {
+  await notify({
+    userId: ownerId,
+    type: 'LIST_VIEWED',
+    title: 'Someone viewed your wishlist',
+    body: `${viewerName} just checked out your wishlist.`,
+    metadata: { viewerName },
+  })
+}
+
+export async function notifyEventCreated(userId: string, eventName: string, eventId: string) {
+  await notify({
+    userId,
+    type: 'EVENT_CREATED',
+    title: 'Event created',
+    body: `"${eventName}" has been added to your events.`,
+    metadata: { eventId },
+  })
+}
+
+export async function notifyEventEdited(userId: string, eventName: string, eventId: string) {
+  await notify({
+    userId,
+    type: 'EVENT_EDITED',
+    title: 'Event updated',
+    body: `"${eventName}" has been updated.`,
+    metadata: { eventId },
+  })
+}
+
+export async function notifyEventDeleted(userId: string, eventName: string) {
+  await notify({
+    userId,
+    type: 'EVENT_DELETED',
+    title: 'Event deleted',
+    body: `"${eventName}" has been removed from your events.`,
+  })
+}
+
+export async function notifyItemAdded(userId: string, itemName: string, itemId: string) {
+  await notify({
+    userId,
+    type: 'ITEM_ADDED',
+    title: 'Item added',
+    body: `"${itemName}" has been added to your wishlist.`,
+    metadata: { itemId },
+  })
+}
+
+export async function notifyItemEdited(userId: string, itemName: string, itemId: string) {
+  await notify({
+    userId,
+    type: 'ITEM_EDITED',
+    title: 'Item updated',
+    body: `"${itemName}" has been updated.`,
+    metadata: { itemId },
+  })
+}
+
+export async function notifyItemDeleted(userId: string, itemName: string) {
+  await notify({
+    userId,
+    type: 'ITEM_DELETED',
+    title: 'Item removed',
+    body: `"${itemName}" has been removed from your wishlist.`,
+  })
+}
+
+export async function notifyItemPurchased(
+  ownerId: string,
+  itemName: string,
+  itemId: string,
+  ownerEmail?: string | null
+) {
+  await notify({
+    userId: ownerId,
+    type: 'ITEM_PURCHASED',
+    title: 'Item marked as purchased',
+    body: `"${itemName}" has been marked as purchased!`,
+    metadata: { itemId },
+    email: ownerEmail ? {
+      to: ownerEmail,
+      subject: `"${itemName}" marked as purchased`,
+      html: emailWrapper(`
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Item Purchased!</p>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">"${itemName}" has been marked as purchased. Don't forget to send thank-you notes to your contributors!</p>
+        <a href="${BASE_URL}/items/${itemId}" style="display: inline-block; background: #111; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px;">View Item</a>
+      `),
+    } : undefined,
+  })
+}
+
+export async function notifyFundsAllocated(userId: string, amount: number, itemName: string, itemId: string) {
+  await notify({
+    userId,
+    type: 'FUNDS_ALLOCATED',
+    title: 'Funds allocated',
+    body: `$${amount.toFixed(2)} allocated to "${itemName}" from your wallet.`,
+    metadata: { itemId, amount },
+  })
+}
+
+export async function notifyFundsMoved(userId: string, amount: number, itemName: string) {
+  await notify({
+    userId,
+    type: 'FUNDS_MOVED',
+    title: 'Funds moved to wallet',
+    body: `$${amount.toFixed(2)} from "${itemName}" moved to your wallet.`,
+    metadata: { amount },
+  })
+}
+
+export async function notifyContributionCompleted(
+  userId: string,
+  amount: number,
+  giftLabel: string,
+  metadata?: Record<string, any>
+) {
+  await notify({
+    userId,
+    type: 'CONTRIBUTION_COMPLETED',
+    title: 'Contribution confirmed',
+    body: `Your $${amount.toFixed(2)} contribution toward "${giftLabel}" is confirmed.`,
+    metadata,
+  })
+}
+
+export async function notifyContributionReceived(
+  userId: string,
+  contributorName: string,
+  amount: number,
+  giftLabel: string,
+  metadata?: Record<string, any>
+) {
+  await notify({
+    userId,
+    type: 'CONTRIBUTION_RECEIVED',
+    title: 'You received a contribution!',
+    body: `${contributorName} contributed $${amount.toFixed(2)} toward "${giftLabel}".`,
+    metadata,
+  })
+}
+
+export async function notifyWithdrawal(
+  userId: string,
+  amount: number,
+  method: string
+) {
+  await notify({
+    userId,
+    type: 'WITHDRAWAL',
+    title: 'Withdrawal confirmed',
+    body: `$${amount.toFixed(2)} withdrawal to your bank account (${method}) is being processed.`,
+    metadata: { amount, method },
+  })
+}
+
+export async function notifyThankYouSent(
+  contributorId: string,
+  ownerName: string,
+  itemName: string,
+  message: string,
+  contributorEmail?: string | null
+) {
+  await notify({
+    userId: contributorId,
+    type: 'THANK_YOU_SENT',
+    title: `Thank you from ${ownerName}`,
+    body: message || `${ownerName} sent you a thank-you note for your contribution to "${itemName}".`,
+    metadata: { itemName },
+    email: contributorEmail ? {
+      to: contributorEmail,
+      subject: `${ownerName} sent you a thank you!`,
+      html: emailWrapper(`
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Thank You Note</p>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">${ownerName} sent you a thank-you for your contribution to "${itemName}":</p>
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+          <p style="margin: 0; font-size: 14px; color: #111; font-style: italic;">"${message}"</p>
+        </div>
+        <a href="${BASE_URL}" style="display: inline-block; background: #111; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px;">Visit The Giftist</a>
+      `),
+    } : undefined,
+  })
+}

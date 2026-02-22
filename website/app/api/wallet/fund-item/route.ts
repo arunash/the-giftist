@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { notifyFundsAllocated } from '@/lib/notifications'
 import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
       itemId,
       metadata: { amount, itemName: result.item.name },
     })
+
+    // In-app notification
+    notifyFundsAllocated(userId, amount, result.item.name, itemId).catch(() => {})
 
     return NextResponse.json({
       balance: result.balance,

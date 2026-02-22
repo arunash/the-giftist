@@ -10,6 +10,7 @@ import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
 import { createDefaultEventsForUser } from '@/lib/default-events'
 import { logApiCall, logError } from '@/lib/api-logger'
+import { checkAndSendFunnelMessages } from '@/lib/whatsapp-funnel'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -313,6 +314,9 @@ export async function handleTextMessage(
     text = text.slice(0, MAX_WHATSAPP_MESSAGE_LENGTH)
   }
   const trimmed = text.trim().toLowerCase()
+
+  // Fire-and-forget: check funnel stage for engagement messages
+  checkAndSendFunnelMessages(userId, phone).catch(() => {})
 
   // Check for pending product confirmation/rejection
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { pendingProduct: true } })

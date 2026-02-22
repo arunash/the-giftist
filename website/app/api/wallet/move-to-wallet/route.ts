@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { notifyFundsMoved } from '@/lib/notifications'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
 
       return { walletBalance: wallet.balance, remainingReceived: available - amount }
     })
+
+    // In-app notification
+    notifyFundsMoved(userId, amount, 'received funds').catch(() => {})
 
     return NextResponse.json(result)
   } catch (error: any) {

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { notifyThankYouSent } from '@/lib/notifications'
 import { sendTemplateMessage } from '@/lib/whatsapp'
 import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
       include: {
         item: { select: { userId: true, name: true } },
         event: { select: { userId: true, name: true } },
-        contributor: { select: { phone: true, name: true } },
+        contributor: { select: { id: true, phone: true, name: true, email: true } },
       },
     })
 
@@ -70,18 +71,29 @@ export async function POST(request: NextRequest) {
     })
 
     // Send WhatsApp to contributor if they have a phone (template: thank_you_note)
-    // Body: "Hi! {{1}} sent you a thank-you for your contribution: {{2}}. You can visit http://giftist.ai to view the note"
+    const giftee = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    })
+    const gifteeName = giftee?.name || 'Someone'
+
     if (contribution.contributor?.phone) {
-      const giftee = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      })
-      const gifteeName = giftee?.name || 'Someone'
       sendTemplateMessage(
         contribution.contributor.phone,
         'thank_you_note',
         [gifteeName, data.message]
       ).catch((err) => console.error('Thank-you WhatsApp failed:', err))
+    }
+
+    // In-app notification + email to contributor
+    if (contribution.contributor?.id) {
+      notifyThankYouSent(
+        contribution.contributor.id,
+        gifteeName,
+        giftName,
+        data.message,
+        contribution.contributor.email
+      ).catch(() => {})
     }
 
     return NextResponse.json({ success: true })

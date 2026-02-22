@@ -6,6 +6,7 @@ import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { attemptAutoPayout } from '@/lib/auto-payout'
 import { sendContributionReceipts } from '@/lib/receipts'
+import { notifyContributionCompleted, notifyContributionReceived } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -155,6 +156,23 @@ export async function POST(request: NextRequest) {
                 },
               })
 
+              // In-app notifications
+              if (contribution.contributorId) {
+                notifyContributionCompleted(
+                  contribution.contributorId,
+                  contribution.amount,
+                  item.name,
+                  { itemId: item.id, contributionId: contribution.id }
+                ).catch(() => {})
+              }
+              notifyContributionReceived(
+                item.userId,
+                contribution.isAnonymous ? 'Anonymous' : (contribution.contributor?.name || 'Someone'),
+                contribution.amount,
+                item.name,
+                { itemId: item.id, contributionId: contribution.id }
+              ).catch(() => {})
+
               // Auto-payout if contributor's payment method matches owner's payout method
               attemptAutoPayout(
                 { id: contribution.id, amount: contribution.amount, paymentProvider: contribution.paymentProvider, platformFeeAmount: fee.feeAmount },
@@ -234,6 +252,23 @@ export async function POST(request: NextRequest) {
                   phone: evt.user.phone,
                 },
               })
+
+              // In-app notifications
+              if (contribution.contributorId) {
+                notifyContributionCompleted(
+                  contribution.contributorId,
+                  contribution.amount,
+                  evt.name,
+                  { eventId: evt.id, contributionId: contribution.id }
+                ).catch(() => {})
+              }
+              notifyContributionReceived(
+                evt.userId,
+                contribution.isAnonymous ? 'Anonymous' : (contribution.contributor?.name || 'Someone'),
+                contribution.amount,
+                evt.name,
+                { eventId: evt.id, contributionId: contribution.id }
+              ).catch(() => {})
 
               // Auto-payout if contributor's payment method matches owner's payout method
               attemptAutoPayout(

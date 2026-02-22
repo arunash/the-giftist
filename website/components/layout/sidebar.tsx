@@ -20,6 +20,7 @@ import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
 import { SidebarSummary } from './sidebar-summary'
 import { TasteProfile } from './taste-profile'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 
 const navItems = [
   { href: '/feed', label: 'Home', icon: LayoutGrid },
@@ -48,12 +49,13 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
 
   return (
     <aside className="hidden lg:flex flex-col w-80 h-screen fixed left-0 top-0 bg-surface border-r border-border">
-      {/* Logo */}
-      <div className="p-6">
+      {/* Logo + Notifications */}
+      <div className="p-6 flex items-center justify-between">
         <Link href="/feed" className="flex items-center gap-2.5">
           <Image src="/logo-light.png" alt="Giftist" width={32} height={32} className="rounded-lg" />
           <span className="text-lg font-bold text-primary">The Giftist</span>
         </Link>
+        <NotificationBell />
       </div>
 
       {/* Nav */}

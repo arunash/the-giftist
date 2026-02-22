@@ -5,6 +5,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
 import { createDefaultEventsForUser } from './default-events'
+import { notifyWelcome } from './notifications'
 import twilio from 'twilio'
 import crypto from 'crypto'
 import { ADMIN_PHONES } from './admin'
@@ -99,6 +100,8 @@ const adapter = {
     const created = await baseAdapter.createUser(user)
     // Fire-and-forget: create default events for new user
     createDefaultEventsForUser(created.id).catch(() => {})
+    // Fire-and-forget: welcome notification
+    notifyWelcome(created.id, created.email, created.phone, created.name).catch(() => {})
     return created
   },
 }
@@ -155,6 +158,8 @@ export const authOptions: NextAuthOptions = {
           })
           // Fire-and-forget: create default events for new user
           createDefaultEventsForUser(user.id).catch(() => {})
+          // Fire-and-forget: welcome notification
+          notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
         }
 
         if (!user.isActive) return null

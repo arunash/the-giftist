@@ -40,6 +40,7 @@ model User {
   isActive                      Boolean         @default(true)
   suspendedAt                   DateTime?
   suspendedReason               String?
+  funnelStage                   String?
   accounts                      Account[]
   activityEvents                ActivityEvent[]
   chatMessages                  ChatMessage[]
@@ -49,6 +50,7 @@ model User {
   giftLists                     GiftList[]
   giftListItems                 GiftListItem[]
   items                         Item[]
+  notifications                 Notification[]
   sessions                      Session[]
   subscription                  Subscription?
   wallet                        Wallet?
@@ -341,4 +343,20 @@ model CircleMember {
 
   @@unique([userId, phone])
   @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  metadata  String?
+  read      Boolean  @default(false)
+  channel   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
 }

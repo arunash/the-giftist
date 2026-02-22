@@ -6,6 +6,7 @@ import { stripe } from '@/lib/stripe'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 import { sendWithdrawalReceipts } from '@/lib/receipts'
+import { notifyWithdrawal } from '@/lib/notifications'
 
 const payoutSchema = z.object({
   amount: z.number().positive().min(1),
@@ -100,6 +101,9 @@ export async function POST(request: NextRequest) {
 
       return { balance: availableBalance - amount, transferId: transfer.id, fee: isInstant ? fee : 0, userName: user.name, userEmail: user.email, userPhone: user.phone }
     })
+
+    // In-app notification
+    notifyWithdrawal(userId, amount, method).catch(() => {})
 
     // Send receipts (email + WhatsApp, non-blocking)
     sendWithdrawalReceipts({

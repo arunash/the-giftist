@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { notifyItemAdded } from '@/lib/notifications'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
@@ -117,6 +118,9 @@ export async function POST(request: NextRequest) {
       itemId: item.id,
       metadata: { itemName: item.name, source: body.source || 'MANUAL' },
     }).catch(() => {})
+
+    // In-app notification
+    notifyItemAdded(userId, item.name, item.id).catch(() => {})
 
     return NextResponse.json(item, { status: 201 })
   } catch (error) {

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { createActivity } from '@/lib/activity'
+import { notifyEventEdited, notifyEventDeleted } from '@/lib/notifications'
 import { logError } from '@/lib/api-logger'
 
 const updateSchema = z.object({
@@ -201,6 +202,9 @@ export async function PATCH(
       },
     })
 
+    // In-app notification
+    notifyEventEdited(userId, event.name, event.id).catch(() => {})
+
     return NextResponse.json(event)
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -245,6 +249,9 @@ export async function DELETE(
     await prisma.event.delete({
       where: { id },
     })
+
+    // In-app notification
+    notifyEventDeleted(userId, existingEvent.name).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (error) {

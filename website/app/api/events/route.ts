@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { notifyEventCreated } from '@/lib/notifications'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -134,6 +135,9 @@ export async function POST(request: NextRequest) {
       visibility: 'PUBLIC',
       metadata: { eventName: event.name, eventType: event.type },
     }).catch(() => {})
+
+    // In-app notification
+    notifyEventCreated(userId, event.name, event.id).catch(() => {})
 
     return NextResponse.json(event, { status: 201 })
   } catch (error) {

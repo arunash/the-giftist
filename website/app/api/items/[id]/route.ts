@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
+import { notifyItemEdited, notifyItemDeleted, notifyItemPurchased } from '@/lib/notifications'
 import { sendTemplateMessage } from '@/lib/whatsapp'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
@@ -141,8 +142,11 @@ export async function PATCH(
         metadata: { itemName: item.name },
       }).catch(() => {})
 
+      // In-app notification + email to owner
+      const owner = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+      notifyItemPurchased(userId, item.name, id, owner?.email).catch(() => {})
+
       // Notify all contributors via WhatsApp (template: item_purchased)
-      // Body: "Great news! "{{1}}" has been marked for purchase on Giftist. Thank you for contributing toward this gift — your generosity made it happen!"
       const contributions = await prisma.contribution.findMany({
         where: { itemId: id, status: 'COMPLETED' },
         include: { contributor: { select: { phone: true, name: true } } },
@@ -156,6 +160,9 @@ export async function PATCH(
           ).catch((err) => console.error('Purchase notification failed:', err))
         }
       }
+    } else {
+      // Regular edit (not a purchase toggle)
+      notifyItemEdited(userId, item.name, id).catch(() => {})
     }
 
     return NextResponse.json(item)
@@ -202,6 +209,9 @@ export async function DELETE(
     await prisma.item.delete({
       where: { id },
     })
+
+    // In-app notification
+    notifyItemDeleted(userId, existingItem.name).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (error) {
