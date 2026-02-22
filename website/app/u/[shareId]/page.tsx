@@ -44,12 +44,17 @@ export async function generateMetadata({
 
 export default async function SharedWishlistPage({
   params,
+  searchParams,
 }: {
   params: { shareId: string }
+  searchParams: { event?: string }
 }) {
+  const eventShareUrl = searchParams.event
+
   const user = await prisma.user.findUnique({
     where: { shareId: params.shareId },
     select: {
+      id: true,
       name: true,
       shareId: true,
       items: {
@@ -63,16 +68,32 @@ export default async function SharedWishlistPage({
               },
             },
           },
+          events: {
+            select: { eventId: true },
+          },
         },
       },
     },
   })
 
+  // Resolve event filter if present
+  let eventFilter: { id: string; name: string } | null = null
+  if (eventShareUrl && user) {
+    const event = await prisma.event.findFirst({
+      where: { shareUrl: eventShareUrl, userId: user.id },
+      select: { id: true, name: true },
+    })
+    if (event) eventFilter = event
+  }
+
   if (!user) {
     notFound()
   }
 
-  const items = user.items
+  const allItems = user.items
+  const items = eventFilter
+    ? allItems.filter(item => item.events.some(ei => ei.eventId === eventFilter!.id))
+    : allItems
   const totalGoal = items.reduce(
     (sum, item) => sum + (item.goalAmount || item.priceValue || 0),
     0
@@ -99,7 +120,9 @@ export default async function SharedWishlistPage({
                 </span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                {user.name || 'Someone'}&apos;s Giftist
+                {eventFilter
+                  ? `${user.name || 'Someone'}'s ${eventFilter.name} Wishlist`
+                  : <>{user.name || 'Someone'}&apos;s Giftist</>}
               </h1>
               <p className="text-muted">
                 {items.length} {items.length === 1 ? 'item' : 'items'}

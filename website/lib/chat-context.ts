@@ -237,6 +237,10 @@ Remove from Circle: [REMOVE_CIRCLE]{"name":"Mom"}[/REMOVE_CIRCLE]
 - Use when the user asks to remove someone from their circle.
 - Match by name from the GIFT CIRCLE list above.
 
+Share Event Wishlist: [SHARE_EVENT]{"eventRef":"#N","eventName":"Event Name"}[/SHARE_EVENT]
+- Use when the user asks to share their wishlist for a specific event.
+- Returns a link that shows only items linked to that event.
+
 Send Reminders: [SEND_REMINDERS]{"eventRef":"#N","eventName":"Event Name"}[/SEND_REMINDERS]
 - Use when the user confirms they want to notify their gift circle about an upcoming event.
 - Sends their wishlist link to all circle members.

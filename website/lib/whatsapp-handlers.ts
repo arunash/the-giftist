@@ -467,6 +467,28 @@ export async function handleTextMessage(
     return `Removed: ${target.item.name}`
   }
 
+  // Command: share event <n>
+  const shareEventMatch = trimmed.match(/^share\s+event\s+(\d+)$/)
+  if (shareEventMatch) {
+    const index = parseInt(shareEventMatch[1]) - 1
+    const events = await prisma.event.findMany({
+      where: { userId },
+      orderBy: { date: 'asc' },
+      take: 10,
+      select: { id: true, name: true, shareUrl: true },
+    })
+    if (index < 0 || index >= events.length) {
+      return `Invalid event number. You have ${events.length} events. Reply *events* to see them.`
+    }
+    const event = events[index]
+    const sharer = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true } })
+    if (sharer?.shareId && event.shareUrl) {
+      const webUrl = `https://giftist.ai/u/${sharer.shareId}?event=${event.shareUrl}`
+      return `Here's your *${event.name}* wishlist link:\n\n${webUrl}\n\nShare this with friends and family so they can see what you want and contribute!`
+    }
+    return "Something went wrong generating your share link. Please try again."
+  }
+
   // Command: share
   if (trimmed === 'share') {
     const sharer = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true, name: true } })
@@ -1055,6 +1077,44 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           console.error('WhatsApp SEND_REMINDERS error:', err)
         }
       }
+
+      if (seg.type === 'share_event') {
+        const data = seg.data as import('@/lib/parse-chat-content').ShareEventData
+        try {
+          // Resolve eventRef to real event
+          let event: { id: string; name: string; shareUrl: string | null } | null = null
+          if (data.eventRef) {
+            const refMatch = data.eventRef.match(/#(\d+)/)
+            if (refMatch) {
+              const idx = parseInt(refMatch[1])
+              const userEvents = await prisma.event.findMany({
+                where: { userId, date: { gte: new Date() } },
+                orderBy: { date: 'asc' },
+                take: 5,
+                select: { id: true, name: true, shareUrl: true },
+              })
+              if (idx >= 1 && idx <= userEvents.length) {
+                event = userEvents[idx - 1]
+              }
+            }
+          }
+          if (!event && data.eventName) {
+            event = await prisma.event.findFirst({
+              where: { userId, name: { contains: data.eventName, mode: 'insensitive' } },
+              select: { id: true, name: true, shareUrl: true },
+            })
+          }
+          if (event?.shareUrl) {
+            const shareUser = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true } })
+            if (shareUser?.shareId) {
+              const link = `https://giftist.ai/u/${shareUser.shareId}?event=${event.shareUrl}`
+              addToEventConfirmations.push(`\nHere's your *${event.name}* wishlist link:\n${link}`)
+            }
+          }
+        } catch (err) {
+          console.error('WhatsApp SHARE_EVENT error:', err)
+        }
+      }
     }
 
     // Extract product blocks and format as a WhatsApp-friendly list before stripping
@@ -1239,6 +1299,7 @@ export function getHelpMessage(): string {
 *Other:*
 - *Ask me anything* — Gift ideas, trends, recs
 - *share* — Get your shareable wishlist link
+- *share event <number>* — Get a link for a specific event's wishlist
 
 *On the web (giftist.ai):*
 - Visual wishlist with trending gifts
