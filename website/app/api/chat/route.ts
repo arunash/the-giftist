@@ -200,7 +200,7 @@ async function processStructuredBlocks(userId: string, content: string) {
             if (match) priceValue = parseFloat(match[0])
           }
 
-          const feeCalc = calculateGoalAmount(priceValue, 0)
+          const feeCalc = calculateGoalAmount(priceValue)
 
           const newItem = await prisma.item.create({
             data: {

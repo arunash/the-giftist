@@ -173,18 +173,11 @@ export async function createDefaultEventsForUser(userId: string, birthDate?: Dat
 
     if (eventsToCreate.length === 0) return
 
-    // Look up user for fee calculation
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { lifetimeContributionsReceived: true },
-    })
-    const lifetime = user?.lifetimeContributionsReceived ?? 0
-
     for (const eventDef of eventsToCreate) {
       // Create items for this event
       const createdItems = await Promise.all(
         eventDef.items.map((item) => {
-          const fee = calculateGoalAmount(item.priceValue, lifetime)
+          const fee = calculateGoalAmount(item.priceValue)
           return prisma.item.create({
             data: {
               userId,

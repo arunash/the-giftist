@@ -29,6 +29,7 @@ export async function POST() {
     }
 
     try {
+      const netAmount = c.amount - c.platformFeeAmount
       await sendContributionReceipts({
         amount: c.amount,
         itemName: c.item?.name || undefined,
@@ -46,6 +47,10 @@ export async function POST() {
           email: owner.email,
           phone: owner.phone,
         },
+        feeAmount: c.platformFeeAmount,
+        netAmount,
+        isFreeContribution: c.platformFeeAmount === 0,
+        freeRemaining: 0,
       })
       results.push({ id: c.id, amount: c.amount, result: 'ok' })
     } catch (err: any) {

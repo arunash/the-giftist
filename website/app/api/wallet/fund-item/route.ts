@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 
       const item = await tx.item.findFirst({
         where: { id: itemId, userId },
+        include: { user: { select: { contributionsReceivedCount: true } } },
       })
       if (!item) {
         throw new Error('ITEM_NOT_FOUND')
@@ -53,8 +54,8 @@ export async function POST(request: NextRequest) {
         data: { balance: { decrement: amount } },
       })
 
-      // Calculate platform fee
-      const fee = calculateFeeFromContribution(amount, item.goalAmount, item.priceValue)
+      // Calculate platform fee based on owner's contribution count
+      const fee = calculateFeeFromContribution(amount, item.user.contributionsReceivedCount)
 
       // Increment item funded amount
       const updatedItem = await tx.item.update({
@@ -76,11 +77,12 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Increment item owner's lifetime contributions
+      // Increment item owner's lifetime contributions + count
       await tx.user.update({
         where: { id: item.userId },
         data: {
           lifetimeContributionsReceived: { increment: fee.netAmount },
+          contributionsReceivedCount: { increment: 1 },
         },
       })
 

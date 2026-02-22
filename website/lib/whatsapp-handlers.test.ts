@@ -60,7 +60,7 @@ vi.mock('@/lib/enrich-item', () => ({
 
 vi.mock('@/lib/platform-fee', () => ({
   calculateGoalAmount: vi.fn((price: number | null) => ({
-    goalAmount: price ? Math.ceil(price * 1.05) : null,
+    goalAmount: price || null, feeRate: 0, feeAmount: 0,
   })),
 }))
 

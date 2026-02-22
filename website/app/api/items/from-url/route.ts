@@ -39,12 +39,7 @@ export async function POST(request: NextRequest) {
 
     const product = await extractProductFromUrl(url)
 
-    // Calculate goal amount with platform fee
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { lifetimeContributionsReceived: true },
-    })
-    const feeCalc = calculateGoalAmount(product.priceValue, user?.lifetimeContributionsReceived ?? 0)
+    const feeCalc = calculateGoalAmount(product.priceValue)
 
     const item = await prisma.item.create({
       data: {

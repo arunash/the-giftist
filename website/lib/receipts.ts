@@ -44,6 +44,25 @@ interface ContributionReceiptData {
     email?: string | null
     phone?: string | null
   }
+  feeAmount: number
+  netAmount: number
+  isFreeContribution: boolean
+  freeRemaining: number
+}
+
+function feeLabel(data: ContributionReceiptData): string {
+  if (data.isFreeContribution) {
+    return `$0.00 (free \u2014 ${data.freeRemaining} of 10 remaining)`
+  }
+  return `$${data.feeAmount.toFixed(2)} (2%)`
+}
+
+function ownerFeeLabel(data: ContributionReceiptData): string {
+  if (data.isFreeContribution) {
+    const used = 10 - data.freeRemaining
+    return `$0.00 (free contribution ${used} of 10)`
+  }
+  return `-$${data.feeAmount.toFixed(2)} (2%)`
 }
 
 export async function sendContributionReceipts(data: ContributionReceiptData) {
@@ -59,6 +78,9 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
 
   // Email to contributor
   if (data.contributor.email) {
+    const feeRow = `<tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Platform fee</td><td style="padding: 4px 0; font-size: 13px; color: #666;">${feeLabel(data)}</td></tr>`
+    const ownerReceivesRow = `<tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Owner receives</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">$${data.netAmount.toFixed(2)}</td></tr>`
+
     await sendEmail({
       to: data.contributor.email,
       subject: `Contribution receipt — $${data.amount.toFixed(2)} toward ${giftLabel}`,
@@ -66,7 +88,9 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
         <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Thank you for your contribution!</p>
         <div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 4px 0; font-size: 13px; color: #666; width: 70px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #666; width: 100px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${data.amount.toFixed(2)}</td></tr>
+            ${feeRow}
+            ${ownerReceivesRow}
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Gift</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${giftLabel}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Date</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${date}</td></tr>
           </table>
@@ -84,6 +108,19 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
       'contribution_receipt',
       [data.owner.name || 'The recipient', data.amount.toFixed(2), giftLabel]
     ).catch((err) => console.error('Failed to send contributor WhatsApp receipt:', err))
+
+    // Follow up with fee note via text (within 24h window)
+    if (data.feeAmount > 0) {
+      sendTextMessage(
+        data.contributor.phone,
+        `Platform fee: $${data.feeAmount.toFixed(2)} (2%). ${data.owner.name || 'The recipient'} receives $${data.netAmount.toFixed(2)}.`
+      ).catch(() => {})
+    } else if (data.isFreeContribution) {
+      sendTextMessage(
+        data.contributor.phone,
+        `Platform fee: $0.00 (free — ${data.freeRemaining} of 10 free contributions remaining for this recipient).`
+      ).catch(() => {})
+    }
   }
 
   // Small delay to avoid Resend rate limit (2 req/sec)
@@ -95,6 +132,9 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
 
   // Email to owner
   if (data.owner.email) {
+    const ownerFeeRow = `<tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Platform fee</td><td style="padding: 4px 0; font-size: 13px; color: #166534;">${ownerFeeLabel(data)}</td></tr>`
+    const addedRow = `<tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Added to balance</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #166534;">+$${data.netAmount.toFixed(2)}</td></tr>`
+
     await sendEmail({
       to: data.owner.email,
       subject: `${displayName} contributed $${data.amount.toFixed(2)} toward ${giftLabel}`,
@@ -102,7 +142,9 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
         <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">You received a contribution!</p>
         <div style="background: #f0fdf4; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534; width: 70px;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #166534;">+$${data.amount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534; width: 100px;">Contribution</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #166534;">$${data.amount.toFixed(2)}</td></tr>
+            ${ownerFeeRow}
+            ${addedRow}
             <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">From</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${displayName}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Gift</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${giftLabel}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">Date</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${date}</td></tr>
@@ -121,6 +163,20 @@ export async function sendContributionReceipts(data: ContributionReceiptData) {
       'contribution_received',
       [displayName, data.amount.toFixed(2), giftLabel]
     ).catch((err) => console.error('Failed to send owner WhatsApp receipt:', err))
+
+    // Follow up with fee note via text (within 24h window)
+    if (data.feeAmount > 0) {
+      sendTextMessage(
+        data.owner.phone,
+        `Fee note: $${data.feeAmount.toFixed(2)} (2%) platform fee. $${data.netAmount.toFixed(2)} added to your balance.`
+      ).catch(() => {})
+    } else if (data.isFreeContribution) {
+      const used = 10 - data.freeRemaining
+      sendTextMessage(
+        data.owner.phone,
+        `Fee note: $0.00 platform fee (free contribution ${used} of 10). Full $${data.netAmount.toFixed(2)} added to your balance.`
+      ).catch(() => {})
+    }
   }
 }
 
@@ -174,7 +230,7 @@ export function sendWithdrawalReceipts(data: WithdrawalReceiptData) {
     const feeNote = data.fee > 0 ? ` ($${data.fee.toFixed(2)} fee, you receive $${data.netAmount.toFixed(2)})` : ''
     sendTextMessage(
       data.user.phone,
-      `💰 Withdrawal confirmed: $${data.amount.toFixed(2)} to your bank account${feeNote}. ${arrivalNote} Ref: ${data.transferId}`
+      `\u{1F4B0} Withdrawal confirmed: $${data.amount.toFixed(2)} to your bank account${feeNote}. ${arrivalNote} Ref: ${data.transferId}`
     ).catch((err) => console.error('Failed to send withdrawal WhatsApp receipt:', err))
   }
 }

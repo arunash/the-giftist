@@ -221,13 +221,12 @@ async function savePendingProduct(
   pending: PendingProduct,
   phone: string,
 ): Promise<string> {
-  const userData = await prisma.user.update({
+  await prisma.user.update({
     where: { id: userId },
     data: { pendingProduct: null },
-    select: { lifetimeContributionsReceived: true },
   })
 
-  const feeCalc = calculateGoalAmount(pending.priceValue, userData.lifetimeContributionsReceived)
+  const feeCalc = calculateGoalAmount(pending.priceValue)
 
   const item = await prisma.item.create({
     data: {
@@ -591,11 +590,7 @@ export async function handleTextMessage(
       return `I found *${product.name}* but couldn't get a product image. Could you send me a photo of it?`
     }
 
-    const urlUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { lifetimeContributionsReceived: true },
-    })
-    const urlFeeCalc = calculateGoalAmount(product.priceValue, urlUser?.lifetimeContributionsReceived ?? 0)
+    const urlFeeCalc = calculateGoalAmount(product.priceValue)
 
     const item = await prisma.item.create({
       data: {
@@ -911,7 +906,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               if (match) priceValue = parseFloat(match[0])
             }
 
-            const feeCalc = calculateGoalAmount(priceValue, 0)
+            const feeCalc = calculateGoalAmount(priceValue)
 
             const newItem = await prisma.item.create({
               data: {

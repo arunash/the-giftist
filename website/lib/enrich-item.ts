@@ -133,15 +133,7 @@ export async function enrichItem(itemId: string, productName: string): Promise<b
       return false
     }
 
-    // Calculate goal amount
-    const user = await prisma.user.findUnique({
-      where: { id: item.userId },
-      select: { lifetimeContributionsReceived: true },
-    })
-    const feeCalc = calculateGoalAmount(
-      priceValue || item.priceValue,
-      user?.lifetimeContributionsReceived ?? 0
-    )
+    const feeCalc = calculateGoalAmount(priceValue || item.priceValue)
 
     await prisma.item.update({
       where: { id: itemId },

@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
       const contribution = await prisma.contribution.findFirst({
         where: { stripePaymentId: txId, status: 'PENDING' },
         include: {
-          item: { include: { user: { select: { id: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
-          event: { include: { user: { select: { id: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true } } } },
+          item: { include: { user: { select: { id: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true, contributionsReceivedCount: true } } } },
+          event: { include: { user: { select: { id: true, phone: true, venmoHandle: true, paypalEmail: true, stripeConnectAccountId: true, contributionsReceivedCount: true } } } },
           contributor: { select: { name: true, phone: true } },
         },
       })
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
       if (contribution.itemId && contribution.item) {
         const item = contribution.item
-        const fee = calculateFeeFromContribution(contribution.amount, item.goalAmount, item.priceValue)
+        const fee = calculateFeeFromContribution(contribution.amount, item.user.contributionsReceivedCount)
 
         await prisma.contribution.update({
           where: { id: contribution.id },
@@ -51,7 +51,10 @@ export async function POST(request: NextRequest) {
 
         await prisma.user.update({
           where: { id: item.userId },
-          data: { lifetimeContributionsReceived: { increment: fee.netAmount } },
+          data: {
+            lifetimeContributionsReceived: { increment: fee.netAmount },
+            contributionsReceivedCount: { increment: 1 },
+          },
         })
 
         if (contribution.contributorId) {
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
         ).catch(() => {})
       } else if (contribution.eventId && contribution.event) {
         const evt = contribution.event
-        const fee = calculateFeeFromContribution(contribution.amount, null, null)
+        const fee = calculateFeeFromContribution(contribution.amount, evt.user.contributionsReceivedCount)
 
         await prisma.contribution.update({
           where: { id: contribution.id },
@@ -114,7 +117,10 @@ export async function POST(request: NextRequest) {
 
         await prisma.user.update({
           where: { id: evt.userId },
-          data: { lifetimeContributionsReceived: { increment: fee.netAmount } },
+          data: {
+            lifetimeContributionsReceived: { increment: fee.netAmount },
+            contributionsReceivedCount: { increment: 1 },
+          },
         })
 
         if (contribution.contributorId) {

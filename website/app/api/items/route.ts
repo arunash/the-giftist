@@ -76,12 +76,8 @@ export async function POST(request: NextRequest) {
     // Extract domain from URL if not provided
     const domain = data.domain || new URL(data.url).hostname
 
-    // Calculate goal amount with platform fee
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { lifetimeContributionsReceived: true },
-    })
-    const feeCalc = calculateGoalAmount(data.priceValue, user?.lifetimeContributionsReceived ?? 0)
+    // Goal amount is always the item price (fees are deducted at contribution time)
+    const feeCalc = calculateGoalAmount(data.priceValue)
 
     const item = await prisma.item.create({
       data: {

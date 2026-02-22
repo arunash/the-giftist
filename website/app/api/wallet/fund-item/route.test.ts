@@ -18,7 +18,7 @@ describe('POST /api/wallet/fund-item', () => {
           update: async () => ({}),
         },
         item: {
-          findFirst: async () => ({ id: 'item-1', userId: TEST_USER.id, name: 'Test Item', goalAmount: 100, priceValue: 100 }),
+          findFirst: async () => ({ id: 'item-1', userId: TEST_USER.id, name: 'Test Item', goalAmount: 100, priceValue: 100, user: { contributionsReceivedCount: 0 } }),
           update: async () => ({ id: 'item-1', name: 'Test Item', fundedAmount: 50 }),
         },
         walletTransaction: {

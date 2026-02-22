@@ -1,40 +1,41 @@
-export const PLATFORM_FEE_RATE = 0.03
-export const FEE_FREE_THRESHOLD = 50
+export const PLATFORM_FEE_RATE = 0.02
+export const FREE_CONTRIBUTIONS_LIMIT = 10
 
-export function calculateGoalAmount(
-  priceValue: number | null | undefined,
-  lifetimeContributionsReceived: number
-): { goalAmount: number | null; feeRate: number; feeAmount: number } {
-  if (!priceValue) {
-    return { goalAmount: null, feeRate: 0, feeAmount: 0 }
-  }
-
-  if (lifetimeContributionsReceived <= FEE_FREE_THRESHOLD) {
-    return { goalAmount: priceValue, feeRate: 0, feeAmount: 0 }
-  }
-
-  const feeAmount = Math.round(priceValue * PLATFORM_FEE_RATE * 100) / 100
-  return {
-    goalAmount: Math.round((priceValue + feeAmount) * 100) / 100,
-    feeRate: PLATFORM_FEE_RATE,
-    feeAmount,
-  }
+// Goal amount is always the item price — no fee baked in
+export function calculateGoalAmount(priceValue: number | null | undefined): {
+  goalAmount: number | null
+  feeRate: number
+  feeAmount: number
+} {
+  return { goalAmount: priceValue || null, feeRate: 0, feeAmount: 0 }
 }
 
+// Fee is calculated at contribution time based on owner's received count
 export function calculateFeeFromContribution(
   contributionAmount: number,
-  itemGoalAmount: number | null,
-  itemPriceValue: number | null
-): { feeRate: number; feeAmount: number; netAmount: number } {
-  if (!itemGoalAmount || !itemPriceValue || itemGoalAmount <= itemPriceValue) {
-    return { feeRate: 0, feeAmount: 0, netAmount: contributionAmount }
+  ownerContributionsReceivedCount: number
+): {
+  feeRate: number
+  feeAmount: number
+  netAmount: number
+  isFreeContribution: boolean
+  freeRemaining: number
+} {
+  if (ownerContributionsReceivedCount < FREE_CONTRIBUTIONS_LIMIT) {
+    return {
+      feeRate: 0,
+      feeAmount: 0,
+      netAmount: contributionAmount,
+      isFreeContribution: true,
+      freeRemaining: FREE_CONTRIBUTIONS_LIMIT - ownerContributionsReceivedCount - 1,
+    }
   }
-
-  const feeRate = (itemGoalAmount - itemPriceValue) / itemGoalAmount
-  const feeAmount = Math.round(contributionAmount * feeRate * 100) / 100
+  const feeAmount = Math.round(contributionAmount * PLATFORM_FEE_RATE * 100) / 100
   return {
-    feeRate: Math.round(feeRate * 10000) / 10000,
+    feeRate: PLATFORM_FEE_RATE,
     feeAmount,
     netAmount: contributionAmount - feeAmount,
+    isFreeContribution: false,
+    freeRemaining: 0,
   }
 }

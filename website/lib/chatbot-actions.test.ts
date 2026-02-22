@@ -51,7 +51,7 @@ vi.mock('@/lib/enrich-item', () => ({
 }))
 
 vi.mock('@/lib/platform-fee', () => ({
-  calculateGoalAmount: vi.fn().mockReturnValue({ goalAmount: 35 }),
+  calculateGoalAmount: vi.fn().mockReturnValue({ goalAmount: 35, feeRate: 0, feeAmount: 0 }),
 }))
 
 vi.mock('@/lib/parse-chat-content', async () => {
