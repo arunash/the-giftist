@@ -79,21 +79,21 @@ function LiveSearchTicker() {
   const initials = msg.name[0]
 
   return (
-    <div className="h-8 mt-4 flex items-center justify-center">
+    <div className="min-h-[2rem] mt-4 flex justify-center">
       <div
         key={index}
-        className={`flex items-center gap-2 transition-all duration-400 ${
+        className={`inline-flex items-baseline gap-2 transition-all duration-400 ${
           visible
             ? 'opacity-100 translate-y-0'
             : 'opacity-0 translate-y-2'
         }`}
       >
         <div
-          className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${colorClass}`}
+          className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold translate-y-[1px] ${colorClass}`}
         >
           {initials}
         </div>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-gray-400 text-center">
           <span className="text-gray-500">{msg.name} from {msg.city}</span>
           {' is looking for '}
           <span className="text-gray-500 font-medium">&ldquo;{msg.query}&rdquo;</span>
