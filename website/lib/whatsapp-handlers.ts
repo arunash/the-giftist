@@ -1085,7 +1085,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       }
     }
 
-    return productList + strippedContent + eventConfirmations.join('') + ateSection + chatWebCta
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + chatWebCta
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
