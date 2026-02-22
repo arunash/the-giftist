@@ -74,7 +74,7 @@ export async function buildChatContext(userId: string): Promise<string> {
     prisma.event.findMany({
       where: { userId, date: { gte: new Date() } },
       orderBy: { date: 'asc' },
-      take: 5,
+      take: 10,
       select: { id: true, name: true, type: true, date: true },
     }),
     prisma.wallet.findUnique({

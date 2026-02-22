@@ -981,20 +981,29 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               const userEvents = await prisma.event.findMany({
                 where: { userId, date: { gte: new Date() } },
                 orderBy: { date: 'asc' },
-                take: 5,
-                select: { id: true },
+                take: 10,
+                select: { id: true, name: true },
               })
+              console.log('[ADD_TO_EVENT] Resolving eventRef #' + idx, 'from', userEvents.map(e => e.name))
               if (idx >= 1 && idx <= userEvents.length) {
                 resolvedEventId = userEvents[idx - 1].id
               }
             }
           }
 
-          // Link item to event — resolve by ID first, fallback to name match
+          // Link item to event — resolve by ID first, fallback to exact name, then fuzzy name
           let eventExists = resolvedEventId
             ? await prisma.event.findFirst({ where: { id: resolvedEventId, userId } })
             : null
           if (!eventExists && ateData.eventName) {
+            // Try exact match first
+            eventExists = await prisma.event.findFirst({
+              where: { userId, name: { equals: ateData.eventName, mode: 'insensitive' } },
+              orderBy: { date: 'asc' },
+            })
+          }
+          if (!eventExists && ateData.eventName) {
+            // Fuzzy fallback
             eventExists = await prisma.event.findFirst({
               where: { userId, name: { contains: ateData.eventName, mode: 'insensitive' } },
               orderBy: { date: 'asc' },
