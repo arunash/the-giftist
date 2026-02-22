@@ -1057,6 +1057,18 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       }
     }
 
+    // Extract product blocks and format as a WhatsApp-friendly list before stripping
+    const productSegments = segments.filter(s => s.type === 'product')
+    let productList = ''
+    if (productSegments.length > 0) {
+      const lines = productSegments.map((seg, i) => {
+        const p = seg.data as import('@/lib/parse-chat-content').ProductData
+        const price = p.price ? ` — ${p.price}` : ''
+        return `${i + 1}. *${p.name}*${price}`
+      })
+      productList = lines.join('\n') + '\n\n'
+    }
+
     // Strip product/preference/event blocks for WhatsApp (plain text only)
     const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
 
@@ -1073,7 +1085,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       }
     }
 
-    return strippedContent + eventConfirmations.join('') + ateSection + chatWebCta
+    return productList + strippedContent + eventConfirmations.join('') + ateSection + chatWebCta
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
