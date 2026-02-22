@@ -102,7 +102,7 @@ export async function runDailyEngagement() {
       if (!state.day1Nudge && daysSinceSignup >= 1 && user._count.items < 3) {
         state.day1Nudge = true
         const text = `Hey ${displayName}! Your Gift Concierge here. You've saved ${user._count.items} item(s) so far.\n\nBuilding a bigger wishlist helps your friends and family find the perfect gift for you. Try:\n- Sending me a link from any store\n- Telling me your interests so I can suggest trending gifts\n- Sending a screenshot of something you spotted online\n\nWhat are you eyeing lately?\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'welcome_message', [displayName])
+        await smartWhatsAppSend(user.phone, text, 'day1_nudge', [displayName, String(user._count.items)])
         results.nudges++
         await updateFunnelStage(user.id, state)
         continue
@@ -112,7 +112,7 @@ export async function runDailyEngagement() {
       if (!state.day3EventPrompt && daysSinceSignup >= 3 && user._count.events === 0) {
         state.day3EventPrompt = true
         const text = `Quick question — do you have any birthdays, holidays, or celebrations coming up?\n\nI can help you plan gifts and even remind your friends and family to contribute. Just tell me about an upcoming event!\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'welcome_message', [displayName])
+        await smartWhatsAppSend(user.phone, text, 'day3_event_prompt', [displayName])
         results.eventPrompts++
         await updateFunnelStage(user.id, state)
         continue
@@ -122,7 +122,7 @@ export async function runDailyEngagement() {
       if (!state.day5CirclePrompt && daysSinceSignup >= 5 && user._count.circleMembers === 0) {
         state.day5CirclePrompt = true
         const text = `Did you know you can build a Gift Circle? Add your close friends and family, and I'll help coordinate gift-giving for everyone.\n\nTry: *add circle 555-123-4567 Mom*\n\nYour circle members will be able to see your wishlist and contribute to gifts!\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'welcome_message', [displayName])
+        await smartWhatsAppSend(user.phone, text, 'day5_circle_prompt', [displayName])
         results.circlePrompts++
         await updateFunnelStage(user.id, state)
         continue
@@ -149,7 +149,13 @@ export async function runDailyEngagement() {
               }
             }
             text += `\n\nView your giftlist, wallet, and activity at *giftist.ai*\n\nReply with anything to keep chatting!`
-            await smartWhatsAppSend(user.phone, text, 'welcome_message', [displayName])
+            const eventSummary = upcomingEvents.length > 0
+              ? upcomingEvents.map(evt => {
+                  const daysUntil = Math.ceil((evt.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                  return `📅 ${evt.name} — ${daysUntil} day(s) away`
+                }).join('\n')
+              : 'No upcoming events — create one by chatting with me!'
+            await smartWhatsAppSend(user.phone, text, 'weekly_digest', [displayName, eventSummary])
             state.weeklyDigestSent = now.toISOString()
             results.weeklyDigests++
             await updateFunnelStage(user.id, state)
@@ -172,7 +178,8 @@ export async function runDailyEngagement() {
 
         if (daysSinceLastMessage >= 14 && (!lastReengagement || lastReengagement < twoWeeksAgo)) {
           const text = `Hey ${displayName}! Your Gift Concierge misses you.\n\nYou have ${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}.\n\nView your giftlist, wallet, and activity at *giftist.ai*\n\nReply anytime — I'm here to help with all things gifting!`
-          await smartWhatsAppSend(user.phone, text, 'welcome_message', [displayName])
+          const itemSummary = `${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}`
+          await smartWhatsAppSend(user.phone, text, 'reengagement_nudge', [displayName, itemSummary])
           state.reengagementSent = now.toISOString()
           results.reengagements++
           await updateFunnelStage(user.id, state)
