@@ -35,6 +35,61 @@ const WEB_CTAS = [
   '\n\nCreate event wishlists and share with friends at *giftist.ai*',
 ]
 
+async function getEventPrompt(userId: string): Promise<string> {
+  const now = new Date()
+  const events = await prisma.event.findMany({
+    where: { userId, date: { gte: now } },
+    orderBy: { date: 'asc' },
+    take: 5,
+    select: { id: true, name: true, date: true },
+  })
+  if (events.length === 0) return ''
+  const lines = events.map((ev, i) => {
+    const dateStr = new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return `  ${i + 1}. ${ev.name} (${dateStr})`
+  })
+  return `\n\nLink to an event? Reply *event <number>*:\n${lines.join('\n')}`
+}
+
+async function linkLastItemToEvent(userId: string, eventIndex: number): Promise<string> {
+  const events = await prisma.event.findMany({
+    where: { userId, date: { gte: new Date() } },
+    orderBy: { date: 'asc' },
+    take: 5,
+  })
+  if (eventIndex < 0 || eventIndex >= events.length) {
+    return `Invalid event number. You have ${events.length} upcoming events. Reply *events* to see them.`
+  }
+  const event = events[eventIndex]
+
+  // Find user's most recently added item
+  const lastItem = await prisma.item.findFirst({
+    where: { userId },
+    orderBy: { addedAt: 'desc' },
+  })
+  if (!lastItem) return "No items to link. Add a product first."
+
+  // Check if already linked
+  const existing = await prisma.eventItem.findFirst({
+    where: { itemId: lastItem.id, eventId: event.id },
+  })
+  if (existing) return `"${lastItem.name}" is already linked to ${event.name}.`
+
+  await prisma.eventItem.create({
+    data: { eventId: event.id, itemId: lastItem.id, priority: 0 },
+  })
+
+  createActivity({
+    userId,
+    type: 'EVENT_ITEM_ADDED',
+    visibility: 'PUBLIC',
+    itemId: lastItem.id,
+    metadata: { itemName: lastItem.name, eventName: event.name },
+  }).catch(() => {})
+
+  return `Linked *${lastItem.name}* to *${event.name}*`
+}
+
 async function getWebCTA(userId: string): Promise<string> {
   const count = await prisma.item.count({ where: { userId } })
   // Show CTA on 3rd, 7th, 12th item, then every 10th
@@ -87,15 +142,16 @@ async function savePendingProduct(
   const priceStr = pending.price ? ` (${pending.price})` : ''
   const shareHint = `\n\nTo share your wishlist, reply *share*`
   const webCta = await getWebCTA(userId)
+  const eventPrompt = await getEventPrompt(userId)
 
   if (pending.image) {
     try {
-      await sendImageMessage(phone, pending.image, `Added: ${pending.name}${priceStr}${shareHint}${webCta}`)
+      await sendImageMessage(phone, pending.image, `Added: ${pending.name}${priceStr}${eventPrompt}${shareHint}${webCta}`)
       return ''
     } catch {}
   }
 
-  return `Added: ${pending.name}${priceStr}${shareHint}${webCta}`
+  return `Added: ${pending.name}${priceStr}${eventPrompt}${shareHint}${webCta}`
 }
 
 export async function resolveUserAndList(phone: string, profileName?: string) {
@@ -213,6 +269,13 @@ export async function handleTextMessage(
     const target = events[index]
     await prisma.event.delete({ where: { id: target.id } })
     return `Deleted event: ${target.name}`
+  }
+
+  // Command: event <n> — link last-added item to an event
+  const eventLinkMatch = trimmed.match(/^event\s+(\d+)$/)
+  if (eventLinkMatch) {
+    const index = parseInt(eventLinkMatch[1]) - 1
+    return linkLastItemToEvent(userId, index)
   }
 
   // Command: edit <n> <field> <value>
@@ -419,16 +482,17 @@ export async function handleTextMessage(
     const priceStr = product.price ? ` (${product.price})` : ''
     const shareHint = `\n\nTo share your wishlist, reply *share*`
     const webCta = await getWebCTA(userId)
+    const eventPrompt = await getEventPrompt(userId)
 
     // Reply with product image (guaranteed to exist by guardrails above)
     try {
-      await sendImageMessage(phone, product.image, `Added: ${product.name}${priceStr}${shareHint}${webCta}`)
+      await sendImageMessage(phone, product.image, `Added: ${product.name}${priceStr}${eventPrompt}${shareHint}${webCta}`)
       return '' // empty string means we already sent a reply
     } catch {
       // fall through to text reply
     }
 
-    return `Added: ${product.name}${priceStr}${shareHint}${webCta}`
+    return `Added: ${product.name}${priceStr}${eventPrompt}${shareHint}${webCta}`
   }
 
   // No URL and not a command — handle as conversational chat via Claude
@@ -916,6 +980,7 @@ export function getHelpMessage(): string {
 - *edit <number> name <new name>* — Rename an item
 - *edit <number> price <new price>* — Update item price
 - *events* — See your events
+- *event <number>* — Link your last-added item to an event
 - *remove event <number>* — Delete an event
 
 *On the web (giftist.ai):*
