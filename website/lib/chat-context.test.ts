@@ -8,16 +8,17 @@ beforeEach(() => {
   prismaMock.event.findMany.mockResolvedValue([])
   prismaMock.wallet.findUnique.mockResolvedValue(null)
   prismaMock.user.findUnique.mockResolvedValue(null)
+  prismaMock.circleMember.findMany.mockResolvedValue([])
 })
 
 describe('buildChatContext', () => {
   it('returns context with empty data', async () => {
     const ctx = await buildChatContext('user-1')
     expect(ctx).toContain('Giftist Gift Concierge')
-    expect(ctx).toContain('Wallet balance: $0.00')
-    expect(ctx).toContain('Total items: 0')
-    expect(ctx).toContain('(no items yet)')
-    expect(ctx).toContain('(no upcoming events)')
+    expect(ctx).toContain('Wallet: $0.00')
+    expect(ctx).toContain('Items: 0')
+    expect(ctx).toContain('(none)')
+    expect(ctx).toContain('(none)')
   })
 
   it('includes item details', async () => {
@@ -39,8 +40,8 @@ describe('buildChatContext', () => {
     expect(ctx).toContain('Nike Shoes')
     expect(ctx).toContain('$99.99')
     expect(ctx).toContain('50% funded')
-    expect(ctx).toContain('EXTENSION')
-    expect(ctx).toContain('Total items: 1')
+    expect(ctx).toContain('from nike.com')
+    expect(ctx).toContain('Items: 1')
   })
 
   it('shows purchased status', async () => {
@@ -66,7 +67,7 @@ describe('buildChatContext', () => {
     prismaMock.wallet.findUnique.mockResolvedValue({ balance: 45.50 } as any)
 
     const ctx = await buildChatContext('user-1')
-    expect(ctx).toContain('Wallet balance: $45.50')
+    expect(ctx).toContain('Wallet: $45.50')
   })
 
   it('includes events', async () => {

@@ -1,28 +1,45 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Set Twilio env vars before module-level requireEnv runs (vi.hoisted runs before imports)
+const mockCreate = vi.hoisted(() => {
+  process.env.TWILIO_VERIFY_SERVICE_SID = 'VA_test_sid'
+  process.env.TWILIO_ACCOUNT_SID = 'AC_test_sid'
+  process.env.TWILIO_AUTH_TOKEN = 'test_auth_token'
+  return vi.fn()
+})
+
 import { prismaMock } from '../../../../test/mocks/prisma'
 import { setAuthenticated, setUnauthenticated } from '../../../../test/mocks/next-auth'
 import { TEST_USER } from '../../../../test/helpers'
-
-// Mock verification-codes and whatsapp before importing route
-vi.mock('@/lib/verification-codes', () => ({
-  verifyCode: vi.fn().mockReturnValue(true),
-}))
+vi.mock('twilio', () => {
+  return {
+    default: vi.fn(() => ({
+      verify: {
+        v2: {
+          services: vi.fn(() => ({
+            verificationChecks: {
+              create: mockCreate,
+            },
+          })),
+        },
+      },
+    })),
+  }
+})
 
 vi.mock('@/lib/whatsapp', () => ({
   normalizePhone: vi.fn((phone: string) => phone.replace(/\D/g, '')),
 }))
 
-vi.mock('@/lib/merge-users', () => ({
-  mergeUsers: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/api-logger', () => ({
+  logError: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { POST } from './route'
-import { verifyCode } from '@/lib/verification-codes'
-import { mergeUsers } from '@/lib/merge-users'
 
 beforeEach(() => {
   setAuthenticated()
-  vi.mocked(verifyCode).mockReturnValue(true)
+  mockCreate.mockResolvedValue({ status: 'approved' })
   prismaMock.user.findUnique.mockResolvedValue(null)
   prismaMock.user.update.mockResolvedValue({} as any)
 })
@@ -46,13 +63,17 @@ describe('POST /api/account/link-phone', () => {
     })
   })
 
-  it('merges users when phone belongs to another user', async () => {
+  it('merges empty phone user into current user', async () => {
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'other-user',
       phone: '15551234567',
     } as any)
+    prismaMock.item.count.mockResolvedValue(0)
+    prismaMock.event.count.mockResolvedValue(0)
+    prismaMock.chatMessage.updateMany.mockResolvedValue({ count: 0 } as any)
+    prismaMock.user.delete.mockResolvedValue({} as any)
 
-    await POST(
+    const res = await POST(
       new Request('http://localhost:3000/api/account/link-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,11 +81,39 @@ describe('POST /api/account/link-phone', () => {
       })
     )
 
-    expect(mergeUsers).toHaveBeenCalledWith('other-user', TEST_USER.id)
+    expect(res.status).toBe(200)
+    expect(prismaMock.chatMessage.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'other-user' },
+      data: { userId: TEST_USER.id },
+    })
+    expect(prismaMock.user.delete).toHaveBeenCalledWith({
+      where: { id: 'other-user' },
+    })
+  })
+
+  it('returns 409 when phone belongs to user with data', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'other-user',
+      phone: '15551234567',
+    } as any)
+    prismaMock.item.count.mockResolvedValue(5)
+    prismaMock.event.count.mockResolvedValue(0)
+
+    const res = await POST(
+      new Request('http://localhost:3000/api/account/link-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: '15551234567', code: '123456' }),
+      })
+    )
+
+    expect(res.status).toBe(409)
+    const data = await res.json()
+    expect(data.error).toBe('phone_in_use')
   })
 
   it('returns 400 for invalid code', async () => {
-    vi.mocked(verifyCode).mockReturnValue(false)
+    mockCreate.mockResolvedValue({ status: 'pending' })
 
     const res = await POST(
       new Request('http://localhost:3000/api/account/link-phone', {

@@ -86,6 +86,7 @@ describe('PATCH /api/events/[id]', () => {
 
   it('updates event items', async () => {
     prismaMock.event.findFirst.mockResolvedValue({ id: 'ev-1', userId: TEST_USER.id } as any)
+    prismaMock.eventItem.findMany.mockResolvedValue([])
     prismaMock.eventItem.deleteMany.mockResolvedValue({ count: 0 } as any)
     prismaMock.eventItem.createMany.mockResolvedValue({ count: 2 } as any)
     prismaMock.event.update.mockResolvedValue({ id: 'ev-1', items: [] } as any)

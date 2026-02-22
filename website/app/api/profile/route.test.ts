@@ -20,6 +20,7 @@ describe('GET /api/profile', () => {
       interests: JSON.stringify(['tech', 'gaming']),
       giftBudget: '100_250',
       relationship: 'SINGLE',
+      accounts: [{ provider: 'google' }],
     } as any)
 
     const res = await GET()
@@ -34,6 +35,7 @@ describe('GET /api/profile', () => {
     prismaMock.user.findUnique.mockResolvedValue({
       name: 'Test',
       interests: null,
+      accounts: [],
     } as any)
 
     const res = await GET()

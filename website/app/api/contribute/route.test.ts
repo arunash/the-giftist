@@ -1,12 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { prismaMock } from '../../../test/mocks/prisma'
 import { setAuthenticated, setUnauthenticated } from '../../../test/mocks/next-auth'
+import { stripeMock } from '../../../test/mocks/stripe'
 import { createRequest, TEST_USER } from '../../../test/helpers'
 import { GET, POST } from './route'
+
+vi.mock('@/lib/api-logger', () => ({
+  logError: vi.fn().mockResolvedValue(undefined),
+  logApiCall: vi.fn().mockResolvedValue(undefined),
+}))
 
 beforeEach(() => {
   setAuthenticated()
   prismaMock.activityEvent.create.mockResolvedValue({} as any)
+  stripeMock.checkout.sessions.create.mockResolvedValue({
+    id: 'cs_test_123',
+    url: 'https://checkout.stripe.com/test',
+  })
 })
 
 describe('POST /api/contribute', () => {
@@ -32,9 +42,8 @@ describe('POST /api/contribute', () => {
     }))
     const data = await res.json()
 
-    expect(res.status).toBe(201)
-    expect(data.contribution.amount).toBe(25)
-    expect(data.newFundedAmount).toBe(25)
+    expect(res.status).toBe(200)
+    expect(data.url).toBe('https://checkout.stripe.com/test')
   })
 
   it('returns 404 for non-existent item', async () => {

@@ -1,19 +1,28 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { prismaMock } from '../../../test/mocks/prisma'
 import { setAuthenticated, setUnauthenticated } from '../../../test/mocks/next-auth'
 import { createRequest } from '../../../test/helpers'
 import { GET } from './route'
 
+vi.mock('@/lib/api-logger', () => ({
+  logError: vi.fn().mockResolvedValue(undefined),
+  logApiCall: vi.fn().mockResolvedValue(undefined),
+}))
+
 beforeEach(() => {
   setAuthenticated()
+  // The route calls item.findMany twice: once for items, once for categories.
+  // Default: return empty for both calls.
   prismaMock.item.findMany.mockResolvedValue([])
 })
 
 describe('GET /api/feed', () => {
   it('returns items with defaults', async () => {
-    prismaMock.item.findMany.mockResolvedValue([
-      { id: 'item-1', name: 'Item', addedAt: new Date(), priceHistory: [] },
-    ] as any)
+    prismaMock.item.findMany
+      .mockResolvedValueOnce([
+        { id: 'item-1', name: 'Item', image: 'https://img.test/1.jpg', addedAt: new Date(), priceHistory: [], eventItems: [] },
+      ] as any)
+      .mockResolvedValueOnce([] as any) // categories query
 
     const res = await GET(createRequest('/api/feed'))
     const data = await res.json()
@@ -66,7 +75,7 @@ describe('GET /api/feed', () => {
 
     expect(prismaMock.item.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: { priceValue: 'desc' },
+        orderBy: [{ fundedAmount: 'desc' }, { priceValue: 'desc' }],
       })
     )
   })
@@ -87,10 +96,14 @@ describe('GET /api/feed', () => {
   it('returns nextCursor when more items exist', async () => {
     const items = Array.from({ length: 13 }, (_, i) => ({
       id: `item-${i}`,
+      image: 'https://img.test/item.jpg',
       addedAt: new Date(`2024-01-${String(i + 1).padStart(2, '0')}`),
       priceHistory: [],
+      eventItems: [],
     }))
-    prismaMock.item.findMany.mockResolvedValue(items as any)
+    prismaMock.item.findMany
+      .mockResolvedValueOnce(items as any) // items query
+      .mockResolvedValueOnce([] as any) // categories query
 
     const res = await GET(createRequest('/api/feed?limit=12'))
     const data = await res.json()

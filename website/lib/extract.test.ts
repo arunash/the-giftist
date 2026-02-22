@@ -1,4 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Mock dns/promises so SSRF protection doesn't block test URLs
+vi.mock('dns/promises', () => {
+  const resolve4 = vi.fn().mockResolvedValue(['93.184.216.34'])
+  return { default: { resolve4 }, resolve4 }
+})
+
 import { extractProductFromUrl } from './extract'
 
 beforeEach(() => {

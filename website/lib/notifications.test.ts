@@ -1,24 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { prismaMock, resetPrismaMock } from '@/test/mocks/prisma'
-import '@/test/mocks/whatsapp'
-
-// Must import after mocks
-import { smartWhatsAppSend, notify, notifyWelcome, notifyItemAdded, notifyContributionReceived } from './notifications'
-import { sendTextMessage, sendTemplateMessage } from '@/lib/whatsapp'
-import { sendEmail } from '@/lib/email'
+import { whatsappMocks } from '@/test/mocks/whatsapp'
 
 vi.mock('@/lib/email', () => ({
   sendEmail: vi.fn().mockResolvedValue({ id: 'email-1' }),
 }))
 
-// Add sendTemplateMessage to whatsapp mock
-vi.mock('@/lib/whatsapp', async () => {
-  const actual = await vi.importActual('@/test/mocks/whatsapp')
-  return {
-    ...(actual as any).whatsappMocks,
-    sendTemplateMessage: vi.fn().mockResolvedValue({ messages: [{ id: 'wamid_template' }] }),
-  }
-})
+// Must import after mocks are set up
+import { smartWhatsAppSend, notify, notifyWelcome, notifyItemAdded, notifyContributionReceived } from './notifications'
+import { sendEmail } from '@/lib/email'
+
+const { sendTextMessage, sendTemplateMessage } = whatsappMocks
 
 describe('smartWhatsAppSend', () => {
   beforeEach(() => {
@@ -56,7 +48,6 @@ describe('smartWhatsAppSend', () => {
   })
 
   it('falls back to template when inbound message is >24h old', async () => {
-    // findFirst returns null when queried with gte cutoff
     prismaMock.whatsAppMessage.findFirst.mockResolvedValue(null)
 
     await smartWhatsAppSend('15551234567', 'Hello!', 'welcome_message', ['there'])
@@ -73,7 +64,7 @@ describe('smartWhatsAppSend', () => {
 
   it('handles WhatsApp API failure gracefully', async () => {
     prismaMock.whatsAppMessage.findFirst.mockResolvedValue(null)
-    ;(sendTemplateMessage as any).mockRejectedValueOnce(new Error('API error'))
+    sendTemplateMessage.mockRejectedValueOnce(new Error('API error'))
 
     await expect(
       smartWhatsAppSend('15551234567', 'Hello!', 'welcome_message', ['there'])
@@ -181,7 +172,6 @@ describe('notify', () => {
       },
     })
 
-    // SmartWhatsAppSend will be called (fire-and-forget, so check sendTemplateMessage)
     // Give the fire-and-forget a tick
     await new Promise(r => setTimeout(r, 50))
     expect(sendTemplateMessage).toHaveBeenCalled()

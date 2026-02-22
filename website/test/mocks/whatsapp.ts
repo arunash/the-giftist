@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 export const whatsappMocks = {
   sendTextMessage: vi.fn().mockResolvedValue({ messages: [{ id: 'wamid_test' }] }),
+  sendTemplateMessage: vi.fn().mockResolvedValue({ messages: [{ id: 'wamid_template' }] }),
   sendImageMessage: vi.fn().mockResolvedValue({ messages: [{ id: 'wamid_test' }] }),
   downloadMedia: vi.fn().mockResolvedValue(Buffer.from('fake-image-data')),
   markAsRead: vi.fn().mockResolvedValue({}),

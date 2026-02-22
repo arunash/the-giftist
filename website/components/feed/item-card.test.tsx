@@ -37,19 +37,18 @@ describe('ItemCard', () => {
 
   it('renders purchased badge', () => {
     render(<ItemCard item={{ ...baseItem, isPurchased: true }} />)
-    expect(screen.getByText('Purchased')).toBeInTheDocument()
+    expect(screen.getByText('Funded')).toBeInTheDocument()
   })
 
   it('does not render purchased badge when not purchased', () => {
     render(<ItemCard item={baseItem} />)
-    expect(screen.queryByText('Purchased')).not.toBeInTheDocument()
+    expect(screen.queryByText('Funded')).not.toBeInTheDocument()
   })
 
   it('renders as a link to product URL', () => {
     render(<ItemCard item={baseItem} />)
     const link = screen.getByRole('link')
-    expect(link).toHaveAttribute('href', 'https://example.com/product')
-    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('href', '/items/item-1')
   })
 
   it('renders image when provided', () => {
