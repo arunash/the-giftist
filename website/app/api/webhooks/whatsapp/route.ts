@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/db'
-import { normalizePhone, sendTextMessage, markAsRead } from '@/lib/whatsapp'
+import { normalizePhone, sendTextMessage, sendContactMessage, markAsRead } from '@/lib/whatsapp'
 import {
   resolveUserAndList,
   handleTextMessage,
@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     if (isNewUser) {
       await sendTextMessage(phone, getWelcomeMessage(profileName))
+      sendContactMessage(phone).catch(() => {})
       // Welcome is the complete first interaction — skip processing their initial message
       await prisma.whatsAppMessage.update({
         where: { id: waMsg.id },

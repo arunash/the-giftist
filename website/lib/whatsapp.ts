@@ -119,6 +119,20 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
   return Buffer.from(arrayBuffer)
 }
 
+export async function sendContactMessage(to: string) {
+  return graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'contacts',
+    contacts: [{
+      name: { formatted_name: 'Giftist', first_name: 'Giftist' },
+      phones: [{ phone: '+15014438478', type: 'WORK' }],
+      emails: [{ email: 'hello@giftist.ai', type: 'WORK' }],
+      urls: [{ url: 'https://giftist.ai', type: 'WORK' }],
+    }],
+  })
+}
+
 export async function markAsRead(messageId: string) {
   return graphPost('/messages', {
     messaging_product: 'whatsapp',

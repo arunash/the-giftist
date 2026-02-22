@@ -1159,7 +1159,9 @@ Here's what I can do:
 - Tell me about an *upcoming event* (birthday, anniversary) — I'll help you plan
 - Ask me for *gift ideas* for anyone — I'll suggest the perfect thing
 
-Try it now — send me a link to something you've been eyeing, or tell me about your next gift-giving occasion!`
+Try it now — send me a link to something you've been eyeing, or tell me about your next gift-giving occasion!
+
+💡 *Tip:* Save my contact below so you can find me easily next time!`
 }
 
 export function getHelpMessage(): string {
