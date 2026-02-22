@@ -1161,6 +1161,8 @@ Here's what I can do:
 
 Try it now — send me a link to something you've been eyeing, or tell me about your next gift-giving occasion!
 
+You can always view your giftlist, wallet, and activity at *giftist.ai*
+
 💡 *Tip:* Save my contact below so you can find me easily next time!`
 }
 
