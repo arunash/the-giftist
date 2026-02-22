@@ -67,12 +67,12 @@ export async function cleanupTestData() {
   await prisma.event.deleteMany({ where: { userId: TEST_USER_ID } })
   await prisma.giftList.deleteMany({ where: { userId: TEST_USER_ID } })
 
-  // Wallet
+  // Wallet (use deleteMany to avoid "record not found" errors)
   const wallet = await prisma.wallet.findUnique({ where: { userId: TEST_USER_ID } })
   if (wallet) {
     await prisma.walletTransaction.deleteMany({ where: { walletId: wallet.id } })
-    await prisma.wallet.delete({ where: { userId: TEST_USER_ID } })
   }
+  await prisma.wallet.deleteMany({ where: { userId: TEST_USER_ID } })
 
   // Subscription
   await prisma.subscription.deleteMany({ where: { userId: TEST_USER_ID } })
