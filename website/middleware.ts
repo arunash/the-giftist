@@ -60,8 +60,8 @@ export function middleware(request: NextRequest) {
     !request.cookies.get('next-auth.session-token')?.value
   ) {
     const token = authHeader.slice(7)
-    // Reject tokens that look malicious (must be a JWT-shaped string)
-    if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) {
+    // Reject tokens that look malicious (must be a JWT/JWE-shaped string: 3 or 5 parts)
+    if (!/^[\w-]+\.[\w-]*\.[\w-]+(\.[\w-]+\.[\w-]+)?$/.test(token)) {
       return NextResponse.next()
     }
     const requestHeaders = new Headers(request.headers)

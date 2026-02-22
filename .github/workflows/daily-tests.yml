@@ -1,0 +1,157 @@
+name: Daily Tests
+
+on:
+  schedule:
+    # Run at 8am UTC every day (midnight PST)
+    - cron: '0 8 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run unit tests
+        id: unit-tests
+        run: npx vitest run lib/whatsapp-e2e.test.ts lib/chatbot-actions.test.ts app/api/webhooks/whatsapp/route.test.ts lib/whatsapp-handlers.test.ts 2>&1 | tee unit-test-results.txt
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: website/unit-test-results.txt
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    defaults:
+      run:
+        working-directory: website
+
+    env:
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
+      TEST_BASE_URL: https://giftist.ai
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run integration tests
+        id: integration-tests
+        run: npx vitest run --config vitest.config.integration.ts 2>&1 | tee integration-test-results.txt
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: website/integration-test-results.txt
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: always()
+
+    steps:
+      - name: Download unit test results
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-test-results
+          path: artifacts
+        continue-on-error: true
+
+      - name: Download integration test results
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-test-results
+          path: artifacts
+        continue-on-error: true
+
+      - name: Determine overall status
+        id: status
+        run: |
+          if [ "${{ needs.unit-tests.result }}" = "success" ] && [ "${{ needs.integration-tests.result }}" = "success" ]; then
+            echo "result=PASSED" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          else
+            echo "result=FAILED" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          fi
+          echo "unit=${{ needs.unit-tests.result }}" >> $GITHUB_OUTPUT
+          echo "integration=${{ needs.integration-tests.result }}" >> $GITHUB_OUTPUT
+
+      - name: Send email on failure
+        if: steps.status.outputs.result == 'FAILED'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[Giftist] Daily Tests FAILED - ${{ github.sha }}"
+          to: arunash@gmail.com
+          from: Giftist CI <${{ secrets.GMAIL_USER }}>
+          body: |
+            Daily test run FAILED on ${{ github.ref_name }}.
+
+            Unit tests: ${{ steps.status.outputs.unit }}
+            Integration tests: ${{ steps.status.outputs.integration }}
+
+            Commit: ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Check the run for details.
+
+      - name: Send email on success (daily/manual only)
+        if: steps.status.outputs.result == 'PASSED' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[Giftist] Daily Tests PASSED ✅"
+          to: arunash@gmail.com
+          from: Giftist CI <${{ secrets.GMAIL_USER }}>
+          body: |
+            All daily tests passed successfully.
+
+            Unit tests: ${{ steps.status.outputs.unit }}
+            Integration tests: ${{ steps.status.outputs.integration }}
+
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
