@@ -895,7 +895,23 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       if (seg.type === 'add_to_event') {
         const ateData = seg.data as AddToEventData
         try {
+          // Resolve itemRef (#N) to real database ID
           let itemId = ateData.itemId
+          if (!itemId && ateData.itemRef) {
+            const refMatch = ateData.itemRef.match(/#(\d+)/)
+            if (refMatch) {
+              const idx = parseInt(refMatch[1])
+              const userItems = await prisma.item.findMany({
+                where: { userId },
+                orderBy: { addedAt: 'desc' },
+                take: 30,
+                select: { id: true },
+              })
+              if (idx >= 1 && idx <= userItems.length) {
+                itemId = userItems[idx - 1].id
+              }
+            }
+          }
 
           // Create new item if no valid itemId
           if (!itemId || itemId === 'TBD' || itemId === 'new') {
@@ -934,8 +950,28 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
             }).catch(() => {})
           }
 
+          // Resolve eventRef (#N) to real database ID
+          let resolvedEventId = ateData.eventId
+          if (!resolvedEventId && ateData.eventRef) {
+            const refMatch = ateData.eventRef.match(/#(\d+)/)
+            if (refMatch) {
+              const idx = parseInt(refMatch[1])
+              const userEvents = await prisma.event.findMany({
+                where: { userId, date: { gte: new Date() } },
+                orderBy: { date: 'asc' },
+                take: 5,
+                select: { id: true },
+              })
+              if (idx >= 1 && idx <= userEvents.length) {
+                resolvedEventId = userEvents[idx - 1].id
+              }
+            }
+          }
+
           // Link item to event — resolve by ID first, fallback to name match
-          let eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })
+          let eventExists = resolvedEventId
+            ? await prisma.event.findFirst({ where: { id: resolvedEventId, userId } })
+            : null
           if (!eventExists && ateData.eventName) {
             eventExists = await prisma.event.findFirst({
               where: { userId, name: { contains: ateData.eventName, mode: 'insensitive' } },

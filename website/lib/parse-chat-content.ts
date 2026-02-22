@@ -7,7 +7,9 @@ export interface EventData {
 
 export interface AddToEventData {
   itemId?: string
-  eventId: string
+  itemRef?: string
+  eventId?: string
+  eventRef?: string
   itemName: string
   eventName: string
   price?: string
