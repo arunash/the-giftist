@@ -68,7 +68,7 @@ export default async function SharedWishlistPage({
               },
             },
           },
-          events: {
+          eventItems: {
             select: { eventId: true },
           },
         },
@@ -92,7 +92,7 @@ export default async function SharedWishlistPage({
 
   const allItems = user.items
   const items = eventFilter
-    ? allItems.filter(item => item.events.some(ei => ei.eventId === eventFilter!.id))
+    ? allItems.filter(item => item.eventItems.some(ei => ei.eventId === eventFilter!.id))
     : allItems
   const totalGoal = items.reduce(
     (sum, item) => sum + (item.goalAmount || item.priceValue || 0),
