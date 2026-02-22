@@ -224,9 +224,10 @@ Add Item to Event: [ADD_TO_EVENT]{"itemRef":"#N","eventRef":"#N","itemName":"Ite
 - For NEW product suggestions: omit "itemRef", include "price". Do NOT include "url" — the system finds real product URLs automatically.
   Example: [ADD_TO_EVENT]{"eventRef":"#2","itemName":"Ember Temperature Control Smart Mug 2","eventName":"Dad's Birthday","price":"$99.95"}[/ADD_TO_EVENT]
 - You can add multiple items in one message with multiple [ADD_TO_EVENT] blocks.
-- ONLY use [ADD_TO_EVENT] when the user explicitly confirms they want to add a specific item to an event.
+- ONLY use [ADD_TO_EVENT] when the user explicitly confirms they want to add a specific item to a specific event.
 - NEVER auto-add suggestions. When suggesting gifts, use [PRODUCT] blocks and ask: "Want me to add any of these to [event name]?"
 - When the user says yes, THEN use [ADD_TO_EVENT] for the confirmed items.
+- CRITICAL: If the user has multiple events and hasn't specified which one, ALWAYS ask "Which event should I add this to?" and list their events by number BEFORE using [ADD_TO_EVENT]. Never guess the event.
 - Use specific, real product names (brand + model) so the system can find images automatically.
 
 Gift Circle: [ADD_CIRCLE]{"phone":"5551234567","name":"Mom","relationship":"family"}[/ADD_CIRCLE]
