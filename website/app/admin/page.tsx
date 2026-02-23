@@ -218,7 +218,7 @@ export default function AdminDashboard() {
           </KpiCard>
           <KpiCard icon={Crown} label="Active Subscriptions" value={stats.revenue.activeSubscriptions} sub="Gold members">
             <Breakdown items={[
-              { label: 'MRR (est)', value: `$${(stats.revenue.activeSubscriptions * 9.99).toFixed(2)}`, color: 'text-yellow-500' },
+              { label: 'MRR (est)', value: `$${(stats.revenue.activeSubscriptions * 4.99).toFixed(2)}`, color: 'text-yellow-500' },
             ]} />
           </KpiCard>
         </div>
