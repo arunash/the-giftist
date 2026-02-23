@@ -75,7 +75,14 @@ export async function buildChatContext(userId: string): Promise<string> {
       where: { userId, date: { gte: new Date() } },
       orderBy: { date: 'asc' },
       take: 10,
-      select: { id: true, name: true, type: true, date: true },
+      select: {
+        id: true, name: true, type: true, date: true,
+        items: {
+          select: { item: { select: { name: true, price: true } } },
+          orderBy: { priority: 'asc' },
+          take: 10,
+        },
+      },
     }),
     prisma.wallet.findUnique({
       where: { userId },
@@ -113,7 +120,12 @@ export async function buildChatContext(userId: string): Promise<string> {
 
   const eventsList = events.map((e, idx) => {
     eventIndexMap.set(idx + 1, e.id)
-    return `- [#${idx + 1}] ${e.name} (${e.type}) on ${new Date(e.date).toLocaleDateString()}`
+    const itemNames = e.items.map(ei => {
+      const price = ei.item.price ? ` (${ei.item.price})` : ''
+      return `${ei.item.name}${price}`
+    })
+    const itemsStr = itemNames.length > 0 ? ` | Items: ${itemNames.join(', ')}` : ' | No items yet'
+    return `- [#${idx + 1}] ${e.name} (${e.type}) on ${new Date(e.date).toLocaleDateString()}${itemsStr}`
   }).join('\n')
 
   // Build demographics section
