@@ -1,21 +1,45 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap } from 'lucide-react'
 
 interface Stats {
-  users: { total: number; newToday: number }
-  items: { total: number; today: number; sourceBreakdown: Record<string, number> }
-  whatsapp: { total: number; today: number; failed: number }
-  revenue: { platformFees: number; contributions: number; activeSubscriptions: number }
+  users: {
+    total: number; newToday: number; newWeek: number
+    withPhone: number; withEmail: number; withBoth: number
+    active: number; gold: number
+  }
+  items: {
+    total: number; today: number; week: number
+    sourceBreakdown: Record<string, number>
+    sourceBreakdownAll: Record<string, number>
+  }
+  whatsapp: {
+    total: number; today: number; week: number; failed: number
+    statusBreakdown: Record<string, number>
+    typeBreakdown: Record<string, number>
+  }
+  revenue: {
+    platformFees: number; platformFeesToday: number
+    contributions: number; contributionsToday: number
+    contributionCount: number; contributionCountToday: number
+    avgContribution: number; activeSubscriptions: number
+  }
+  engagement: {
+    totalEvents: number; totalCircleMembers: number
+    totalChatMessages: number; chatMessagesToday: number
+  }
   costs: Record<string, { total: number; today: number; count: number; countToday: number }>
+  costsTotalAll: number
+  costsTotalToday: number
+  errors: { today: number; bySource: Record<string, number> }
   recentErrors: Array<{ id: string; source: string; message: string; createdAt: string }>
   recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; _count: { items: number } }>
   recentActivity: Array<{ id: string; type: string; createdAt: string; user: { name: string | null }; item: { name: string } | null; metadata: string | null }>
   itemsAddedToday: Array<{ id: string; name: string; source: string; price: string | null; priceValue: number | null; addedAt: string; user: { name: string | null } }>
 }
 
-function KpiCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number; sub?: string }) {
+function KpiCard({ icon: Icon, label, value, sub, children }: { icon: any; label: string; value: string | number; sub?: string; children?: React.ReactNode }) {
   return (
     <div className="bg-surface rounded-xl p-5 border border-border">
       <div className="flex items-center gap-3 mb-2">
@@ -24,7 +48,21 @@ function KpiCard({ icon: Icon, label, value, sub }: { icon: any; label: string; 
       </div>
       <p className="text-2xl font-bold">{value}</p>
       {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
+      {children && <div className="mt-3 pt-3 border-t border-border space-y-1">{children}</div>}
     </div>
+  )
+}
+
+function Breakdown({ items }: { items: Array<{ label: string; value: string | number; color?: string }> }) {
+  return (
+    <>
+      {items.map((item) => (
+        <div key={item.label} className="flex justify-between text-xs">
+          <span className="text-muted">{item.label}</span>
+          <span className={item.color || 'text-foreground'}>{item.value}</span>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -52,6 +90,38 @@ function SourceBadge({ source }: { source: string }) {
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${colors[source] || 'bg-gray-500/20 text-gray-400'}`}>
       {source}
     </span>
+  )
+}
+
+function SourceBar({ breakdown, total }: { breakdown: Record<string, number>; total: number }) {
+  const colors: Record<string, string> = {
+    WHATSAPP: 'bg-green-500',
+    MANUAL: 'bg-blue-500',
+    CHAT: 'bg-purple-500',
+    EXTENSION: 'bg-orange-500',
+  }
+  if (total === 0) return null
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <div className="flex h-2 rounded-full overflow-hidden mb-2">
+        {Object.entries(breakdown).map(([source, count]) => (
+          <div
+            key={source}
+            className={`${colors[source] || 'bg-gray-500'}`}
+            style={{ width: `${(count / total) * 100}%` }}
+          />
+        ))}
+      </div>
+      {Object.entries(breakdown).map(([source, count]) => (
+        <div key={source} className="flex justify-between text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className={`inline-block w-2 h-2 rounded-full ${colors[source] || 'bg-gray-500'}`} />
+            <span className="text-muted">{source}</span>
+          </span>
+          <span>{count}</span>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -85,25 +155,83 @@ export default function AdminDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard icon={Users} label="Total Users" value={stats.users.total} sub={`+${stats.users.newToday} today`} />
-        <KpiCard icon={Package} label="Items Added Today" value={stats.items.today} sub={`${stats.items.total} total`} />
-        <KpiCard icon={MessageCircle} label="WA Messages Today" value={stats.whatsapp.today} sub={`${stats.whatsapp.failed} failed total`} />
-        <KpiCard icon={AlertTriangle} label="Recent Errors" value={stats.recentErrors.length} />
+        <KpiCard icon={Users} label="Total Users" value={stats.users.total} sub={`+${stats.users.newToday} today · +${stats.users.newWeek} this week`}>
+          <Breakdown items={[
+            { label: 'Phone', value: stats.users.withPhone },
+            { label: 'Email', value: stats.users.withEmail },
+            { label: 'Both linked', value: stats.users.withBoth },
+            { label: 'Active', value: stats.users.active },
+            { label: 'Gold', value: stats.users.gold, color: 'text-yellow-500' },
+          ]} />
+        </KpiCard>
+
+        <KpiCard icon={Package} label="Items Added Today" value={stats.items.today} sub={`${stats.items.total} total · +${stats.items.week} this week`}>
+          <SourceBar breakdown={stats.items.sourceBreakdown} total={stats.items.today} />
+        </KpiCard>
+
+        <KpiCard icon={MessageCircle} label="WA Messages Today" value={stats.whatsapp.today} sub={`${stats.whatsapp.total} total · +${stats.whatsapp.week} this week`}>
+          <Breakdown items={[
+            ...Object.entries(stats.whatsapp.statusBreakdown).map(([k, v]) => ({ label: k, value: v })),
+            { label: 'Failed (all time)', value: stats.whatsapp.failed, color: 'text-red-400' },
+          ]} />
+          {Object.keys(stats.whatsapp.typeBreakdown).length > 0 && (
+            <>
+              <div className="text-[10px] text-muted uppercase tracking-wider mt-2 mb-1">By type</div>
+              <Breakdown items={Object.entries(stats.whatsapp.typeBreakdown).map(([k, v]) => ({ label: k, value: v }))} />
+            </>
+          )}
+        </KpiCard>
+
+        <KpiCard icon={AlertTriangle} label="Errors Today" value={stats.errors.today} sub={`${stats.recentErrors.length} recent`}>
+          <Breakdown items={Object.entries(stats.errors.bySource).map(([k, v]) => ({ label: k, value: v }))} />
+        </KpiCard>
+      </div>
+
+      {/* Engagement */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Engagement</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard icon={Zap} label="Web Chat Messages" value={stats.engagement.totalChatMessages} sub={`+${stats.engagement.chatMessagesToday} today`} />
+          <KpiCard icon={Activity} label="Events Created" value={stats.engagement.totalEvents} />
+          <KpiCard icon={Users} label="Circle Members" value={stats.engagement.totalCircleMembers} />
+          <KpiCard icon={Globe} label="Items by Source (All)" value={stats.items.total}>
+            <SourceBar breakdown={stats.items.sourceBreakdownAll} total={stats.items.total} />
+          </KpiCard>
+        </div>
       </div>
 
       {/* Revenue */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Revenue</h2>
         <div className="grid grid-cols-3 gap-4">
-          <KpiCard icon={DollarSign} label="Platform Fees" value={`$${stats.revenue.platformFees.toFixed(2)}`} />
-          <KpiCard icon={DollarSign} label="Total Contributions" value={`$${stats.revenue.contributions.toFixed(2)}`} />
-          <KpiCard icon={Users} label="Active Subscriptions" value={stats.revenue.activeSubscriptions} />
+          <KpiCard icon={DollarSign} label="Platform Fees" value={`$${stats.revenue.platformFees.toFixed(2)}`}>
+            <Breakdown items={[
+              { label: 'Today', value: `$${stats.revenue.platformFeesToday.toFixed(2)}` },
+            ]} />
+          </KpiCard>
+          <KpiCard icon={DollarSign} label="Total Contributions" value={`$${stats.revenue.contributions.toFixed(2)}`}>
+            <Breakdown items={[
+              { label: 'Today', value: `$${stats.revenue.contributionsToday.toFixed(2)}` },
+              { label: 'Count', value: `${stats.revenue.contributionCount} (${stats.revenue.contributionCountToday} today)` },
+              { label: 'Avg', value: `$${stats.revenue.avgContribution.toFixed(2)}` },
+            ]} />
+          </KpiCard>
+          <KpiCard icon={Crown} label="Active Subscriptions" value={stats.revenue.activeSubscriptions} sub="Gold members">
+            <Breakdown items={[
+              { label: 'MRR (est)', value: `$${(stats.revenue.activeSubscriptions * 9.99).toFixed(2)}`, color: 'text-yellow-500' },
+            ]} />
+          </KpiCard>
         </div>
       </div>
 
       {/* Costs by Provider */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">API Costs</h2>
+        <h2 className="text-lg font-semibold mb-3">
+          API Costs
+          <span className="text-sm font-normal text-muted ml-2">
+            Total: ${stats.costsTotalAll.toFixed(4)} · Today: ${stats.costsTotalToday.toFixed(4)}
+          </span>
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Object.entries(stats.costs).map(([provider, data]) => (
             <CostCard key={provider} provider={provider} data={data} />
