@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
 import { logError } from '@/lib/api-logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

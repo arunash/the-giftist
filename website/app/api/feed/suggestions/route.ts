@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { logApiCall, logError } from '@/lib/api-logger'
 import Anthropic from '@anthropic-ai/sdk'
 
+export const dynamic = 'force-dynamic'
+
 const client = new Anthropic()
 
 // Simple in-memory cache

@@ -6,6 +6,8 @@ import { logApiCall, logError } from '@/lib/api-logger'
 import { extractProductFromUrl } from '@/lib/extract'
 import OpenAI from 'openai'
 
+export const dynamic = 'force-dynamic'
+
 let _client: OpenAI | null = null
 function getClient() {
   if (!_client) _client = new OpenAI()

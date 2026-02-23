@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logError } from '@/lib/api-logger'
 
+export const dynamic = 'force-dynamic'
+
 // GET subscription status
 export async function GET() {
   try {
