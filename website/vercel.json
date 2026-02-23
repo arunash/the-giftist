@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/archive-funded",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/engagement-report",
+      "schedule": "0 * * * *"
     }
   ]
 }
