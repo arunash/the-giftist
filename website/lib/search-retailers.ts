@@ -48,12 +48,14 @@ If you cannot find the product at any retailer, return an empty array: []`,
       timeout: 30000,
     })
 
+    const usage = (response as any).usage
     logApiCall({
       provider: 'OPENAI',
       endpoint: '/responses',
       model: 'gpt-4o',
+      inputTokens: usage?.input_tokens ?? null,
+      outputTokens: usage?.output_tokens ?? null,
       source: 'WEB',
-      metadata: { usage: (response as any).usage, searchQuery },
     }).catch(() => {})
 
     // Extract text from output items

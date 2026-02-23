@@ -65,13 +65,15 @@ Return ONLY a JSON array, no other text:
       timeout: 30000,
     })
 
+    const usage = (response as any).usage
     logApiCall({
       provider: 'OPENAI',
       endpoint: '/responses',
       model: 'gpt-4o',
+      inputTokens: usage?.input_tokens ?? null,
+      outputTokens: usage?.output_tokens ?? null,
       userId,
       source: 'WEB',
-      metadata: { usage: (response as any).usage },
     }).catch(() => {})
 
     const text = response.output

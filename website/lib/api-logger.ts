@@ -15,6 +15,7 @@ const PRICING: Record<string, { input: number; output: number }> = {
 const FIXED_COSTS: Record<string, number> = {
   'twilio-verify': 0.05,
   'whatsapp-message': 0.005,
+  'paypal-payout': 0.25,
 }
 
 function estimateCost(params: {
@@ -36,6 +37,10 @@ function estimateCost(params: {
 
   if (provider === 'TWILIO') {
     return FIXED_COSTS['twilio-verify']
+  }
+
+  if (provider === 'PAYPAL') {
+    return FIXED_COSTS['paypal-payout']
   }
 
   if (model && PRICING[model]) {

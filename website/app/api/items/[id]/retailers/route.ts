@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { searchRetailers } from '@/lib/search-retailers'
 import { applyAffiliateTag } from '@/lib/affiliate'
-import { logApiCall, logError } from '@/lib/api-logger'
+import { logError } from '@/lib/api-logger'
 
 export async function GET(
   request: NextRequest,
@@ -21,14 +21,6 @@ export async function GET(
     }
 
     const { results } = await searchRetailers(item.name, null, null)
-
-    logApiCall({
-      provider: 'OPENAI',
-      endpoint: '/responses',
-      model: 'gpt-4o',
-      source: 'WEB',
-      metadata: { context: 'retailer-search', itemId: id },
-    }).catch(() => {})
 
     // Build retailer list — include the original retailer
     const originalRetailer = {

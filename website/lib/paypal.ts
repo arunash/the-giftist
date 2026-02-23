@@ -1,3 +1,5 @@
+import { logApiCall } from './api-logger'
+
 const PAYPAL_API_BASE = process.env.PAYPAL_API_BASE || 'https://api-m.sandbox.paypal.com'
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || ''
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || ''
@@ -76,6 +78,19 @@ export async function sendPayout(params: {
   }
 
   const data = await res.json()
+
+  logApiCall({
+    provider: 'PAYPAL',
+    endpoint: '/v1/payments/payouts',
+    amount: params.amount,
+    source: 'PAYOUT',
+    metadata: {
+      recipientType: params.recipientType,
+      recipientWallet: params.recipientWallet || 'PAYPAL',
+      batchId: data.batch_header.payout_batch_id,
+    },
+  }).catch(() => {})
+
   return {
     payoutBatchId: data.batch_header.payout_batch_id,
     status: data.batch_header.batch_status,
