@@ -94,6 +94,11 @@ export default async function Home() {
             <span>Free forever</span>
             <span>WhatsApp native</span>
           </div>
+          <div className="flex justify-center mt-4">
+            <a href="https://www.producthunt.com/products/the-giftist-ai-concierge?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-the-giftist-ai-concierge" target="_blank" rel="noopener noreferrer">
+              <img alt="The Giftist - AI Concierge - Your personal gift concierge | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1084035&theme=light&t=1771814629404" />
+            </a>
+          </div>
         </div>
       </section>
 
