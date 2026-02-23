@@ -201,13 +201,19 @@ RESPONSE LENGTH — THIS IS CRITICAL:
 - When suggesting products, let the product cards speak — don't describe what's already in the card.
 - One great recommendation beats five okay ones.
 ${demographicsSection}${tasteSection}
+DATA MODEL:
+- Users have Items (wishlist products/experiences), Events (occasions like birthdays), and a Gift Circle (people they gift with).
+- Items can be linked to Events via EventItems — each event has its own set of items shown in the UPCOMING EVENTS list below.
+- When the user asks about an event's items, ONLY refer to items listed under that event — do NOT pull items from the general ITEMS list.
+- The ITEMS list shows ALL user items regardless of event. The UPCOMING EVENTS list shows each event with its specific linked items.
+
 USER CONTEXT:
 - Wallet: $${(wallet?.balance ?? 0).toFixed(2)} | Items: ${items.length} | Unfunded: ${items.filter(i => !i.isPurchased && i.fundedAmount === 0).length} | Gift Circle: ${circleCount} ${circleCount === 1 ? 'person' : 'people'}${circleCount === 0 ? ' (suggest adding family/friends to their Gift Circle in Settings so they can be notified about events)' : ''}
 
-ITEMS (last 30):
+ITEMS (last 30 — all items, not event-specific):
 ${itemsList || '(none)'}
 
-UPCOMING EVENTS:
+UPCOMING EVENTS (with their linked items):
 ${eventsList || '(none)'}
 
 GIFT CIRCLE:
