@@ -226,6 +226,21 @@ async function savePendingProduct(
     data: { pendingProduct: null },
   })
 
+  // Dedup: check for existing item with same name or URL
+  const existingItem = await prisma.item.findFirst({
+    where: {
+      userId,
+      OR: [
+        ...(pending.url ? [{ url: pending.url }] : []),
+        { name: { equals: pending.name, mode: 'insensitive' as const } },
+      ],
+    },
+  })
+  if (existingItem) {
+    const priceStr = pending.price ? ` (${pending.price})` : ''
+    return `You already have *${existingItem.name}*${priceStr} on your list!`
+  }
+
   const feeCalc = calculateGoalAmount(pending.priceValue)
 
   const item = await prisma.item.create({
@@ -937,39 +952,47 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
 
           // Create new item if no valid itemId
           if (!itemId || itemId === 'TBD' || itemId === 'new') {
-            // Parse price
-            let priceValue: number | null = null
-            if (ateData.price) {
-              const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
-              if (match) priceValue = parseFloat(match[0])
-            }
-
-            const feeCalc = calculateGoalAmount(priceValue)
-
-            const newItem = await prisma.item.create({
-              data: {
-                userId,
-                name: ateData.itemName,
-                price: ateData.price || null,
-                priceValue,
-                url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
-                domain: 'google.com',
-                source: 'WHATSAPP',
-                goalAmount: feeCalc.goalAmount,
-              },
+            // Dedup: check for existing item with same name
+            const existingItem = await prisma.item.findFirst({
+              where: { userId, name: { equals: ateData.itemName, mode: 'insensitive' } },
             })
-            itemId = newItem.id
+            if (existingItem) {
+              itemId = existingItem.id
+            } else {
+              // Parse price
+              let priceValue: number | null = null
+              if (ateData.price) {
+                const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
+                if (match) priceValue = parseFloat(match[0])
+              }
 
-            // Enrich with real image — await so Vercel doesn't kill it
-            await enrichItem(itemId, ateData.itemName).catch(() => {})
+              const feeCalc = calculateGoalAmount(priceValue)
 
-            createActivity({
-              userId,
-              type: 'ITEM_ADDED',
-              visibility: 'PUBLIC',
-              itemId,
-              metadata: { itemName: ateData.itemName, source: 'WHATSAPP' },
-            }).catch(() => {})
+              const newItem = await prisma.item.create({
+                data: {
+                  userId,
+                  name: ateData.itemName,
+                  price: ateData.price || null,
+                  priceValue,
+                  url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
+                  domain: 'google.com',
+                  source: 'WHATSAPP',
+                  goalAmount: feeCalc.goalAmount,
+                },
+              })
+              itemId = newItem.id
+
+              // Enrich with real image — await so Vercel doesn't kill it
+              await enrichItem(itemId, ateData.itemName).catch(() => {})
+
+              createActivity({
+                userId,
+                type: 'ITEM_ADDED',
+                visibility: 'PUBLIC',
+                itemId,
+                metadata: { itemName: ateData.itemName, source: 'WHATSAPP' },
+              }).catch(() => {})
+            }
           }
 
           // Resolve eventRef (#N) to real database ID

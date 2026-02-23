@@ -76,6 +76,21 @@ export async function POST(request: NextRequest) {
     // Extract domain from URL if not provided
     const domain = data.domain || new URL(data.url).hostname
 
+    // Dedup: check for existing item with same URL or same name
+    const existing = await prisma.item.findFirst({
+      where: {
+        userId,
+        OR: [
+          { url: data.url },
+          { name: { equals: data.name, mode: 'insensitive' } },
+        ],
+      },
+      include: { priceHistory: true },
+    })
+    if (existing) {
+      return NextResponse.json(existing)
+    }
+
     // Goal amount is always the item price (fees are deducted at contribution time)
     const feeCalc = calculateGoalAmount(data.priceValue)
 

@@ -194,37 +194,45 @@ async function processStructuredBlocks(userId: string, content: string) {
         let itemId = ateData.itemId
 
         if (!itemId || itemId === 'TBD' || itemId === 'new') {
-          let priceValue: number | null = null
-          if (ateData.price) {
-            const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
-            if (match) priceValue = parseFloat(match[0])
-          }
-
-          const feeCalc = calculateGoalAmount(priceValue)
-
-          const newItem = await prisma.item.create({
-            data: {
-              userId,
-              name: ateData.itemName,
-              price: ateData.price || null,
-              priceValue,
-              url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
-              domain: 'google.com',
-              source: 'WEB',
-              goalAmount: feeCalc.goalAmount,
-            },
+          // Dedup: check for existing item with same name
+          const existingItem = await prisma.item.findFirst({
+            where: { userId, name: { equals: ateData.itemName, mode: 'insensitive' } },
           })
-          itemId = newItem.id
+          if (existingItem) {
+            itemId = existingItem.id
+          } else {
+            let priceValue: number | null = null
+            if (ateData.price) {
+              const match = ateData.price.replace(/,/g, '').match(/[\d.]+/)
+              if (match) priceValue = parseFloat(match[0])
+            }
 
-          enrichItem(itemId, ateData.itemName).catch(() => {})
+            const feeCalc = calculateGoalAmount(priceValue)
 
-          createActivity({
-            userId,
-            type: 'ITEM_ADDED',
-            visibility: 'PUBLIC',
-            itemId,
-            metadata: { itemName: ateData.itemName, source: 'WEB' },
-          }).catch(() => {})
+            const newItem = await prisma.item.create({
+              data: {
+                userId,
+                name: ateData.itemName,
+                price: ateData.price || null,
+                priceValue,
+                url: `https://www.google.com/search?q=${encodeURIComponent(ateData.itemName)}`,
+                domain: 'google.com',
+                source: 'WEB',
+                goalAmount: feeCalc.goalAmount,
+              },
+            })
+            itemId = newItem.id
+
+            enrichItem(itemId, ateData.itemName).catch(() => {})
+
+            createActivity({
+              userId,
+              type: 'ITEM_ADDED',
+              visibility: 'PUBLIC',
+              itemId,
+              metadata: { itemName: ateData.itemName, source: 'WEB' },
+            }).catch(() => {})
+          }
         }
 
         let eventExists = await prisma.event.findFirst({ where: { id: ateData.eventId, userId } })

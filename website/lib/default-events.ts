@@ -174,9 +174,14 @@ export async function createDefaultEventsForUser(userId: string, birthDate?: Dat
     if (eventsToCreate.length === 0) return
 
     for (const eventDef of eventsToCreate) {
-      // Create items for this event
+      // Create items for this event (skip duplicates by name)
       const createdItems = await Promise.all(
-        eventDef.items.map((item) => {
+        eventDef.items.map(async (item) => {
+          const existing = await prisma.item.findFirst({
+            where: { userId, name: { equals: item.name, mode: 'insensitive' } },
+          })
+          if (existing) return existing
+
           const fee = calculateGoalAmount(item.priceValue)
           return prisma.item.create({
             data: {
