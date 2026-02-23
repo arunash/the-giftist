@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runDailyEngagement } from '@/lib/whatsapp-funnel'
+import { runDailyEngagement, runGoldDailyEngagement } from '@/lib/whatsapp-funnel'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel cron or manual trigger)
@@ -11,7 +11,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const results = await runDailyEngagement()
-    return NextResponse.json({ success: true, ...results })
+    const goldResults = await runGoldDailyEngagement()
+    return NextResponse.json({
+      success: true,
+      ...results,
+      gold: goldResults,
+    })
   } catch (error) {
     console.error('[Cron] WhatsApp engagement failed:', error)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })

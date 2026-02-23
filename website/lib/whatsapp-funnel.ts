@@ -1,5 +1,9 @@
+import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from './db'
+import { logApiCall } from './api-logger'
 import { smartWhatsAppSend } from './notifications'
+
+const anthropic = new Anthropic()
 
 interface FunnelState {
   welcome?: boolean
@@ -9,6 +13,7 @@ interface FunnelState {
   day5CirclePrompt?: boolean
   weeklyDigestSent?: string // ISO date of last weekly digest
   reengagementSent?: string // ISO date of last re-engagement
+  goldDailySent?: string // ISO date of last Gold daily message
 }
 
 function parseFunnelStage(raw: string | null): FunnelState {
@@ -191,6 +196,154 @@ export async function runDailyEngagement() {
   }
 
   return results
+}
+
+// ── Gold Daily AI-Personalized Messages ──
+
+const GOLD_DAILY_SYSTEM = `You are a personal gift concierge sending a brief daily WhatsApp check-in. Max 2-3 sentences. Be warm, specific, and actionable. Reference their events/items by name when available. End with a question or suggestion they can reply to. Do NOT use emojis excessively — one or two max. Do NOT include links.`
+
+export async function runGoldDailyEngagement() {
+  const now = new Date()
+  const results = { sent: 0, skipped: 0, errors: 0 }
+
+  // Find active Gold members with phone numbers
+  const goldUsers = await prisma.user.findMany({
+    where: {
+      phone: { not: null },
+      isActive: true,
+      digestOptOut: false,
+      subscription: {
+        status: 'ACTIVE',
+        currentPeriodEnd: { gt: now },
+      },
+    },
+    select: {
+      id: true,
+      phone: true,
+      name: true,
+      interests: true,
+      timezone: true,
+      funnelStage: true,
+      _count: { select: { items: true, events: true, circleMembers: true } },
+    },
+  })
+
+  // Process in batches of 5
+  for (let i = 0; i < goldUsers.length; i += 5) {
+    const batch = goldUsers.slice(i, i + 5)
+
+    await Promise.all(batch.map(async (user) => {
+      if (!user.phone) { results.skipped++; return }
+
+      const state = parseFunnelStage(user.funnelStage)
+      const todayStr = toUserLocalDate(now, user.timezone)
+
+      // Skip if already sent today in user's timezone
+      if (state.goldDailySent === todayStr) {
+        results.skipped++
+        return
+      }
+
+      try {
+        // Gather context for Claude
+        const upcomingEvents = await prisma.event.findMany({
+          where: {
+            userId: user.id,
+            date: { gte: now, lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+          },
+          orderBy: { date: 'asc' },
+          take: 5,
+          select: { name: true, date: true },
+        })
+
+        const recentItems = await prisma.item.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { name: true, price: true },
+        })
+
+        const wallet = await prisma.wallet.findUnique({
+          where: { userId: user.id },
+          select: { balance: true },
+        })
+
+        // Build compact context
+        const displayName = user.name || 'there'
+        const eventCtx = upcomingEvents.length > 0
+          ? upcomingEvents.map(e => {
+              const days = Math.ceil((e.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              return `${e.name} (${days}d away)`
+            }).join(', ')
+          : 'none'
+        const itemCtx = recentItems.length > 0
+          ? recentItems.map(i => `${i.name}${i.price ? ` ($${i.price})` : ''}`).join(', ')
+          : 'none'
+
+        const contextMsg = [
+          `Name: ${displayName}`,
+          `Upcoming events (next 30d): ${eventCtx}`,
+          `Recent wishlist items: ${itemCtx}`,
+          `Total items: ${user._count.items}, events: ${user._count.events}, circle members: ${user._count.circleMembers}`,
+          user.interests ? `Interests: ${user.interests}` : null,
+          wallet?.balance ? `Wallet balance: $${wallet.balance.toFixed(2)}` : null,
+        ].filter(Boolean).join('\n')
+
+        const response = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          system: GOLD_DAILY_SYSTEM,
+          messages: [{ role: 'user', content: contextMsg }],
+        })
+
+        const messageText = response.content[0].type === 'text'
+          ? response.content[0].text
+          : ''
+
+        if (!messageText) {
+          results.errors++
+          return
+        }
+
+        await logApiCall({
+          provider: 'ANTHROPIC',
+          endpoint: 'messages',
+          model: 'claude-haiku-4-5-20251001',
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          userId: user.id,
+          source: 'gold-daily-engagement',
+        })
+
+        await smartWhatsAppSend(user.phone, messageText, 'gold_daily', [displayName])
+
+        state.goldDailySent = todayStr
+        await updateFunnelStage(user.id, state)
+        results.sent++
+        console.log(`[GoldDaily] Sent to user ${user.id}`)
+      } catch (err) {
+        console.error(`[GoldDaily] Error for user ${user.id}:`, err)
+        results.errors++
+      }
+    }))
+
+    // 2s delay between batches to pace Claude API calls
+    if (i + 5 < goldUsers.length) {
+      await new Promise(r => setTimeout(r, 2000))
+    }
+  }
+
+  console.log(`[GoldDaily] Done: ${results.sent} sent, ${results.skipped} skipped, ${results.errors} errors`)
+  return results
+}
+
+function toUserLocalDate(date: Date, timezone: string | null): string {
+  try {
+    const tz = timezone || 'America/New_York'
+    return date.toLocaleDateString('en-CA', { timeZone: tz }) // YYYY-MM-DD
+  } catch {
+    return date.toISOString().slice(0, 10)
+  }
 }
 
 async function updateFunnelStage(userId: string, state: FunnelState) {
