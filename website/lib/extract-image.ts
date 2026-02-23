@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 import { logApiCall } from '@/lib/api-logger'
 
 export interface ImageProductInfo {
@@ -9,11 +9,7 @@ export interface ImageProductInfo {
   description: string | null
 }
 
-let _client: OpenAI | null = null
-function getClient() {
-  if (!_client) _client = new OpenAI()
-  return _client
-}
+const client = new Anthropic()
 
 export async function extractProductFromImage(
   imageBuffer: Buffer,
@@ -21,18 +17,19 @@ export async function extractProductFromImage(
   caption?: string,
 ): Promise<ImageProductInfo | null> {
   const base64 = imageBuffer.toString('base64')
-  const dataUrl = `data:${mimeType};base64,${base64}`
 
-  const response = await getClient().chat.completions.create({
-    model: 'gpt-5.2',
-    max_completion_tokens: 512,
+  const mediaType = mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 512,
     messages: [
       {
         role: 'user',
         content: [
           {
-            type: 'image_url',
-            image_url: { url: dataUrl },
+            type: 'image',
+            source: { type: 'base64', media_type: mediaType, data: base64 },
           },
           {
             type: 'text',
@@ -62,15 +59,19 @@ If this is not a product image, return {"name": null}.`,
   })
 
   logApiCall({
-    provider: 'OPENAI',
-    endpoint: 'chat.completions',
-    model: 'gpt-5.2',
-    inputTokens: response.usage?.prompt_tokens || null,
-    outputTokens: response.usage?.completion_tokens || null,
+    provider: 'ANTHROPIC',
+    endpoint: '/messages',
+    model: 'claude-sonnet-4-5-20250929',
+    inputTokens: response.usage?.input_tokens || null,
+    outputTokens: response.usage?.output_tokens || null,
     source: 'WHATSAPP',
   }).catch(() => {})
 
-  const text = response.choices[0]?.message?.content || ''
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) return null
 
