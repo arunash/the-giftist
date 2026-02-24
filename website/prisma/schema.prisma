@@ -149,6 +149,7 @@ model Event {
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items            EventItem[]
   giftLists        GiftList[]
+  circleReminders  CircleEventReminder[]
 
   @@index([userId])
 }
@@ -345,6 +346,18 @@ model CircleMember {
 
   @@unique([userId, phone])
   @@index([userId])
+}
+
+model CircleEventReminder {
+  id      String   @id @default(cuid())
+  eventId String
+  phone   String
+  cadence String   // "14d", "7d", "3d", "1d"
+  sentAt  DateTime @default(now())
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, phone, cadence])
+  @@index([eventId])
 }
 
 model Notification {

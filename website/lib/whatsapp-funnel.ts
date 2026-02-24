@@ -363,6 +363,106 @@ export async function runGoldDailyEngagement() {
   return results
 }
 
+// ── Proactive Circle Member Event Reminders ──
+
+export async function runCircleEventReminders() {
+  const now = new Date()
+  const results = { sent: 0, skipped: 0, errors: 0 }
+
+  const cadences = [
+    { label: '14d', minDays: 13, maxDays: 15 },
+    { label: '7d',  minDays: 6,  maxDays: 8 },
+    { label: '3d',  minDays: 2,  maxDays: 4 },
+    { label: '1d',  minDays: 0,  maxDays: 1 },
+  ]
+
+  // Find all events in the next 16 days with their owner's circle
+  const events = await prisma.event.findMany({
+    where: {
+      date: {
+        gte: now,
+        lte: new Date(now.getTime() + 16 * 86400000),
+      },
+    },
+    include: {
+      user: {
+        select: {
+          name: true, shareId: true, isActive: true, digestOptOut: true,
+          circleMembers: { select: { phone: true, name: true } },
+        },
+      },
+      items: {
+        include: { item: { select: { name: true, price: true } } },
+        orderBy: { priority: 'asc' },
+        take: 3,
+      },
+      circleReminders: true,
+    },
+  })
+
+  for (const event of events) {
+    // Skip if owner opted out or has no circle
+    if (!event.user.isActive || event.user.digestOptOut) continue
+    if (event.user.circleMembers.length === 0) continue
+
+    const daysUntil = Math.ceil((event.date.getTime() - now.getTime()) / 86400000)
+
+    // Determine which cadence applies right now
+    const cadence = cadences.find(c => daysUntil >= c.minDays && daysUntil <= c.maxDays)
+    if (!cadence) continue
+
+    const ownerName = event.user.name || 'Your friend'
+    const shareUrl = `https://giftist.ai/events/${event.shareUrl}`
+    const itemLines = event.items
+      .map(ei => {
+        const price = ei.item.price ? ` — ${ei.item.price}` : ''
+        return `• ${ei.item.name}${price}`
+      })
+      .join('\n')
+
+    for (const member of event.user.circleMembers) {
+      // Dedup check
+      const alreadySent = event.circleReminders.some(
+        r => r.phone === member.phone && r.cadence === cadence.label
+      )
+      if (alreadySent) { results.skipped++; continue }
+
+      const memberName = member.name || 'Hey there'
+
+      // Build urgency-appropriate text
+      let text: string
+      if (daysUntil <= 1) {
+        text = `${memberName} — ${ownerName}'s ${event.name} is tomorrow!`
+      } else {
+        text = `Hey ${memberName}! ${ownerName}'s ${event.name} is ${daysUntil} days away.`
+      }
+      if (itemLines) {
+        text += `\n\nHere are some gift ideas they'd love:\n${itemLines}`
+      }
+      text += `\n\nBrowse the full wishlist: ${shareUrl}`
+
+      try {
+        await smartWhatsAppSend(
+          member.phone, text,
+          'circle_event_reminder',
+          [memberName, ownerName, event.name, String(daysUntil), shareUrl]
+        )
+
+        await prisma.circleEventReminder.create({
+          data: { eventId: event.id, phone: member.phone, cadence: cadence.label },
+        })
+        results.sent++
+      } catch (err) {
+        console.error(`[CircleReminder] Error for event ${event.id} → ${member.phone}:`, err)
+        results.errors++
+      }
+    }
+  }
+
+  console.log(`[CircleReminder] Done: ${results.sent} sent, ${results.skipped} skipped, ${results.errors} errors`)
+  return results
+}
+
 function toUserLocalDate(date: Date, timezone: string | null): string {
   try {
     const tz = timezone || 'America/New_York'
