@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 
 interface User {
@@ -14,6 +15,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -89,7 +91,7 @@ export default function AdminUsersPage() {
             ) : users.length === 0 ? (
               <tr><td colSpan={7} className="p-8 text-center text-muted">No users found.</td></tr>
             ) : users.map((u) => (
-              <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover">
+              <tr key={u.id} onClick={() => router.push(`/admin/users/${u.id}`)} className="border-b border-border/50 hover:bg-surface-hover cursor-pointer">
                 <td className="p-3 font-medium">{u.name || '—'}</td>
                 <td className="p-3 text-muted">{u.phone || '—'}</td>
                 <td className="p-3 text-muted">{u.email || '—'}</td>
