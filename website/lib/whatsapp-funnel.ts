@@ -15,6 +15,12 @@ interface FunnelState {
   reengagementSent?: string // ISO date of last re-engagement
   goldDailySent?: string // ISO date of last Gold daily message
   eventNudgesSent?: string[] // event IDs already nudged for countdown
+  postEventSent?: Record<string, string> // eventId → 'thanked' | 'reminded'
+  seasonalSent?: Record<string, boolean> // 'holiday_year' → true
+  returningWelcomeBack?: string // ISO date of last welcome-back
+  matureFeatureDiscovery?: string // ISO date
+  churned30Sent?: string // ISO date
+  churned60Sent?: string // ISO date
 }
 
 function parseFunnelStage(raw: string | null): FunnelState {
@@ -460,6 +466,251 @@ export async function runCircleEventReminders() {
   }
 
   console.log(`[CircleReminder] Done: ${results.sent} sent, ${results.skipped} skipped, ${results.errors} errors`)
+  return results
+}
+
+// ── Post-Event Follow-Up (thank-you prompts) ──
+
+export async function runPostEventFollowUp() {
+  const now = new Date()
+  const results = { thankYouPrompts: 0, reminders: 0 }
+
+  // Events that ended 1-2 days ago → send thank-you prompt
+  const recentlyEnded = await prisma.event.findMany({
+    where: {
+      date: {
+        gte: new Date(now.getTime() - 2 * 86400000),
+        lt: new Date(now.getTime() - 1 * 86400000),
+      },
+    },
+    include: {
+      user: { select: { id: true, phone: true, name: true, funnelStage: true } },
+      _count: { select: { contributions: true } },
+    },
+  })
+
+  for (const event of recentlyEnded) {
+    if (!event.user.phone || event._count.contributions === 0) continue
+    const state = parseFunnelStage(event.user.funnelStage)
+    const postEventMap = state.postEventSent || {}
+    if (postEventMap[event.id]) continue
+
+    const displayName = event.user.name || 'there'
+    const text = `Hope ${event.name} was amazing! ${event._count.contributions} people contributed. Send them a thank-you at giftist.ai`
+    await smartWhatsAppSend(event.user.phone, text, 'post_event_thankyou', [event.name, String(event._count.contributions)]).catch(() => {})
+
+    postEventMap[event.id] = 'thanked'
+    state.postEventSent = postEventMap
+    await updateFunnelStage(event.user.id, state)
+    results.thankYouPrompts++
+  }
+
+  // Events that ended 3-4 days ago → reminder if no thank-yous sent
+  const olderEnded = await prisma.event.findMany({
+    where: {
+      date: {
+        gte: new Date(now.getTime() - 4 * 86400000),
+        lt: new Date(now.getTime() - 3 * 86400000),
+      },
+    },
+    include: {
+      user: { select: { id: true, phone: true, name: true, funnelStage: true } },
+      contributions: { where: { thankYouSentAt: null }, select: { id: true } },
+    },
+  })
+
+  for (const event of olderEnded) {
+    if (!event.user.phone || event.contributions.length === 0) continue
+    const state = parseFunnelStage(event.user.funnelStage)
+    const postEventMap = state.postEventSent || {}
+    if (postEventMap[event.id] === 'reminded') continue
+
+    const text = `Reminder: ${event.contributions.length} contributor(s) to ${event.name} haven't received a thank-you yet. Visit giftist.ai`
+    await smartWhatsAppSend(event.user.phone, text, 'post_event_reminder', [String(event.contributions.length), event.name]).catch(() => {})
+
+    postEventMap[event.id] = 'reminded'
+    state.postEventSent = postEventMap
+    await updateFunnelStage(event.user.id, state)
+    results.reminders++
+  }
+
+  console.log(`[PostEvent] Done: ${results.thankYouPrompts} prompts, ${results.reminders} reminders`)
+  return results
+}
+
+// ── Seasonal Holiday Reminders ──
+
+export async function runSeasonalReminders() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const results = { sent: 0 }
+
+  // Static holidays (month is 0-indexed)
+  const holidays = [
+    { name: "Valentine's Day", month: 1, day: 14 },
+    { name: "Mother's Day", month: 4, day: getMothersDay(year) },
+    { name: "Father's Day", month: 5, day: getFathersDay(year) },
+    { name: 'Christmas', month: 11, day: 25 },
+  ]
+
+  for (const holiday of holidays) {
+    const holidayDate = new Date(year, holiday.month, holiday.day)
+    const daysUntil = Math.ceil((holidayDate.getTime() - now.getTime()) / 86400000)
+
+    if (daysUntil < 13 || daysUntil > 15) continue
+
+    const dedup = `${holiday.name}_${year}`
+
+    const users = await prisma.user.findMany({
+      where: {
+        phone: { not: null },
+        isActive: true,
+        digestOptOut: false,
+      },
+      select: { id: true, phone: true, name: true, funnelStage: true },
+    })
+
+    for (const user of users) {
+      if (!user.phone) continue
+      const state = parseFunnelStage(user.funnelStage)
+      const seasonalMap = state.seasonalSent || {}
+      if (seasonalMap[dedup]) continue
+
+      const displayName = user.name || 'there'
+      const text = `Hey ${displayName}! ${holiday.name} is 2 weeks away. Want to create a wishlist or set up gifts for someone special?`
+      await smartWhatsAppSend(user.phone, text, 'seasonal_reminder', [displayName, holiday.name]).catch(() => {})
+
+      seasonalMap[dedup] = true
+      state.seasonalSent = seasonalMap
+      await updateFunnelStage(user.id, state)
+      results.sent++
+    }
+  }
+
+  console.log(`[Seasonal] Done: ${results.sent} sent`)
+  return results
+}
+
+// Mother's Day = 2nd Sunday of May
+function getMothersDay(year: number): number {
+  const may1 = new Date(year, 4, 1)
+  const dayOfWeek = may1.getDay()
+  const firstSunday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
+  return firstSunday + 7
+}
+
+// Father's Day = 3rd Sunday of June
+function getFathersDay(year: number): number {
+  const jun1 = new Date(year, 5, 1)
+  const dayOfWeek = jun1.getDay()
+  const firstSunday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
+  return firstSunday + 14
+}
+
+// ── Lifecycle Nudges (returning, mature, churned) ──
+
+export async function runLifecycleNudges() {
+  const now = new Date()
+  const results = { returningWelcomeBack: 0, matureFeatureDiscovery: 0, churned30: 0, churned60: 0 }
+
+  const users = await prisma.user.findMany({
+    where: {
+      phone: { not: null },
+      isActive: true,
+      digestOptOut: false,
+    },
+    select: {
+      id: true,
+      phone: true,
+      name: true,
+      funnelStage: true,
+      createdAt: true,
+      _count: { select: { items: true, events: true, circleMembers: true } },
+    },
+  })
+
+  for (const user of users) {
+    if (!user.phone) continue
+    const state = parseFunnelStage(user.funnelStage)
+    const displayName = user.name || 'there'
+    const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / 86400000)
+
+    // Find last inbound WhatsApp message
+    const lastMessage = await prisma.whatsAppMessage.findFirst({
+      where: { phone: user.phone },
+      orderBy: { createdAt: 'desc' },
+    })
+    const daysSinceLastMsg = lastMessage
+      ? Math.floor((now.getTime() - lastMessage.createdAt.getTime()) / 86400000)
+      : daysSinceSignup
+
+    try {
+      // RETURNING: User came back after 7-13 days of inactivity (before the 14-day re-engagement fires)
+      if (daysSinceLastMsg >= 7 && daysSinceLastMsg < 14) {
+        const lastWB = state.returningWelcomeBack ? new Date(state.returningWelcomeBack) : null
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000)
+        if (!lastWB || lastWB < twoWeeksAgo) {
+          const text = `Welcome back ${displayName}! Your wishlist has ${user._count.items} item(s).${user._count.events > 0 ? ` You have ${user._count.events} event(s) coming up.` : ''} What are you looking for today?`
+          await smartWhatsAppSend(user.phone, text, 'returning_welcome_back', [displayName, String(user._count.items)])
+          state.returningWelcomeBack = now.toISOString()
+          await updateFunnelStage(user.id, state)
+          results.returningWelcomeBack++
+          continue
+        }
+      }
+
+      // MATURE: Active user with 5+ items, 1+ events, signed up 14+ days ago — feature discovery
+      if (daysSinceSignup >= 14 && user._count.items >= 5 && user._count.events >= 1 && daysSinceLastMsg < 7) {
+        const lastFD = state.matureFeatureDiscovery ? new Date(state.matureFeatureDiscovery) : null
+        const monthAgo = new Date(now.getTime() - 30 * 86400000)
+        if (!lastFD || lastFD < monthAgo) {
+          let tip: string
+          if (user._count.circleMembers === 0) {
+            tip = `Did you know you can build a Gift Circle? Add friends and family so they see your wishlist and get reminders before your events. Try: *add circle <phone> <name>*`
+          } else {
+            tip = `Pro tip: Reply *remind* to send your Gift Circle a reminder about upcoming events with your wishlist link. They'll love the heads-up!`
+          }
+          await smartWhatsAppSend(user.phone, `Hey ${displayName}! ${tip}`, 'mature_feature_discovery', [displayName])
+          state.matureFeatureDiscovery = now.toISOString()
+          await updateFunnelStage(user.id, state)
+          results.matureFeatureDiscovery++
+          continue
+        }
+      }
+
+      // CHURNED (30 days): Stronger nudge than 14-day re-engagement
+      if (daysSinceLastMsg >= 30 && daysSinceLastMsg < 45) {
+        const last30 = state.churned30Sent ? new Date(state.churned30Sent) : null
+        const monthAgo = new Date(now.getTime() - 30 * 86400000)
+        if (!last30 || last30 < monthAgo) {
+          const text = `Hey ${displayName}, it's been a while! We've added new features — personalized gift suggestions, group gifting, and more. Your ${user._count.items} saved item(s) are still here. What's the next occasion you're shopping for?`
+          await smartWhatsAppSend(user.phone, text, 'churned_30_day', [displayName, String(user._count.items)])
+          state.churned30Sent = now.toISOString()
+          await updateFunnelStage(user.id, state)
+          results.churned30++
+          continue
+        }
+      }
+
+      // CHURNED (60 days): Final win-back attempt
+      if (daysSinceLastMsg >= 60 && daysSinceLastMsg < 75) {
+        const last60 = state.churned60Sent ? new Date(state.churned60Sent) : null
+        const twoMonthsAgo = new Date(now.getTime() - 60 * 86400000)
+        if (!last60 || last60 < twoMonthsAgo) {
+          const text = `Hi ${displayName} — your Gift Concierge here. Need help finding a gift for someone? Just tell me who you're shopping for and I'll find something perfect. I'm always here when you need me!`
+          await smartWhatsAppSend(user.phone, text, 'churned_60_day', [displayName])
+          state.churned60Sent = now.toISOString()
+          await updateFunnelStage(user.id, state)
+          results.churned60++
+          continue
+        }
+      }
+    } catch (err) {
+      console.error(`[Lifecycle] Error for user ${user.id}:`, err)
+    }
+  }
+
+  console.log(`[Lifecycle] Done: returning=${results.returningWelcomeBack}, mature=${results.matureFeatureDiscovery}, churned30=${results.churned30}, churned60=${results.churned60}`)
   return results
 }
 

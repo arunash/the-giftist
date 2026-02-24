@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { normalizePhone } from '@/lib/whatsapp'
+import { smartWhatsAppSend } from '@/lib/notifications'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -61,6 +62,24 @@ export async function POST(request: NextRequest) {
         source: 'MANUAL',
       },
     })
+
+    // Milestone: first circle member added
+    const memberCount = await prisma.circleMember.count({ where: { userId } })
+    if (memberCount === 1) {
+      const milestoneUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true },
+      })
+      const memberName = data.name || phone
+      if (milestoneUser?.phone) {
+        smartWhatsAppSend(
+          milestoneUser.phone,
+          `${memberName} is in your circle! When events come up we'll help them find the perfect gift for you.`,
+          'milestone_first_circle',
+          [memberName]
+        ).catch(() => {})
+      }
+    }
 
     return NextResponse.json(member, { status: 201 })
   } catch (error) {

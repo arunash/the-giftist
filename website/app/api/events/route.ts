@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
-import { notifyEventCreated } from '@/lib/notifications'
+import { notifyEventCreated, smartWhatsAppSend } from '@/lib/notifications'
 import { z } from 'zod'
 import { logError } from '@/lib/api-logger'
 
@@ -138,6 +138,23 @@ export async function POST(request: NextRequest) {
 
     // In-app notification
     notifyEventCreated(userId, event.name, event.id).catch(() => {})
+
+    // Milestone: first event created
+    const eventCount = await prisma.event.count({ where: { userId } })
+    if (eventCount === 1) {
+      const milestoneUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true },
+      })
+      if (milestoneUser?.phone) {
+        smartWhatsAppSend(
+          milestoneUser.phone,
+          `Your first event is set! Add gift ideas so your circle knows what to get: ${event.name}`,
+          'milestone_first_event',
+          [event.name]
+        ).catch(() => {})
+      }
+    }
 
     return NextResponse.json(event, { status: 201 })
   } catch (error) {

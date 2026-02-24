@@ -364,7 +364,7 @@ export async function handleTextMessage(
       where: { listId },
       include: { item: true },
       orderBy: { addedAt: 'desc' },
-      take: 10,
+      take: 3,
     })
     if (items.length === 0) return "Your list is empty! Send me a product link or photo to get started."
     const lines = items.map((gli, i) => {
@@ -379,7 +379,7 @@ export async function handleTextMessage(
     const events = await prisma.event.findMany({
       where: { userId },
       orderBy: { date: 'asc' },
-      take: 10,
+      take: 3,
     })
     if (events.length === 0) return "You don't have any events yet. Ask me to create one, or visit *giftist.ai/events*."
     const lines = events.map((ev, i) => {
@@ -396,7 +396,7 @@ export async function handleTextMessage(
     const events = await prisma.event.findMany({
       where: { userId },
       orderBy: { date: 'asc' },
-      take: 10,
+      take: 3,
     })
     if (index < 0 || index >= events.length) return `Invalid number. You have ${events.length} events. Reply *events* to see them.`
     const target = events[index]
@@ -446,7 +446,7 @@ export async function handleTextMessage(
       where: { listId },
       include: { item: true },
       orderBy: { addedAt: 'desc' },
-      take: 10,
+      take: 3,
     })
     if (index < 0 || index >= items.length) return `Invalid number. You have ${items.length} items. Reply *list* to see them.`
     const target = items[index]
@@ -474,7 +474,7 @@ export async function handleTextMessage(
       where: { listId },
       include: { item: true },
       orderBy: { addedAt: 'desc' },
-      take: 10,
+      take: 3,
     })
     if (index < 0 || index >= items.length) return `Invalid number. You have ${items.length} items.`
     const target = items[index]
@@ -489,7 +489,7 @@ export async function handleTextMessage(
     const events = await prisma.event.findMany({
       where: { userId },
       orderBy: { date: 'asc' },
-      take: 10,
+      take: 3,
       select: { id: true, name: true, shareUrl: true },
     })
     if (index < 0 || index >= events.length) {
@@ -1004,7 +1004,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               const userEvents = await prisma.event.findMany({
                 where: { userId, date: { gte: new Date() } },
                 orderBy: { date: 'asc' },
-                take: 10,
+                take: 3,
                 select: { id: true, name: true },
               })
               console.log('[ADD_TO_EVENT] Resolving eventRef #' + idx, 'from', userEvents.map(e => e.name))
@@ -1122,7 +1122,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               const userEvents = await prisma.event.findMany({
                 where: { userId, date: { gte: new Date() } },
                 orderBy: { date: 'asc' },
-                take: 5,
+                take: 3,
                 select: { id: true, name: true, shareUrl: true },
               })
               if (idx >= 1 && idx <= userEvents.length) {

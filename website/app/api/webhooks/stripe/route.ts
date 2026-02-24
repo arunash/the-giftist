@@ -6,7 +6,7 @@ import { calculateFeeFromContribution } from '@/lib/platform-fee'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { attemptAutoPayout } from '@/lib/auto-payout'
 import { sendContributionReceipts } from '@/lib/receipts'
-import { notifyContributionCompleted, notifyContributionReceived } from '@/lib/notifications'
+import { notifyContributionCompleted, notifyContributionReceived, smartWhatsAppSend } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -166,6 +166,38 @@ export async function POST(request: NextRequest) {
                 freeRemaining: fee.freeRemaining,
               })
 
+              // WhatsApp: notify owner of contribution
+              if (item.user.phone) {
+                const contributorDisplayName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
+                smartWhatsAppSend(
+                  item.user.phone,
+                  `Great news! ${contributorDisplayName} just contributed $${contribution.amount.toFixed(2)} toward "${item.name}". Check your wallet at giftist.ai/wallet`,
+                  'contribution_received_wa',
+                  [contributorDisplayName, contribution.amount.toFixed(2), item.name]
+                ).catch(() => {})
+
+                // WhatsApp: item fully funded
+                if (justFullyFunded) {
+                  smartWhatsAppSend(
+                    item.user.phone,
+                    `"${item.name}" is fully funded! Your friends came through. View details at giftist.ai/wallet`,
+                    'item_fully_funded',
+                    [item.name]
+                  ).catch(() => {})
+                }
+              }
+
+              // WhatsApp: contributor conversion nudge (non-user contributors)
+              if (contribution.contributor?.phone && !contribution.contributorId) {
+                const ownerDisplayName = item.user.name || 'your friend'
+                smartWhatsAppSend(
+                  contribution.contributor.phone,
+                  `Thanks for your gift! Want your own wishlist so ${ownerDisplayName} can return the favor? Text "hi" to get started.`,
+                  'contributor_conversion',
+                  [ownerDisplayName]
+                ).catch(() => {})
+              }
+
               // In-app notifications
               if (contribution.contributorId) {
                 notifyContributionCompleted(
@@ -266,6 +298,28 @@ export async function POST(request: NextRequest) {
                 isFreeContribution: fee.isFreeContribution,
                 freeRemaining: fee.freeRemaining,
               })
+
+              // WhatsApp: notify owner of contribution
+              if (evt.user.phone) {
+                const contributorDisplayName = contribution.isAnonymous ? 'Someone' : (contribution.contributor?.name || 'Someone')
+                smartWhatsAppSend(
+                  evt.user.phone,
+                  `Great news! ${contributorDisplayName} just contributed $${contribution.amount.toFixed(2)} toward "${evt.name}". Check your wallet at giftist.ai/wallet`,
+                  'contribution_received_wa',
+                  [contributorDisplayName, contribution.amount.toFixed(2), evt.name]
+                ).catch(() => {})
+              }
+
+              // WhatsApp: contributor conversion nudge (non-user contributors)
+              if (contribution.contributor?.phone && !contribution.contributorId) {
+                const ownerDisplayName = evt.user.name || 'your friend'
+                smartWhatsAppSend(
+                  contribution.contributor.phone,
+                  `Thanks for your gift! Want your own wishlist so ${ownerDisplayName} can return the favor? Text "hi" to get started.`,
+                  'contributor_conversion',
+                  [ownerDisplayName]
+                ).catch(() => {})
+              }
 
               // In-app notifications
               if (contribution.contributorId) {

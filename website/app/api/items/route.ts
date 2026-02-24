@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createActivity } from '@/lib/activity'
-import { notifyItemAdded } from '@/lib/notifications'
+import { notifyItemAdded, smartWhatsAppSend } from '@/lib/notifications'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { logError } from '@/lib/api-logger'
 import { z } from 'zod'
@@ -132,6 +132,24 @@ export async function POST(request: NextRequest) {
 
     // In-app notification
     notifyItemAdded(userId, item.name, item.id).catch(() => {})
+
+    // Milestone: 5th item saved
+    const itemCount = await prisma.item.count({ where: { userId } })
+    if (itemCount === 5) {
+      const milestoneUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true, shareId: true },
+      })
+      if (milestoneUser?.phone && milestoneUser.shareId) {
+        const shareUrl = `https://giftist.ai/u/${milestoneUser.shareId}`
+        smartWhatsAppSend(
+          milestoneUser.phone,
+          `Your wishlist is growing! With 5 items your friends have great options. Share it: ${shareUrl}`,
+          'milestone_5_items',
+          [shareUrl]
+        ).catch(() => {})
+      }
+    }
 
     return NextResponse.json(item, { status: 201 })
   } catch (error) {
