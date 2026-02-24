@@ -50,6 +50,19 @@ export async function GET() {
     totalCircleMembers,
     totalChatMessages,
     chatMessagesToday,
+    eventsToday,
+    eventsWeek,
+    circleMembersToday,
+    circleMembersWeek,
+    chatMessagesWeek,
+    chatByRole,
+    uniqueChatUsersToday,
+    waOutboundToday,
+    waOutboundTotal,
+    waUniquePhonesToday,
+    itemsBySourceWeek,
+    errorsWeek,
+    errorsBySourceToday,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -166,6 +179,23 @@ export async function GET() {
     prisma.circleMember.count(),
     prisma.chatMessage.count(),
     prisma.chatMessage.count({ where: { createdAt: { gte: todayStart } } }),
+    // Engagement breakdowns
+    prisma.event.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.event.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.circleMember.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.circleMember.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.chatMessage.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.chatMessage.groupBy({ by: ['role'], _count: { id: true }, where: { createdAt: { gte: todayStart } } }),
+    prisma.chatMessage.groupBy({ by: ['userId'], where: { createdAt: { gte: todayStart } } }),
+    // WA outbound counts
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: todayStart }, type: { startsWith: 'OUTBOUND' } } }),
+    prisma.whatsAppMessage.count({ where: { type: { startsWith: 'OUTBOUND' } } }),
+    prisma.whatsAppMessage.groupBy({ by: ['phone'], where: { createdAt: { gte: todayStart } } }),
+    // Items breakdown by source (week)
+    prisma.item.groupBy({ by: ['source'], _count: { id: true }, where: { addedAt: { gte: weekAgo } } }),
+    // Errors
+    prisma.errorLog.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.errorLog.groupBy({ by: ['source'], _count: { id: true }, where: { createdAt: { gte: todayStart } } }),
   ])
 
   // Build costs map
@@ -212,6 +242,27 @@ export async function GET() {
     errorSourceBreakdown[e.source] = e._count.id
   }
 
+  // Chat role breakdown
+  const chatRoleBreakdown: Record<string, number> = {}
+  for (const r of chatByRole) {
+    chatRoleBreakdown[r.role] = r._count.id
+  }
+
+  // Source breakdown for week
+  const sourceBreakdownWeek: Record<string, number> = {}
+  for (const s of itemsBySourceWeek) {
+    sourceBreakdownWeek[s.source] = s._count.id
+  }
+
+  // Avg items per user
+  const avgItemsPerUser = totalUsers > 0 ? Math.round((totalItems / totalUsers) * 10) / 10 : 0
+
+  // Error source breakdown (today only)
+  const errorSourceBreakdownToday: Record<string, number> = {}
+  for (const e of errorsBySourceToday) {
+    errorSourceBreakdownToday[e.source] = e._count.id
+  }
+
   const totalCosts = Object.values(costsMap).reduce((sum, c) => sum + c.total, 0)
   const todayCosts = Object.values(costsMap).reduce((sum, c) => sum + c.today, 0)
 
@@ -232,6 +283,8 @@ export async function GET() {
       week: itemsWeek,
       sourceBreakdown,
       sourceBreakdownAll,
+      sourceBreakdownWeek,
+      avgPerUser: avgItemsPerUser,
     },
     whatsapp: {
       total: waMessagesTotal,
@@ -240,6 +293,9 @@ export async function GET() {
       failed: waMessagesFailed,
       statusBreakdown: waStatusBreakdown,
       typeBreakdown: waTypeBreakdown,
+      outboundToday: waOutboundToday,
+      outboundTotal: waOutboundTotal,
+      uniquePhonesToday: waUniquePhonesToday.length,
     },
     revenue: {
       platformFees: platformFees._sum.platformFeeAmount || 0,
@@ -253,16 +309,25 @@ export async function GET() {
     },
     engagement: {
       totalEvents,
+      eventsToday,
+      eventsWeek,
       totalCircleMembers,
+      circleMembersToday,
+      circleMembersWeek,
       totalChatMessages,
       chatMessagesToday,
+      chatMessagesWeek,
+      chatByRole: chatRoleBreakdown,
+      uniqueChatUsersToday: uniqueChatUsersToday.length,
     },
     costs: costsMap,
     costsTotalAll: totalCosts,
     costsTotalToday: todayCosts,
     errors: {
       today: errorsToday,
+      week: errorsWeek,
       bySource: errorSourceBreakdown,
+      bySourceToday: errorSourceBreakdownToday,
     },
     recentErrors,
     recentUsers,

@@ -13,11 +13,16 @@ interface Stats {
     total: number; today: number; week: number
     sourceBreakdown: Record<string, number>
     sourceBreakdownAll: Record<string, number>
+    sourceBreakdownWeek: Record<string, number>
+    avgPerUser: number
   }
   whatsapp: {
     total: number; today: number; week: number; failed: number
     statusBreakdown: Record<string, number>
     typeBreakdown: Record<string, number>
+    outboundToday: number
+    outboundTotal: number
+    uniquePhonesToday: number
   }
   revenue: {
     platformFees: number; platformFeesToday: number
@@ -28,11 +33,16 @@ interface Stats {
   engagement: {
     totalEvents: number; totalCircleMembers: number
     totalChatMessages: number; chatMessagesToday: number
+    eventsToday: number; eventsWeek: number
+    circleMembersToday: number; circleMembersWeek: number
+    chatMessagesWeek: number
+    chatByRole: Record<string, number>
+    uniqueChatUsersToday: number
   }
   costs: Record<string, { total: number; today: number; count: number; countToday: number }>
   costsTotalAll: number
   costsTotalToday: number
-  errors: { today: number; bySource: Record<string, number> }
+  errors: { today: number; week: number; bySource: Record<string, number>; bySourceToday: Record<string, number> }
   recentErrors: Array<{ id: string; source: string; message: string; createdAt: string }>
   recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; _count: { items: number } }>
   recentActivity: Array<{ id: string; type: string; createdAt: string; user: { name: string | null }; item: { name: string } | null; metadata: string | null }>
@@ -165,11 +175,23 @@ export default function AdminDashboard() {
           ]} />
         </KpiCard>
 
-        <KpiCard icon={Package} label="Items Added Today" value={stats.items.today} sub={`${stats.items.total} total · +${stats.items.week} this week`}>
+        <KpiCard icon={Package} label="Items Added Today" value={stats.items.today} sub={`${stats.items.total} total · +${stats.items.week} this week · Avg per user: ${stats.items.avgPerUser}`}>
           <SourceBar breakdown={stats.items.sourceBreakdown} total={stats.items.today} />
+          {Object.keys(stats.items.sourceBreakdownWeek).length > 0 && (
+            <>
+              <div className="text-[10px] text-muted uppercase tracking-wider mt-2 mb-1">This week</div>
+              <Breakdown items={Object.entries(stats.items.sourceBreakdownWeek).map(([k, v]) => ({ label: k, value: v }))} />
+            </>
+          )}
         </KpiCard>
 
         <KpiCard icon={MessageCircle} label="WA Messages Today" value={stats.whatsapp.today} sub={`${stats.whatsapp.total} total · +${stats.whatsapp.week} this week`}>
+          <Breakdown items={[
+            { label: 'Inbound', value: stats.whatsapp.today - stats.whatsapp.outboundToday },
+            { label: 'Outbound', value: stats.whatsapp.outboundToday },
+            { label: 'Unique phones', value: stats.whatsapp.uniquePhonesToday },
+          ]} />
+          <div className="text-[10px] text-muted uppercase tracking-wider mt-2 mb-1">By status</div>
           <Breakdown items={[
             ...Object.entries(stats.whatsapp.statusBreakdown).map(([k, v]) => ({ label: k, value: v })),
             { label: 'Failed (all time)', value: stats.whatsapp.failed, color: 'text-red-400' },
@@ -182,8 +204,10 @@ export default function AdminDashboard() {
           )}
         </KpiCard>
 
-        <KpiCard icon={AlertTriangle} label="Errors Today" value={stats.errors.today} sub={`${stats.recentErrors.length} recent`}>
-          <Breakdown items={Object.entries(stats.errors.bySource).map(([k, v]) => ({ label: k, value: v }))} />
+        <KpiCard icon={AlertTriangle} label="Errors Today" value={stats.errors.today} sub={`This week: ${stats.errors.week} · ${stats.recentErrors.length} recent`}>
+          {Object.keys(stats.errors.bySourceToday).length > 0 && (
+            <Breakdown items={Object.entries(stats.errors.bySourceToday).map(([k, v]) => ({ label: k, value: v }))} />
+          )}
         </KpiCard>
       </div>
 
@@ -191,9 +215,16 @@ export default function AdminDashboard() {
       <div>
         <h2 className="text-lg font-semibold mb-3">Engagement</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard icon={Zap} label="Web Chat Messages" value={stats.engagement.totalChatMessages} sub={`+${stats.engagement.chatMessagesToday} today`} />
-          <KpiCard icon={Activity} label="Events Created" value={stats.engagement.totalEvents} />
-          <KpiCard icon={Users} label="Circle Members" value={stats.engagement.totalCircleMembers} />
+          <KpiCard icon={Zap} label="Web Chat Messages" value={stats.engagement.totalChatMessages} sub={`+${stats.engagement.chatMessagesToday} today · +${stats.engagement.chatMessagesWeek} this week`}>
+            {Object.keys(stats.engagement.chatByRole).length > 0 && (
+              <Breakdown items={Object.entries(stats.engagement.chatByRole).map(([k, v]) => ({ label: k, value: v }))} />
+            )}
+            <Breakdown items={[
+              { label: 'Unique users today', value: stats.engagement.uniqueChatUsersToday },
+            ]} />
+          </KpiCard>
+          <KpiCard icon={Activity} label="Events Created" value={stats.engagement.totalEvents} sub={`+${stats.engagement.eventsToday} today · +${stats.engagement.eventsWeek} this week`} />
+          <KpiCard icon={Users} label="Circle Members" value={stats.engagement.totalCircleMembers} sub={`+${stats.engagement.circleMembersToday} today · +${stats.engagement.circleMembersWeek} this week`} />
           <KpiCard icon={Globe} label="Items by Source (All)" value={stats.items.total}>
             <SourceBar breakdown={stats.items.sourceBreakdownAll} total={stats.items.total} />
           </KpiCard>

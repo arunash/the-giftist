@@ -1,4 +1,5 @@
 import { logApiCall } from '@/lib/api-logger'
+import { prisma } from './db'
 import { isPrivateUrl } from './url-safety'
 
 const GRAPH_API = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}`
@@ -28,6 +29,12 @@ export async function sendTextMessage(to: string, body: string) {
     text: { body },
   })
   logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND', content: body, status: 'SENT' },
+    }).catch(() => {})
+  }
   return result
 }
 
@@ -48,6 +55,12 @@ export async function sendTemplateMessage(to: string, templateName: string, para
     },
   })
   logApiCall({ provider: 'WHATSAPP', endpoint: '/messages/template', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND_TEMPLATE', content: templateName, status: 'SENT' },
+    }).catch(() => {})
+  }
   return result
 }
 
@@ -59,6 +72,12 @@ export async function sendImageMessage(to: string, imageUrl: string, caption: st
     image: { link: imageUrl, caption },
   })
   logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND', content: caption, status: 'SENT' },
+    }).catch(() => {})
+  }
   return result
 }
 
