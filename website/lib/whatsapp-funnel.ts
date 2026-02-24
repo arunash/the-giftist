@@ -14,6 +14,7 @@ interface FunnelState {
   weeklyDigestSent?: string // ISO date of last weekly digest
   reengagementSent?: string // ISO date of last re-engagement
   goldDailySent?: string // ISO date of last Gold daily message
+  eventNudgesSent?: string[] // event IDs already nudged for countdown
 }
 
 function parseFunnelStage(raw: string | null): FunnelState {
@@ -169,7 +170,32 @@ export async function runDailyEngagement() {
         }
       }
 
-      // Stage 7: Event countdown (7 days before event) — handled in weekly digest above
+      // Stage 7: Event countdown nudge (3-7 days before event)
+      const upcomingCountdownEvents = await prisma.event.findMany({
+        where: {
+          userId: user.id,
+          date: {
+            gte: new Date(now.getTime() + 3 * 86400000),
+            lte: new Date(now.getTime() + 7 * 86400000),
+          },
+        },
+        include: { _count: { select: { items: true } } },
+      })
+
+      const nudgedIds = state.eventNudgesSent || []
+      for (const evt of upcomingCountdownEvents) {
+        if (nudgedIds.includes(evt.id)) continue
+        const days = Math.ceil((evt.date.getTime() - now.getTime()) / 86400000)
+        const text = `Hey ${displayName}! ${evt.name} is ${days} days away.${
+          evt._count.items === 0
+            ? " You haven't added any gift ideas yet — want me to help you find something perfect?"
+            : ` You have ${evt._count.items} item(s) lined up. Need any last-minute additions?`
+        }`
+        await smartWhatsAppSend(user.phone, text, 'event_countdown', [displayName, evt.name, String(days)])
+        nudgedIds.push(evt.id)
+        state.eventNudgesSent = nudgedIds
+        await updateFunnelStage(user.id, state)
+      }
 
       // Stage 8: Re-engagement (14 days inactive)
       const lastMessage = await prisma.whatsAppMessage.findFirst({

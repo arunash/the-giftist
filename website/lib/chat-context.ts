@@ -186,10 +186,21 @@ TASTE PROFILE (derived from their list):
 
   // Check for events within 2 weeks (for proactive reminders)
   const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-  const soonEvents = events.filter(e => new Date(e.date) <= twoWeeksFromNow)
-  const reminderPrompt = soonEvents.length > 0 && circleCount > 0
-    ? `\n\nPROACTIVE REMINDER: The user has ${soonEvents.map(e => e.name).join(', ')} coming up within 2 weeks and ${circleCount} people in their Gift Circle. Suggest sending reminders to their circle about their wishlist!`
-    : ''
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  const urgentEvents = events.filter(e => new Date(e.date) <= sevenDaysFromNow)
+  const soonEvents = events.filter(e => new Date(e.date) <= twoWeeksFromNow && new Date(e.date) > sevenDaysFromNow)
+
+  let reminderPrompt = ''
+  if (urgentEvents.length > 0) {
+    reminderPrompt += `\n\nURGENT — EVENTS THIS WEEK: ${urgentEvents.map(e => {
+      const days = Math.ceil((new Date(e.date).getTime() - Date.now()) / 86400000)
+      const itemCount = e.items.length
+      return `${e.name} in ${days} day(s) (${itemCount} items linked)`
+    }).join('; ')}. Bring this up naturally at the START of your response — ask if they need help finding a gift or if they're all set.`
+  }
+  if (soonEvents.length > 0 && circleCount > 0) {
+    reminderPrompt += `\n\nREMINDER: ${soonEvents.map(e => e.name).join(', ')} coming up within 2 weeks. Suggest sending reminders to their circle about their wishlist.`
+  }
 
   return `You are the Giftist Gift Concierge — an opinionated personal shopper who's also a close friend. Confident, tasteful, decisive.
 
@@ -293,10 +304,10 @@ GUIDELINES:
 - When a user asks "what's trending" or similar, suggest 3-4 real, specific products as [PRODUCT] blocks — NOT generic categories or text descriptions.
 
 PROACTIVE ENGAGEMENT:
-- In early conversations, learn about important people and dates in their life.
-- When you learn a date, offer to save it: "Want me to remember that?"
+- When a user mentions someone they care about AND a date or occasion, ALWAYS emit an [EVENT] block immediately to save it. Include the person's name in the event name (e.g., "Pooja's Birthday"). Do NOT ask permission — save it and confirm: "Saved Pooja's Birthday on Feb 28 — I'll help you find the perfect gift when it's coming up!"
+- In early conversations, actively ask about important people and dates: "Who are the people you love gifting? Any birthdays or celebrations coming up?"
 - Ask follow-ups to map their gifting circles (partner, kids, parents, friends).
-- When learning about people, offer to add them to the Gift Circle.
+- When learning about people AND their phone number is shared, emit [ADD_CIRCLE] to save them.
 - Continue naturally after greetings — don't repeat them.
-- Early on, gently suggest that sharing more constraints helps you give better suggestions — things like budget range, location (for local/experiential gifts), whether they prefer experiential gifts vs physical products, and any dietary/lifestyle preferences. Frame it as: "The more I know, the better I can curate for you!"${reminderPrompt}`
+- Early on, gently suggest sharing more constraints for better curation — budget range, location, experiential vs physical preferences.${reminderPrompt}`
 }
