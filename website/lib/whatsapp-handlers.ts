@@ -208,7 +208,14 @@ async function sendEventReminders(userId: string, phone: string): Promise<string
 
 async function getWebCTA(userId: string): Promise<string> {
   const count = await prisma.item.count({ where: { userId } })
-  // Show CTA on 3rd, 7th, 12th item, then every 10th
+  // Every 3rd item: if user has 0 circle members, nudge circle instead of web CTA
+  if (count > 0 && count % 3 === 0) {
+    const circleMemberCount = await prisma.circleMember.count({ where: { userId } })
+    if (circleMemberCount === 0) {
+      return `\n\nYou have ${count} items saved! Add someone to your Gift Circle so they know what you want: *add circle <phone> <name>*`
+    }
+  }
+  // Show web CTA on 3rd, 7th, 12th item, then every 10th
   if (count === 3 || count === 7 || count === 12 || (count > 12 && count % 10 === 0)) {
     return WEB_CTAS[count % WEB_CTAS.length]
   }
@@ -924,7 +931,12 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               },
             })
             const dateStr = new Date(eventData.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-            eventConfirmations.push(`\n\n📅 I've saved ${eventData.name} (${dateStr}) to your events!`)
+            // Check if user has 0 circle members — prompt to add
+            const circleCount = await prisma.circleMember.count({ where: { userId } })
+            const circlePrompt = circleCount === 0
+              ? `\n\nWho should I remind when it's coming up? Just share their number and name — e.g. *add circle 555-123-4567 Dad*`
+              : ''
+            eventConfirmations.push(`\n\n📅 I've saved ${eventData.name} (${dateStr}) to your events!${circlePrompt}`)
           }
         } catch {}
       }
@@ -1047,7 +1059,16 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               metadata: { itemName: ateData.itemName, eventName: eventExists.name },
             }).catch(() => {})
 
-            addToEventConfirmations.push(`✅ Added "${ateData.itemName}" to ${ateData.eventName}`)
+            // Build share link for immediate access
+            let shareLink = ''
+            const shareUser = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true } })
+            if (shareUser?.shareId && eventExists.shareUrl) {
+              shareLink = `\nView: https://giftist.ai/u/${shareUser.shareId}?event=${eventExists.shareUrl}`
+            } else if (shareUser?.shareId) {
+              shareLink = `\nView: https://giftist.ai/u/${shareUser.shareId}`
+            }
+
+            addToEventConfirmations.push(`✅ Added "${ateData.itemName}" to ${ateData.eventName}${shareLink}`)
           }
         } catch (err) {
           console.error('WhatsApp ADD_TO_EVENT error:', err)
@@ -1165,7 +1186,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
 
     const ateSection = addToEventConfirmations.length > 0
-      ? '\n\n' + addToEventConfirmations.join('\n') + '\n\nCheck the list on *giftist.ai*'
+      ? '\n\n' + addToEventConfirmations.join('\n')
       : ''
 
     // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection

@@ -295,7 +295,7 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
               <ProductCard
                 key={i}
                 product={segment.data}
-                onAdd={autoExecute ? addProductToList : undefined}
+                onAdd={addProductToList}
               />
             )
           }

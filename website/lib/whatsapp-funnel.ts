@@ -76,7 +76,7 @@ export async function sendFirstItemNudge(userId: string, phone: string, itemName
   state.firstItem = true
   await updateFunnelStage(userId, state)
 
-  const text = `Nice pick! "${itemName}" is saved to your wishlist.\n\nPro tip: Create an event (like "Mom's Birthday") and I'll help you organize gifts for it. Just say something like "Create an event for Mom's birthday on March 15"\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
+  const text = `Nice pick! "${itemName}" is saved to your wishlist.\n\nPro tip: Tell me about an upcoming event (like "Mom's birthday is March 15") and who to remind — I'll send them your wishlist when it's coming up!\n\nTry: *add circle 555-123-4567 Mom*\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
   await smartWhatsAppSend(phone, text, 'welcome_message', [itemName]).catch(() => {})
 }
 
@@ -130,10 +130,10 @@ export async function runDailyEngagement() {
         continue
       }
 
-      // Stage 5: Day 5 circle prompt (no circle members)
-      if (!state.day5CirclePrompt && daysSinceSignup >= 5 && user._count.circleMembers === 0) {
+      // Stage 5: Day 2 circle prompt (no circle members — moved up from day 5)
+      if (!state.day5CirclePrompt && daysSinceSignup >= 2 && user._count.circleMembers === 0) {
         state.day5CirclePrompt = true
-        const text = `Did you know you can build a Gift Circle? Add your close friends and family, and I'll help coordinate gift-giving for everyone.\n\nTry: *add circle 555-123-4567 Mom*\n\nYour circle members will be able to see your wishlist and contribute to gifts!\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
+        const text = `Quick reminder — adding people to your Gift Circle means they'll get notified about your events and see your wishlist. Just send me their phone number and name!\n\nTry: *add circle 555-123-4567 Mom*\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
         await smartWhatsAppSend(user.phone, text, 'day5_circle_prompt', [displayName])
         results.circlePrompts++
         await updateFunnelStage(user.id, state)

@@ -233,7 +233,7 @@ DATA MODEL:
 - The ITEMS list shows ALL user items regardless of event. The UPCOMING EVENTS list shows each event with its specific linked items.
 
 USER CONTEXT:
-- Wallet: $${(wallet?.balance ?? 0).toFixed(2)} | Items: ${items.length} | Unfunded: ${items.filter(i => !i.isPurchased && i.fundedAmount === 0).length} | Gift Circle: ${circleCount} ${circleCount === 1 ? 'person' : 'people'}${circleCount === 0 ? ' (suggest adding family/friends to their Gift Circle in Settings so they can be notified about events)' : ''}
+- Wallet: $${(wallet?.balance ?? 0).toFixed(2)} | Items: ${items.length} | Unfunded: ${items.filter(i => !i.isPurchased && i.fundedAmount === 0).length} | Gift Circle: ${circleCount} ${circleCount === 1 ? 'person' : 'people'}${circleCount === 0 ? ' (IMPORTANT: actively ask the user to add people — "Who are the important people in your life? Share their phone number and I\'ll add them to your circle so they get reminded about your events.")' : ''}
 
 ITEMS (last 30 — all items, not event-specific):
 ${itemsList || '(none)'}
@@ -305,6 +305,8 @@ GUIDELINES:
 
 PROACTIVE ENGAGEMENT:
 - When a user mentions someone they care about AND a date or occasion, ALWAYS emit an [EVENT] block immediately to save it. Include the person's name in the event name (e.g., "Pooja's Birthday"). Do NOT ask permission — save it and confirm: "Saved Pooja's Birthday on Feb 28 — I'll help you find the perfect gift when it's coming up!"
+- After creating an event with [EVENT], ALWAYS follow up by asking who should be reminded. Say: "Who should I remind about [event]? Share their phone number and name and I'll notify them when it's coming up." This is the most important step for helping users get contributions.
+- When the user's Gift Circle is empty and they have events, actively push for circle members. Frame it as: friends/family will see their wishlist and get reminded before events.
 - In early conversations, actively ask about important people and dates: "Who are the people you love gifting? Any birthdays or celebrations coming up?"
 - Ask follow-ups to map their gifting circles (partner, kids, parents, friends).
 - When learning about people AND their phone number is shared, emit [ADD_CIRCLE] to save them.
