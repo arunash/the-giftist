@@ -10,7 +10,7 @@ import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
 import { createDefaultEventsForUser } from '@/lib/default-events'
 import { logApiCall, logError } from '@/lib/api-logger'
-import { checkAndSendFunnelMessages } from '@/lib/whatsapp-funnel'
+import { checkAndSendFunnelMessages, sendFirstItemNudge } from '@/lib/whatsapp-funnel'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -207,7 +207,7 @@ async function sendEventReminders(userId: string, phone: string): Promise<string
 }
 
 async function getWebCTA(userId: string): Promise<string> {
-  const count = await prisma.item.count({ where: { userId } })
+  const count = await prisma.item.count({ where: { userId, source: { not: 'SEED' } } })
   // Every 3rd item: if user has 0 circle members, nudge circle instead of web CTA
   if (count > 0 && count % 3 === 0) {
     const circleMemberCount = await prisma.circleMember.count({ where: { userId } })
@@ -275,6 +275,8 @@ async function savePendingProduct(
     itemId: item.id,
     metadata: { itemName: pending.name, source: 'WHATSAPP' },
   }).catch(() => {})
+
+  sendFirstItemNudge(userId, phone, pending.name).catch(() => {})
 
   const priceStr = pending.price ? ` (${pending.price})` : ''
   const shareHint = `\n\nTo share your wishlist, reply *share*`
@@ -661,6 +663,8 @@ export async function handleTextMessage(
       itemId: item.id,
       metadata: { itemName: product.name, source: 'WHATSAPP' },
     }).catch(() => {})
+
+    sendFirstItemNudge(userId, phone, product.name).catch(() => {})
 
     const priceStr = product.price ? ` (${product.price})` : ''
     const shareHint = `\n\nTo share your wishlist, reply *share*`
@@ -1315,16 +1319,15 @@ export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hi ${name}!` : 'Hi there!'
   return `${greeting} Welcome to *The Giftist* — I'm your personal gift concierge.
 
-Here's what I can do:
-- Send me a *link* or *photo* of something you love — I'll save it to your wishlist
-- Tell me about an *upcoming event* (birthday, anniversary) — I'll help you plan
-- Ask me for *gift ideas* for anyone — I'll suggest the perfect thing
+Here's how it works:
+1. *Save items* — Send me a link or photo and I'll add it to your wishlist
+2. *Link to events* — Tell me about birthdays, holidays, or celebrations
+3. *Add your circle* — Share phone numbers of friends and family
+4. *They contribute* — Your circle sees your wishlist and can chip in
 
-Try it now — send me a link to something you've been eyeing, or tell me about your next gift-giving occasion!
+I've already set up events for Christmas, Mother's Day, Father's Day, and more — type *events* to see them!
 
-You can always view your giftlist, wallet, and activity at *giftist.ai*
-
-💡 *Tip:* Save my contact below so you can find me easily next time!`
+Try it now — send me a link to something you've been eyeing!`
 }
 
 export function getHelpMessage(): string {

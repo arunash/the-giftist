@@ -8,6 +8,7 @@ const anthropic = new Anthropic()
 interface FunnelState {
   welcome?: boolean
   firstItem?: boolean
+  thirdItemEventNudge?: boolean
   day1Nudge?: boolean
   day3EventPrompt?: boolean
   day5CirclePrompt?: boolean
@@ -37,7 +38,7 @@ export async function checkAndSendFunnelMessages(userId: string, phone: string) 
       name: true,
       funnelStage: true,
       createdAt: true,
-      _count: { select: { items: true, events: true, circleMembers: true } },
+      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
     },
   })
   if (!user) return
@@ -59,6 +60,14 @@ export async function checkAndSendFunnelMessages(userId: string, phone: string) 
     await updateFunnelStage(userId, state)
     // The firstItem nudge is sent from whatsapp-handlers after item save
   }
+
+  // Stage 2b: Third real item saved — nudge to link items to events
+  if (!state.thirdItemEventNudge && user._count.items >= 3) {
+    state.thirdItemEventNudge = true
+    await updateFunnelStage(userId, state)
+    const text = `You've saved ${user._count.items} items — nice taste! Want to link them to an event?\n\nType *events* to see your upcoming events, or tell me about a birthday or celebration!`
+    await smartWhatsAppSend(phone, text, 'third_item_event_nudge', [displayName, String(user._count.items)]).catch(() => {})
+  }
 }
 
 // ── Called after an item is saved via WhatsApp ──
@@ -76,7 +85,7 @@ export async function sendFirstItemNudge(userId: string, phone: string, itemName
   state.firstItem = true
   await updateFunnelStage(userId, state)
 
-  const text = `Nice pick! "${itemName}" is saved to your wishlist.\n\nPro tip: Tell me about an upcoming event (like "Mom's birthday is March 15") and who to remind — I'll send them your wishlist when it's coming up!\n\nTry: *add circle 555-123-4567 Mom*\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
+  const text = `Nice pick! "${itemName}" is saved to your wishlist.\n\nWant to link this to one of your events? I've set up Christmas, Mother's Day, Father's Day, and more. Type *events* to see what's coming up!\n\nPro tip: Add friends to your Gift Circle and they'll see your wishlist. Try: *add circle 555-123-4567 Mom*`
   await smartWhatsAppSend(phone, text, 'welcome_message', [itemName]).catch(() => {})
 }
 
@@ -99,7 +108,7 @@ export async function runDailyEngagement() {
       name: true,
       funnelStage: true,
       createdAt: true,
-      _count: { select: { items: true, events: true, circleMembers: true } },
+      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
     },
   })
 
@@ -256,7 +265,7 @@ export async function runGoldDailyEngagement() {
       interests: true,
       timezone: true,
       funnelStage: true,
-      _count: { select: { items: true, events: true, circleMembers: true } },
+      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
     },
   })
 
@@ -625,7 +634,7 @@ export async function runLifecycleNudges() {
       name: true,
       funnelStage: true,
       createdAt: true,
-      _count: { select: { items: true, events: true, circleMembers: true } },
+      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
     },
   })
 

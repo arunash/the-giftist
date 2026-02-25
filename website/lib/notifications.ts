@@ -136,19 +136,20 @@ export async function notifyWelcome(userId: string, email?: string | null, phone
       subject: 'Welcome to The Giftist!',
       html: emailWrapper(`
         <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Welcome to The Giftist!</p>
-        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">Hi ${displayName}, I'm your AI Gift Concierge. Here's what I can help you with:</p>
-        <ul style="margin: 0 0 16px; padding-left: 20px; font-size: 14px; color: #444;">
-          <li>Save gift ideas from any store</li>
-          <li>Create events and organize gifts</li>
-          <li>Get personalized gift suggestions</li>
-          <li>Share your wishlist with friends and family</li>
-        </ul>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">Hi ${displayName}, I'm your AI Gift Concierge. Here's how it works:</p>
+        <ol style="margin: 0 0 16px; padding-left: 20px; font-size: 14px; color: #444;">
+          <li><strong>Save items</strong> — Send a link or photo and I'll add it to your wishlist</li>
+          <li><strong>Link to events</strong> — Tell me about birthdays, holidays, or celebrations</li>
+          <li><strong>Add your circle</strong> — Share phone numbers of friends and family</li>
+          <li><strong>They contribute</strong> — Your circle sees your wishlist and can chip in</li>
+        </ol>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">I've already set up events for Christmas, Mother's Day, Father's Day, and more!</p>
         <a href="${BASE_URL}" style="display: inline-block; background: #111; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 13px;">Get Started</a>
       `),
     } : undefined,
     whatsapp: phone ? {
       phone,
-      text: `Hi ${displayName}! Welcome to The Giftist — I'm your AI Gift Concierge.\n\nHere's what I can do:\n- Send me any product link and I'll save it\n- Send me a photo of something you like\n- Tell me who you're shopping for and I'll suggest gifts\n- Type *help* for all commands\n\nWhat's the first gift on your mind?`,
+      text: `Hi ${displayName}! Welcome to The Giftist — I'm your personal gift concierge.\n\nHere's how it works:\n1. *Save items* — Send me a link or photo and I'll add it to your wishlist\n2. *Link to events* — Tell me about birthdays, holidays, or celebrations\n3. *Add your circle* — Share phone numbers of friends and family\n4. *They contribute* — Your circle sees your wishlist and can chip in\n\nI've already set up events for Christmas, Mother's Day, Father's Day, and more — type *events* to see them!\n\nTry it now — send me a link to something you've been eyeing!`,
       template: 'welcome_message',
       templateParams: [displayName],
     } : undefined,
@@ -156,12 +157,23 @@ export async function notifyWelcome(userId: string, email?: string | null, phone
 }
 
 export async function notifyListViewed(ownerId: string, viewerName: string) {
+  const owner = await prisma.user.findUnique({
+    where: { id: ownerId },
+    select: { phone: true, name: true },
+  })
+  const displayName = owner?.name || 'there'
   await notify({
     userId: ownerId,
     type: 'LIST_VIEWED',
     title: 'Someone viewed your wishlist',
     body: `${viewerName} just checked out your wishlist.`,
     metadata: { viewerName },
+    whatsapp: owner?.phone ? {
+      phone: owner.phone,
+      text: `${viewerName} just viewed your wishlist! Make sure it's up to date at giftist.ai`,
+      template: 'list_viewed_wa',
+      templateParams: [displayName, viewerName],
+    } : undefined,
   })
 }
 

@@ -192,7 +192,7 @@ export async function createDefaultEventsForUser(userId: string, birthDate?: Dat
               image: item.image,
               url: item.url,
               domain: item.domain,
-              source: 'MANUAL',
+              source: 'SEED',
               goalAmount: fee.goalAmount,
             },
           })
