@@ -953,3 +953,9 @@ h3 { font-size: 1rem; line-height: 1.4; }
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Chat scroll container — prevent iOS overscroll bounce */
+.chat-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}

@@ -19,8 +19,6 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const desktopScrollRef = useRef<HTMLDivElement>(null)
   const mobileScrollRef = useRef<HTMLDivElement>(null)
-  const desktopEndRef = useRef<HTMLDivElement>(null)
-  const mobileEndRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const pendingQuerySent = useRef(false)
   // Track the ID of the last assistant message created during active streaming
@@ -28,22 +26,15 @@ export default function ChatPage() {
 
   const initialScrollDone = useRef(false)
 
-  const scrollToBottom = useCallback((instant?: boolean) => {
-    const doScroll = () => {
-      const behavior = instant ? 'instant' as const : 'smooth' as const
-      // Desktop
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
       if (desktopScrollRef.current) {
         desktopScrollRef.current.scrollTop = desktopScrollRef.current.scrollHeight
       }
-      desktopEndRef.current?.scrollIntoView({ behavior })
-      // Mobile
       if (mobileScrollRef.current) {
         mobileScrollRef.current.scrollTop = mobileScrollRef.current.scrollHeight
       }
-      mobileEndRef.current?.scrollIntoView({ behavior })
-    }
-    // Double rAF ensures the browser has fully laid out new content
-    requestAnimationFrame(() => requestAnimationFrame(doScroll))
+    })
   }, [])
 
   // Load history on mount, then auto-send ?q= param if present
@@ -69,6 +60,15 @@ export default function ChatPage() {
     }
   }, [loading, searchParams, sendMessage])
 
+  // Scroll when virtual keyboard opens/closes
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () => scrollToBottom()
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [scrollToBottom])
+
   // Track the actively streaming assistant message
   useEffect(() => {
     if (streaming) {
@@ -85,12 +85,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (messages.length === 0) return
     if (!initialScrollDone.current) {
-      // First load with history — jump instantly to bottom
       initialScrollDone.current = true
-      scrollToBottom(true)
+      scrollToBottom()
     } else {
-      // Subsequent messages (streaming, new sends) — smooth scroll
-      scrollToBottom(false)
+      scrollToBottom()
     }
   }, [messages, scrollToBottom])
 
@@ -134,7 +132,7 @@ export default function ChatPage() {
         <div className="p-6 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
         </div>
-        <div ref={desktopScrollRef} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+        <div ref={desktopScrollRef} className="chat-scroll flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center">{emptyState}</div>
           ) : (
@@ -147,7 +145,7 @@ export default function ChatPage() {
               />
             ))
           )}
-          <div ref={desktopEndRef} />
+          <div />
         </div>
         {suggestionChips && (
           <div className="px-4 py-1.5 flex gap-2 overflow-x-auto flex-shrink-0">
@@ -159,15 +157,15 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Mobile: fixed to viewport, above bottom nav */}
-      <div className="lg:hidden flex fixed top-0 left-0 right-0 bottom-16 flex-col overflow-hidden bg-background z-10">
+      {/* Mobile: fixed to full viewport (bottom nav hidden on /chat) */}
+      <div className="lg:hidden flex fixed inset-0 flex-col overflow-hidden bg-background z-10" style={{ height: '100dvh' }}>
         {/* Header */}
         <div className="p-4 border-b border-border flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900">Gift Concierge</h1>
         </div>
 
         {/* Messages — flex-1 scrollable area */}
-        <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        <div ref={mobileScrollRef} className="chat-scroll flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="pt-12">{emptyState}</div>
           ) : (
@@ -180,7 +178,7 @@ export default function ChatPage() {
               />
             ))
           )}
-          <div ref={mobileEndRef} />
+          <div />
         </div>
 
         {/* Suggestions + Input — pinned to bottom of flex */}
@@ -190,7 +188,7 @@ export default function ChatPage() {
           </div>
         )}
         <div className="flex-shrink-0">
-          <ChatInput onSend={sendMessage} disabled={streaming} onFocus={() => scrollToBottom(false)} />
+          <ChatInput onSend={sendMessage} disabled={streaming} onFocus={() => setTimeout(() => scrollToBottom(), 300)} />
         </div>
       </div>
     </>
