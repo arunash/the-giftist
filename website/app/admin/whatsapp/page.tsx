@@ -15,7 +15,7 @@ interface WhatsAppMsg {
   processedAt: string | null
 }
 
-const STATUSES = ['', 'RECEIVED', 'PROCESSED', 'FAILED']
+const STATUSES = ['', 'RECEIVED', 'PROCESSED', 'SENT', 'DELIVERED', 'READ', 'FAILED']
 
 export default function AdminWhatsAppPage() {
   const [messages, setMessages] = useState<WhatsAppMsg[]>([])
@@ -54,9 +54,20 @@ export default function AdminWhatsAppPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'PROCESSED': return 'bg-green-500/20 text-green-600'
+      case 'SENT': return 'bg-blue-500/20 text-blue-600'
+      case 'DELIVERED': return 'bg-green-500/20 text-green-600'
+      case 'READ': return 'bg-green-500/20 text-green-500'
       case 'FAILED': return 'bg-red-500/20 text-red-400'
       case 'RECEIVED': return 'bg-yellow-500/20 text-yellow-400'
       default: return 'bg-gray-500/20 text-gray-400'
+    }
+  }
+
+  const typeLabel = (t: string) => {
+    switch (t) {
+      case 'OUTBOUND': return 'bg-blue-500/10 text-blue-600'
+      case 'OUTBOUND_TEMPLATE': return 'bg-purple-500/10 text-purple-600'
+      default: return 'bg-gray-500/10 text-gray-500'
     }
   }
 
@@ -110,7 +121,11 @@ export default function AdminWhatsAppPage() {
                   </span>
                 </td>
                 <td className="p-3 text-muted font-mono text-xs">{m.phone}</td>
-                <td className="p-3 text-muted">{m.type}</td>
+                <td className="p-3">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${typeLabel(m.type)}`}>
+                    {m.type}
+                  </span>
+                </td>
                 <td className="p-3 max-w-xs truncate">{m.content || '—'}</td>
                 <td className="p-3 text-red-400 max-w-xs truncate">{m.error || '—'}</td>
                 <td className="p-3 text-muted text-xs">{new Date(m.createdAt).toLocaleString()}</td>
