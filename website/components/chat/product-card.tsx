@@ -21,10 +21,13 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
   // Lazy-load image from product URL when no image provided
   useEffect(() => {
-    if (previewImage || didFetch.current || !product.url) return
+    if (previewImage || didFetch.current || (!product.url && !product.name)) return
     didFetch.current = true
     setLoadingImage(true)
-    fetch(`/api/products/preview?url=${encodeURIComponent(product.url)}`)
+    const params = new URLSearchParams()
+    if (product.url) params.set('url', product.url)
+    if (product.name) params.set('name', product.name)
+    fetch(`/api/products/preview?${params.toString()}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.image) setPreviewImage(data.image)

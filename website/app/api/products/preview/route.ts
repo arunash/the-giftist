@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractProductFromUrl } from '@/lib/extract'
+import { findProductImage } from '@/lib/product-image'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -10,30 +11,47 @@ export async function GET(request: NextRequest) {
   }
 
   const url = request.nextUrl.searchParams.get('url')
-  if (!url) {
-    return NextResponse.json({ error: 'url required' }, { status: 400 })
+  const name = request.nextUrl.searchParams.get('name')
+
+  if (!url && !name) {
+    return NextResponse.json({ error: 'url or name required' }, { status: 400 })
   }
 
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-      return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
+  let image: string | null = null
+  let productName: string | null = null
+  let price: string | null = null
+
+  // Try URL scraping first (existing flow)
+  if (url) {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
+      }
+      // Skip google search fallback URLs
+      if (parsed.hostname !== 'www.google.com') {
+        try {
+          const product = await extractProductFromUrl(url)
+          image = product.image
+          productName = product.name
+          price = product.price
+        } catch {}
+      }
+    } catch {
+      // Invalid URL — fall through to name-based search
     }
-    // Skip google search fallback URLs
-    if (parsed.hostname === 'www.google.com') {
-      return NextResponse.json({ image: null })
-    }
-  } catch {
-    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
   }
 
-  try {
-    const product = await extractProductFromUrl(url)
-    return NextResponse.json(
-      { image: product.image, name: product.name, price: product.price },
-      { headers: { 'Cache-Control': 'public, max-age=86400' } },
-    )
-  } catch {
-    return NextResponse.json({ image: null })
+  // Fallback: if URL scraping didn't produce an image and we have a product name,
+  // search Google Shopping for a thumbnail
+  if (!image && name) {
+    try {
+      image = await findProductImage(name)
+    } catch {}
   }
+
+  return NextResponse.json(
+    { image, name: productName, price },
+    { headers: { 'Cache-Control': 'public, max-age=86400' } },
+  )
 }
