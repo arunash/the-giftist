@@ -1,7 +1,16 @@
+// Existing affiliates
 const AMAZON_TAG = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG
 const WALMART_ID = process.env.NEXT_PUBLIC_WALMART_AFFILIATE_ID
 const TARGET_ID = process.env.NEXT_PUBLIC_TARGET_AFFILIATE_ID
 const ETSY_AFFILIATE_ID = process.env.NEXT_PUBLIC_ETSY_AFFILIATE_ID || '2774156'
+
+// New affiliates
+const UNCOMMON_GOODS_IMPACT_ID = process.env.NEXT_PUBLIC_UNCOMMON_GOODS_IMPACT_ID
+const BOOKSHOP_AFFILIATE_ID = process.env.NEXT_PUBLIC_BOOKSHOP_AFFILIATE_ID
+const MASTERCLASS_SHAREASALE_ID = process.env.NEXT_PUBLIC_MASTERCLASS_SHAREASALE_ID
+const CRATEJOY_IMPACT_ID = process.env.NEXT_PUBLIC_CRATEJOY_IMPACT_ID
+const FOOD52_PARTNERIZE_ID = process.env.NEXT_PUBLIC_FOOD52_PARTNERIZE_ID
+const NORDSTROM_RAKUTEN_ID = process.env.NEXT_PUBLIC_NORDSTROM_RAKUTEN_ID
 
 export function applyAffiliateTag(url: string): string {
   try {
@@ -16,7 +25,7 @@ export function applyAffiliateTag(url: string): string {
       }
     }
 
-    // Etsy (Awin affiliate link)
+    // Etsy (Awin)
     if (hostname.includes('etsy.com')) {
       if (ETSY_AFFILIATE_ID) {
         return `https://www.awin1.com/cread.php?awinmid=6220&awinaffid=${ETSY_AFFILIATE_ID}&ued=${encodeURIComponent(url)}`
@@ -31,10 +40,53 @@ export function applyAffiliateTag(url: string): string {
       }
     }
 
-    // Target (Impact Radius)
+    // Target (Impact)
     if (hostname.includes('target.com')) {
       if (TARGET_ID) {
         return `https://goto.target.com/c/${TARGET_ID}/2?u=${encodeURIComponent(url)}`
+      }
+    }
+
+    // Uncommon Goods (Impact)
+    if (hostname.includes('uncommongoods.com')) {
+      if (UNCOMMON_GOODS_IMPACT_ID) {
+        return `https://uncommongoods.sjv.io/c/${UNCOMMON_GOODS_IMPACT_ID}/2?u=${encodeURIComponent(url)}`
+      }
+    }
+
+    // Bookshop.org (direct affiliate)
+    if (hostname.includes('bookshop.org')) {
+      if (BOOKSHOP_AFFILIATE_ID) {
+        parsed.searchParams.set('a_aid', BOOKSHOP_AFFILIATE_ID)
+        return parsed.toString()
+      }
+    }
+
+    // MasterClass (ShareASale / Awin)
+    if (hostname.includes('masterclass.com')) {
+      if (MASTERCLASS_SHAREASALE_ID) {
+        return `https://shareasale.com/r.cfm?b=999&u=${MASTERCLASS_SHAREASALE_ID}&m=62509&urllink=${encodeURIComponent(url)}`
+      }
+    }
+
+    // Cratejoy (Impact)
+    if (hostname.includes('cratejoy.com')) {
+      if (CRATEJOY_IMPACT_ID) {
+        return `https://cratejoy.sjv.io/c/${CRATEJOY_IMPACT_ID}/2?u=${encodeURIComponent(url)}`
+      }
+    }
+
+    // Food52 (Partnerize)
+    if (hostname.includes('food52.com')) {
+      if (FOOD52_PARTNERIZE_ID) {
+        return `https://food52.prf.hn/click/camref:${FOOD52_PARTNERIZE_ID}/destination:${encodeURIComponent(url)}`
+      }
+    }
+
+    // Nordstrom (Rakuten)
+    if (hostname.includes('nordstrom.com')) {
+      if (NORDSTROM_RAKUTEN_ID) {
+        return `https://click.linksynergy.com/deeplink?id=${NORDSTROM_RAKUTEN_ID}&mid=1237&murl=${encodeURIComponent(url)}`
       }
     }
   } catch {
