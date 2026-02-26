@@ -46,12 +46,22 @@ export async function GET(request: NextRequest) {
       recentNames ? `Recent wishlist items: ${recentNames}` : '',
     ].filter(Boolean).join('\n')
 
+    // Build exclusion list from user's existing items to avoid suggesting duplicates
+    const existingNames = recentItems.map((i) => i.name).slice(0, 10)
+    const excludeClause = existingNames.length > 0
+      ? `\n\nDo NOT suggest any of these products the user already has: ${existingNames.join(', ')}`
+      : ''
+
     const response = await getClient().responses.create({
       model: 'gpt-4o',
       tools: [{ type: 'web_search_preview' as any }],
       input: `Find 8 trending products that would make great gifts or wishlist items. ${profileContext ? `User profile:\n${profileContext}\n\n` : ''}
 
-Search the web for real, currently available products from major retailers (Amazon, Best Buy, Target, Nordstrom, Sephora, etc.). Include a diverse mix of categories.
+Search the web for real, currently available products. Prioritize curated and specialty retailers: Uncommon Goods, Etsy (specific shops), Food52, MoMA Design Store, Bookshop.org, niche DTC brands, Nordstrom, Sephora. Amazon is OK only for specific well-known branded products (e.g. Kindle, Yeti) — NEVER for generic commodity items.
+
+NEVER suggest generic filler: novelty mugs, basic phone cases, random candle sets, bulk supplies, or anything that feels like a search-result dump. Every pick should feel curated and intentional — the kind of thing a friend with great taste would recommend.
+
+Include a diverse mix of categories.${excludeClause}
 
 For EACH product provide:
 - name: concise product name (brand + model)
