@@ -55,6 +55,7 @@ model User {
   sessions                      Session[]
   subscription                  Subscription?
   wallet                        Wallet?
+  feedbacks                     Feedback[]
 }
 
 model Account {
@@ -133,20 +134,20 @@ model PriceHistory {
 }
 
 model Event {
-  id               String         @id @default(cuid())
+  id               String                @id @default(cuid())
   userId           String
   name             String
   type             String
   date             DateTime
   description      String?
-  shareUrl         String?        @unique @default(cuid())
-  isPublic         Boolean        @default(true)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  fundedAmount     Float          @default(0)
+  shareUrl         String?               @unique @default(cuid())
+  isPublic         Boolean               @default(true)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  fundedAmount     Float                 @default(0)
   circleNotifiedAt DateTime?
   contributions    Contribution[]
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   items            EventItem[]
   giftLists        GiftList[]
   circleReminders  CircleEventReminder[]
@@ -352,7 +353,7 @@ model CircleEventReminder {
   id      String   @id @default(cuid())
   eventId String
   phone   String
-  cadence String   // "14d", "7d", "3d", "1d"
+  cadence String // "14d", "7d", "3d", "1d"
   sentAt  DateTime @default(now())
   event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
@@ -373,5 +374,33 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+  @@index([createdAt])
+}
+
+model ProductClick {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  productName String
+  targetUrl   String
+  userId      String?
+  source      String   @default("WEB") // WEB, WHATSAPP, CHAT
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  lastClicked DateTime?
+
+  @@index([slug])
+  @@index([createdAt])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  rating    String   // "positive", "negative"
+  comment   String?
+  source    String   @default("WEB") // WEB or WHATSAPP
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@index([createdAt])
 }

@@ -63,6 +63,12 @@ export async function GET() {
     itemsBySourceWeek,
     errorsWeek,
     errorsBySourceToday,
+    feedbackPositive,
+    feedbackNegative,
+    recentFeedback,
+    totalClicks,
+    totalLinks,
+    topClicked,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -72,17 +78,18 @@ export async function GET() {
     prisma.user.count({ where: { phone: { not: null }, email: { not: null } } }),
     prisma.user.count({ where: { isActive: true } }),
     prisma.subscription.count({ where: { status: 'ACTIVE' } }),
-    prisma.item.count(),
-    prisma.item.count({ where: { addedAt: { gte: todayStart } } }),
-    prisma.item.count({ where: { addedAt: { gte: weekAgo } } }),
+    prisma.item.count({ where: { source: { not: 'SEED' } } }),
+    prisma.item.count({ where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } } }),
+    prisma.item.count({ where: { addedAt: { gte: weekAgo }, source: { not: 'SEED' } } }),
     prisma.item.groupBy({
       by: ['source'],
       _count: { id: true },
-      where: { addedAt: { gte: todayStart } },
+      where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } },
     }),
     prisma.item.groupBy({
       by: ['source'],
       _count: { id: true },
+      where: { source: { not: 'SEED' } },
     }),
     prisma.whatsAppMessage.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.whatsAppMessage.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -150,7 +157,7 @@ export async function GET() {
         phone: true,
         email: true,
         createdAt: true,
-        _count: { select: { items: true } },
+        _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
       },
     }),
     prisma.activityEvent.findMany({
@@ -162,7 +169,7 @@ export async function GET() {
       },
     }),
     prisma.item.findMany({
-      where: { addedAt: { gte: todayStart } },
+      where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } },
       orderBy: { addedAt: 'desc' },
       take: 20,
       select: {
@@ -192,10 +199,18 @@ export async function GET() {
     prisma.whatsAppMessage.count({ where: { type: { startsWith: 'OUTBOUND' } } }),
     prisma.whatsAppMessage.groupBy({ by: ['phone'], where: { createdAt: { gte: todayStart } } }),
     // Items breakdown by source (week)
-    prisma.item.groupBy({ by: ['source'], _count: { id: true }, where: { addedAt: { gte: weekAgo } } }),
+    prisma.item.groupBy({ by: ['source'], _count: { id: true }, where: { addedAt: { gte: weekAgo }, source: { not: 'SEED' } } }),
     // Errors
     prisma.errorLog.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.errorLog.groupBy({ by: ['source'], _count: { id: true }, where: { createdAt: { gte: todayStart } } }),
+    // Feedback
+    prisma.feedback.count({ where: { rating: 'positive' } }),
+    prisma.feedback.count({ where: { rating: 'negative' } }),
+    prisma.feedback.findMany({ orderBy: { createdAt: 'desc' }, take: 20, include: { user: { select: { name: true, phone: true } } } }),
+    // Product clicks
+    prisma.productClick.aggregate({ _sum: { clicks: true } }),
+    prisma.productClick.count(),
+    prisma.productClick.findMany({ where: { clicks: { gt: 0 } }, orderBy: { clicks: 'desc' }, take: 10, select: { productName: true, clicks: true, source: true, targetUrl: true } }),
   ])
 
   // Build costs map
@@ -333,5 +348,15 @@ export async function GET() {
     recentUsers,
     recentActivity,
     itemsAddedToday,
+    feedback: {
+      positive: feedbackPositive,
+      negative: feedbackNegative,
+      recent: recentFeedback,
+    },
+    productClicks: {
+      totalClicks: totalClicks._sum.clicks || 0,
+      totalLinks,
+      topClicked,
+    },
   })
 }

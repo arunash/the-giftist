@@ -47,6 +47,11 @@ interface Stats {
   recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; _count: { items: number } }>
   recentActivity: Array<{ id: string; type: string; createdAt: string; user: { name: string | null }; item: { name: string } | null; metadata: string | null }>
   itemsAddedToday: Array<{ id: string; name: string; source: string; price: string | null; priceValue: number | null; addedAt: string; user: { name: string | null } }>
+  feedback: {
+    positive: number
+    negative: number
+    recent: Array<{ id: string; rating: string; comment: string | null; source: string; createdAt: string; user: { name: string | null; phone: string | null } }>
+  }
 }
 
 function KpiCard({ icon: Icon, label, value, sub, children }: { icon: any; label: string; value: string | number; sub?: string; children?: React.ReactNode }) {
@@ -352,6 +357,38 @@ export default function AdminDashboard() {
           ))}
           {stats.recentActivity.length === 0 && (
             <p className="p-3 text-sm text-muted text-center">No recent activity.</p>
+          )}
+        </div>
+      </div>
+
+      {/* User Feedback */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">
+          User Feedback
+          <span className="text-sm font-normal text-muted ml-2">
+            {stats.feedback.positive + stats.feedback.negative} total
+            {stats.feedback.positive > 0 && <span className="text-green-500 ml-2">+{stats.feedback.positive}</span>}
+            {stats.feedback.negative > 0 && <span className="text-red-400 ml-2">-{stats.feedback.negative}</span>}
+          </span>
+        </h2>
+        <div className="bg-surface rounded-xl border border-border divide-y divide-border/50">
+          {stats.feedback.recent.map((f) => (
+            <div key={f.id} className="p-3 flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className={`mt-0.5 text-lg ${f.rating === 'positive' ? '' : ''}`}>
+                  {f.rating === 'positive' ? '👍' : '👎'}
+                </span>
+                <div className="min-w-0">
+                  <span className="font-medium text-sm">{f.user.name || f.user.phone || 'Unknown'}</span>
+                  <span className="text-xs text-muted ml-2">{f.source}</span>
+                  {f.comment && <p className="text-sm text-muted mt-0.5">{f.comment}</p>}
+                </div>
+              </div>
+              <span className="text-xs text-muted whitespace-nowrap">{new Date(f.createdAt).toLocaleString()}</span>
+            </div>
+          ))}
+          {stats.feedback.recent.length === 0 && (
+            <p className="p-3 text-sm text-muted text-center">No feedback collected yet.</p>
           )}
         </div>
       </div>

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { parseChatContent, type EventData, type AddToEventData, type AddCircleData, type RemoveCircleData, type SendRemindersData } from '@/lib/parse-chat-content'
+import { parseChatContent, type EventData, type AddToEventData, type AddCircleData, type RemoveCircleData, type SendRemindersData, type FeedbackData } from '@/lib/parse-chat-content'
 import { normalizePhone, sendTextMessage } from '@/lib/whatsapp'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
@@ -298,6 +298,22 @@ async function processStructuredBlocks(userId: string, content: string) {
         }
       } catch (err) {
         console.error('Web chat REMOVE_CIRCLE error:', err)
+      }
+    }
+
+    if (seg.type === 'feedback') {
+      const data = seg.data as FeedbackData
+      try {
+        await prisma.feedback.create({
+          data: {
+            userId,
+            rating: data.rating,
+            comment: data.comment || null,
+            source: 'WEB',
+          },
+        })
+      } catch (err) {
+        console.error('Web chat FEEDBACK save error:', err)
       }
     }
 

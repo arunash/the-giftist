@@ -36,6 +36,11 @@ export interface ShareEventData {
   eventName: string
 }
 
+export interface FeedbackData {
+  rating: string // "positive" or "negative"
+  comment?: string
+}
+
 export type ChatSegment =
   | { type: 'text'; content: string }
   | { type: 'product'; data: ProductData }
@@ -46,6 +51,7 @@ export type ChatSegment =
   | { type: 'remove_circle'; data: RemoveCircleData }
   | { type: 'send_reminders'; data: SendRemindersData }
   | { type: 'share_event'; data: ShareEventData }
+  | { type: 'feedback'; data: FeedbackData }
 
 export interface ProductData {
   name: string
@@ -63,6 +69,7 @@ const ADD_CIRCLE_REGEX = /\[ADD_CIRCLE\]([\s\S]*?)\[\/ADD_CIRCLE\]/g
 const REMOVE_CIRCLE_REGEX = /\[REMOVE_CIRCLE\]([\s\S]*?)\[\/REMOVE_CIRCLE\]/g
 const SEND_REMINDERS_REGEX = /\[SEND_REMINDERS\]([\s\S]*?)\[\/SEND_REMINDERS\]/g
 const SHARE_EVENT_REGEX = /\[SHARE_EVENT\]([\s\S]*?)\[\/SHARE_EVENT\]/g
+const FEEDBACK_REGEX = /\[FEEDBACK\]([\s\S]*?)\[\/FEEDBACK\]/g
 
 export function parseChatContent(content: string): ChatSegment[] {
   const segments: ChatSegment[] = []
@@ -153,6 +160,16 @@ export function parseChatContent(content: string): ChatSegment[] {
     })
   }
 
+  const feedbackRegex = new RegExp(FEEDBACK_REGEX.source, 'g')
+  while ((match = feedbackRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'feedback',
+      raw: match[1],
+    })
+  }
+
   // Sort by position
   blocks.sort((a, b) => a.start - b.start)
 
@@ -181,6 +198,8 @@ export function parseChatContent(content: string): ChatSegment[] {
         segments.push({ type: 'send_reminders', data: parsed as SendRemindersData })
       } else if (block.type === 'share_event') {
         segments.push({ type: 'share_event', data: parsed as ShareEventData })
+      } else if (block.type === 'feedback') {
+        segments.push({ type: 'feedback', data: parsed as FeedbackData })
       } else {
         segments.push({ type: 'preferences', data: parsed })
       }
@@ -213,6 +232,7 @@ export function stripSpecialBlocks(content: string): string {
     .replace(REMOVE_CIRCLE_REGEX, '')
     .replace(SEND_REMINDERS_REGEX, '')
     .replace(SHARE_EVENT_REGEX, '')
+    .replace(FEEDBACK_REGEX, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

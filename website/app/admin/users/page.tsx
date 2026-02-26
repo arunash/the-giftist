@@ -11,7 +11,22 @@ interface User {
   phone: string | null
   image: string | null
   createdAt: string
+  lastActiveAt: string | null
+  lastActiveSource: 'web' | 'whatsapp' | null
   _count: { items: number; contributions: number; chatMessages: number }
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
 }
 
 export default function AdminUsersPage() {
@@ -82,14 +97,15 @@ export default function AdminUsersPage() {
               <th className="text-left p-3 font-medium">Items</th>
               <th className="text-left p-3 font-medium">Contributions</th>
               <th className="text-left p-3 font-medium">Messages</th>
+              <th className="text-left p-3 font-medium">Last Active</th>
               <th className="text-left p-3 font-medium">Joined</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-muted">Loading...</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-muted">Loading...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={7} className="p-8 text-center text-muted">No users found.</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-muted">No users found.</td></tr>
             ) : users.map((u) => (
               <tr key={u.id} onClick={() => router.push(`/admin/users/${u.id}`)} className="border-b border-border/50 hover:bg-surface-hover cursor-pointer">
                 <td className="p-3 font-medium">{u.name || '—'}</td>
@@ -98,6 +114,16 @@ export default function AdminUsersPage() {
                 <td className="p-3">{u._count.items}</td>
                 <td className="p-3">{u._count.contributions}</td>
                 <td className="p-3">{u._count.chatMessages}</td>
+                <td className="p-3">
+                  {u.lastActiveAt ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className={`inline-block w-2 h-2 rounded-full ${u.lastActiveSource === 'whatsapp' ? 'bg-green-500' : 'bg-blue-500'}`} title={u.lastActiveSource === 'whatsapp' ? 'WhatsApp' : 'Web'} />
+                      <span className="text-muted">{timeAgo(u.lastActiveAt)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
                 <td className="p-3 text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
