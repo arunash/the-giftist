@@ -2,11 +2,12 @@
 const AMAZON_TAG = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG
 const WALMART_ID = process.env.NEXT_PUBLIC_WALMART_AFFILIATE_ID
 const TARGET_ID = process.env.NEXT_PUBLIC_TARGET_AFFILIATE_ID
-const ETSY_AFFILIATE_ID = process.env.NEXT_PUBLIC_ETSY_AFFILIATE_ID || '2774156'
+
+// Awin publisher ID (shared across Etsy, Bookshop.org, and any future Awin merchants)
+const AWIN_PUBLISHER_ID = process.env.NEXT_PUBLIC_AWIN_PUBLISHER_ID || '2774156'
 
 // New affiliates
 const UNCOMMON_GOODS_IMPACT_ID = process.env.NEXT_PUBLIC_UNCOMMON_GOODS_IMPACT_ID
-const BOOKSHOP_AFFILIATE_ID = process.env.NEXT_PUBLIC_BOOKSHOP_AFFILIATE_ID
 const MASTERCLASS_SHAREASALE_ID = process.env.NEXT_PUBLIC_MASTERCLASS_SHAREASALE_ID
 const CRATEJOY_IMPACT_ID = process.env.NEXT_PUBLIC_CRATEJOY_IMPACT_ID
 const FOOD52_PARTNERIZE_ID = process.env.NEXT_PUBLIC_FOOD52_PARTNERIZE_ID
@@ -25,10 +26,10 @@ export function applyAffiliateTag(url: string): string {
       }
     }
 
-    // Etsy (Awin)
+    // Etsy (Awin — merchant 6220)
     if (hostname.includes('etsy.com')) {
-      if (ETSY_AFFILIATE_ID) {
-        return `https://www.awin1.com/cread.php?awinmid=6220&awinaffid=${ETSY_AFFILIATE_ID}&ued=${encodeURIComponent(url)}`
+      if (AWIN_PUBLISHER_ID) {
+        return `https://www.awin1.com/cread.php?awinmid=6220&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`
       }
     }
 
@@ -54,11 +55,10 @@ export function applyAffiliateTag(url: string): string {
       }
     }
 
-    // Bookshop.org (direct affiliate)
+    // Bookshop.org (Awin — merchant 92005)
     if (hostname.includes('bookshop.org')) {
-      if (BOOKSHOP_AFFILIATE_ID) {
-        parsed.searchParams.set('a_aid', BOOKSHOP_AFFILIATE_ID)
-        return parsed.toString()
+      if (AWIN_PUBLISHER_ID) {
+        return `https://www.awin1.com/cread.php?awinmid=92005&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`
       }
     }
 
