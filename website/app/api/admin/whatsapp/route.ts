@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status') || ''
   const phone = searchParams.get('phone') || ''
 
-  const where: any = {}
+  const where: any = { phone: { not: '15550000000' } }
   if (status) where.status = status
-  if (phone) where.phone = { contains: phone }
+  if (phone) where.phone = { contains: phone, not: '15550000000' }
 
   const [messages, total] = await Promise.all([
     prisma.whatsAppMessage.findMany({

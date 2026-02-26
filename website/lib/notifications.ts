@@ -28,15 +28,51 @@ export function emailWrapper(body: string): string {
   `
 }
 
-// ── Smart WhatsApp Send (24h window optimization) ──
+// ── Messaging time window ──
+// Proactive messages only during these windows (user's local time):
+// Weekdays: 12pm-1pm and 5pm-10pm
+// Saturday: all day
+// Sunday: all day
+
+function isWithinMessagingWindow(timezone?: string | null): boolean {
+  const tz = timezone || 'America/New_York' // default to ET
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: 'numeric',
+    hour12: false,
+    weekday: 'short',
+  })
+  const parts = formatter.formatToParts(now)
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+  const weekday = parts.find(p => p.type === 'weekday')?.value || ''
+
+  // Weekend: all day is fine
+  if (weekday === 'Sat' || weekday === 'Sun') return true
+
+  // Weekday windows: 12-1pm or 5-10pm
+  if (hour === 12) return true // 12pm-1pm
+  if (hour >= 17 && hour < 22) return true // 5pm-10pm
+
+  return false
+}
+
+// ── Smart WhatsApp Send (24h window optimization + time gating) ──
 
 export async function smartWhatsAppSend(
   phone: string,
   textBody: string,
   templateName: string,
-  templateParams: string[]
+  templateParams: string[],
+  opts?: { timezone?: string | null; skipTimeCheck?: boolean }
 ): Promise<void> {
   if (!phone) return
+
+  // Check messaging time window (skip for transactional/reply messages)
+  if (!opts?.skipTimeCheck && !isWithinMessagingWindow(opts?.timezone)) {
+    console.log(`[Notify] Skipping message to ${phone} — outside messaging window`)
+    return
+  }
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const recentInbound = await prisma.whatsAppMessage.findFirst({
@@ -110,12 +146,14 @@ export async function notify(opts: NotifyOptions): Promise<void> {
   }
 
   // 3. Send WhatsApp (fire-and-forget)
+  // Transactional notifications (contributions, purchases, etc.) skip time window check
   if (opts.whatsapp) {
     smartWhatsAppSend(
       opts.whatsapp.phone,
       opts.whatsapp.text,
       opts.whatsapp.template,
-      opts.whatsapp.templateParams
+      opts.whatsapp.templateParams,
+      { skipTimeCheck: true }
     ).catch((err) =>
       console.error(`[Notify] WhatsApp failed for ${opts.type}:`, err)
     )
