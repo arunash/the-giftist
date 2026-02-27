@@ -11,6 +11,11 @@ const PRICING: Record<string, { input: number; output: number }> = {
   'gpt-5.2': { input: 2.5, output: 10 },
 }
 
+// Per-call surcharges for tool use (e.g. web search costs on top of tokens)
+const TOOL_SURCHARGE: Record<string, number> = {
+  '/responses': 0.002, // OpenAI web_search_preview tool cost per call
+}
+
 // Fixed costs
 const FIXED_COSTS: Record<string, number> = {
   'twilio-verify': 0.05,
@@ -20,12 +25,13 @@ const FIXED_COSTS: Record<string, number> = {
 
 function estimateCost(params: {
   provider: string
+  endpoint?: string
   model?: string | null
   inputTokens?: number | null
   outputTokens?: number | null
   amount?: number | null
 }): number {
-  const { provider, model, inputTokens, outputTokens, amount } = params
+  const { provider, endpoint, model, inputTokens, outputTokens, amount } = params
 
   if (provider === 'STRIPE' && amount) {
     return amount * 0.029 + 0.30
@@ -43,14 +49,21 @@ function estimateCost(params: {
     return FIXED_COSTS['paypal-payout']
   }
 
+  let cost = 0
+
   if (model && PRICING[model]) {
     const p = PRICING[model]
     const inputCost = ((inputTokens || 0) / 1_000_000) * p.input
     const outputCost = ((outputTokens || 0) / 1_000_000) * p.output
-    return inputCost + outputCost
+    cost = inputCost + outputCost
   }
 
-  return 0
+  // Add per-call surcharge for tool use (e.g. OpenAI web_search_preview)
+  if (endpoint && TOOL_SURCHARGE[endpoint]) {
+    cost += TOOL_SURCHARGE[endpoint]
+  }
+
+  return cost
 }
 
 export async function logApiCall(params: {
