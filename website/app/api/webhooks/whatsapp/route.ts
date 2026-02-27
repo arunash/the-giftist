@@ -57,7 +57,33 @@ export async function POST(request: NextRequest) {
     const changes = entry?.changes?.[0]
     const value = changes?.value
 
-    // Skip delivery status updates
+    // Track delivery status updates (delivered, read, failed)
+    if (value?.statuses?.length > 0) {
+      for (const s of value.statuses) {
+        const waMessageId = s.id
+        const status = s.status // 'delivered' | 'read' | 'failed'
+        if (waMessageId && status) {
+          prisma.whatsAppMessage.updateMany({
+            where: { waMessageId },
+            data: { status: status.toUpperCase() },
+          }).catch(() => {})
+        }
+        // Log failures for debugging
+        if (status === 'failed' && s.errors?.length > 0) {
+          const err = s.errors[0]
+          logError({
+            source: 'WHATSAPP_DELIVERY',
+            message: `Message ${waMessageId} failed: ${err.code} ${err.title}`,
+            metadata: { phone: s.recipient_id, error: err },
+          }).catch(() => {})
+        }
+      }
+      if (!value?.messages || value.messages.length === 0) {
+        return NextResponse.json({ status: 'ok' })
+      }
+    }
+
+    // Skip if no messages to process
     if (!value?.messages || value.messages.length === 0) {
       return NextResponse.json({ status: 'ok' })
     }

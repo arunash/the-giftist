@@ -76,7 +76,11 @@ export async function smartWhatsAppSend(
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const recentInbound = await prisma.whatsAppMessage.findFirst({
-    where: { phone, createdAt: { gte: cutoff } },
+    where: {
+      phone,
+      createdAt: { gte: cutoff },
+      type: { notIn: ['OUTBOUND', 'OUTBOUND_TEMPLATE'] },
+    },
     orderBy: { createdAt: 'desc' },
   })
 
