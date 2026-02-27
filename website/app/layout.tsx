@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+import { CookieConsent } from '@/components/ui/cookie-consent'
 
 const dmSans = DM_Sans({ subsets: ['latin'] })
 
@@ -63,7 +64,7 @@ export default function RootLayout({
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-841LSWCK86" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-841LSWCK86');`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-841LSWCK86');if(localStorage.getItem('cookie-consent')==='accepted'){gtag('consent','update',{analytics_storage:'granted'});}`,
           }}
         />
         <script
@@ -73,6 +74,7 @@ export default function RootLayout({
       </head>
       <body className={dmSans.className}>
         <Providers>{children}</Providers>
+        <CookieConsent />
       </body>
     </html>
   )
