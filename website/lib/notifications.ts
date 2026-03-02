@@ -1,6 +1,7 @@
 import { prisma } from './db'
 import { sendEmail } from './email'
 import { sendTextMessage, sendTemplateMessage } from './whatsapp'
+import { sendSms } from './sms'
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://giftist.ai'
 const LOGO_URL = `${BASE_URL}/logo-light.png`
@@ -85,8 +86,16 @@ export async function smartWhatsAppSend(
   })
 
   if (recentInbound) {
+    // User messaged within 24h — freeform text works
     await sendTextMessage(phone, textBody)
+  } else if (phone.startsWith('1') && phone.length === 11) {
+    // US number (+1) outside 24h window — marketing templates blocked since Apr 2025
+    // Fall back to SMS with a wa.me link to bring them back to WhatsApp
+    const waLink = `https://wa.me/15014438478`
+    const smsBody = `${textBody}\n\nReply on WhatsApp: ${waLink}`
+    await sendSms(phone, smsBody)
   } else {
+    // Non-US number — WhatsApp marketing templates still work
     await sendTemplateMessage(phone, templateName, templateParams)
   }
 }

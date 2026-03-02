@@ -19,6 +19,7 @@ const TOOL_SURCHARGE: Record<string, number> = {
 // Fixed costs
 const FIXED_COSTS: Record<string, number> = {
   'twilio-verify': 0.05,
+  'twilio-sms': 0.0079,
   'whatsapp-message': 0.005,
   'paypal-payout': 0.25,
 }
@@ -42,7 +43,7 @@ function estimateCost(params: {
   }
 
   if (provider === 'TWILIO') {
-    return FIXED_COSTS['twilio-verify']
+    return endpoint === 'messages/sms' ? FIXED_COSTS['twilio-sms'] : FIXED_COSTS['twilio-verify']
   }
 
   if (provider === 'PAYPAL') {
