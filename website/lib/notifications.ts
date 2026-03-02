@@ -92,7 +92,7 @@ export async function smartWhatsAppSend(
     // US number (+1) outside 24h window — marketing templates blocked since Apr 2025
     // Fall back to SMS with a wa.me link to bring them back to WhatsApp
     const waLink = `https://wa.me/15014438478`
-    const smsBody = `${textBody}\n\nReply on WhatsApp: ${waLink}`
+    const smsBody = `${textBody}\n\nReply on WhatsApp: ${waLink}\n\nReply STOP to opt out`
     await sendSms(phone, smsBody)
   } else {
     // Non-US number — WhatsApp marketing templates still work
