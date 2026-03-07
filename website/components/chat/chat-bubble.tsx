@@ -260,6 +260,20 @@ function PreferencesConfirmation({ data, autoExecute }: { data: Record<string, a
   )
 }
 
+function ProductCarousel({ products, onAdd }: { products: ProductData[]; onAdd: (p: ProductData) => void }) {
+  return (
+    <div className="my-2 -mx-1 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 px-1 pb-1" style={{ minWidth: 'min-content' }}>
+        {products.map((product, i) => (
+          <div key={i} className="w-56 flex-shrink-0">
+            <ProductCard product={product} onAdd={onAdd} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function ChatBubble({ role, content, autoExecute = false }: ChatBubbleProps) {
   const isUser = role === 'USER'
 
@@ -276,10 +290,39 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
   // Parse assistant messages for product cards and preference blocks
   const segments = parseChatContent(content)
 
+  // Group consecutive product segments for carousel rendering
+  type GroupedSegment = { type: 'products'; products: ProductData[] } | Exclude<(typeof segments)[number], { type: 'product' }>
+  const grouped: GroupedSegment[] = []
+  let pendingProducts: ProductData[] = []
+
+  const flushProducts = () => {
+    if (pendingProducts.length > 0) {
+      grouped.push({ type: 'products' as const, products: [...pendingProducts] })
+      pendingProducts = []
+    }
+  }
+
+  for (const segment of segments) {
+    if (segment.type === 'product') {
+      pendingProducts.push(segment.data)
+    } else {
+      flushProducts()
+      grouped.push(segment)
+    }
+  }
+  flushProducts()
+
   return (
     <div className="flex justify-start">
       <div className="max-w-[80%]">
-        {segments.map((segment, i) => {
+        {grouped.map((segment, i) => {
+          if (segment.type === 'products') {
+            const products = segment.products
+            if (products.length >= 2) {
+              return <ProductCarousel key={i} products={products} onAdd={addProductToList} />
+            }
+            return <ProductCard key={i} product={products[0]} onAdd={addProductToList} />
+          }
           if (segment.type === 'text') {
             return (
               <div
@@ -288,15 +331,6 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
               >
                 {segment.content}
               </div>
-            )
-          }
-          if (segment.type === 'product') {
-            return (
-              <ProductCard
-                key={i}
-                product={segment.data}
-                onAdd={addProductToList}
-              />
             )
           }
           if (segment.type === 'preferences') {

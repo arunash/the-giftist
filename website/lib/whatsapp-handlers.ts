@@ -4,13 +4,14 @@ import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
 import { downloadMedia, sendTextMessage, sendImageMessage, normalizePhone } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
+import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData, type FeedbackData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
 import { createDefaultEventsForUser } from '@/lib/default-events'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { checkAndSendFunnelMessages, sendFirstItemNudge } from '@/lib/whatsapp-funnel'
+import { createTrackedLink } from '@/lib/product-link'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -1172,17 +1173,111 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           console.error('WhatsApp SHARE_EVENT error:', err)
         }
       }
+
+      if (seg.type === 'feedback') {
+        const data = seg.data as FeedbackData
+        try {
+          await prisma.feedback.create({
+            data: {
+              userId,
+              rating: data.rating,
+              comment: data.comment || null,
+              source: 'WHATSAPP',
+            },
+          })
+        } catch (err) {
+          console.error('WhatsApp FEEDBACK save error:', err)
+        }
+      }
     }
 
-    // Extract product blocks and format as a WhatsApp-friendly list before stripping
+    // Extract product blocks, create tracked links, and auto-save to wishlist
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
+    let autoSavedCount = 0
     if (productSegments.length > 0) {
-      const lines = productSegments.map((seg, i) => {
-        const p = seg.data as import('@/lib/parse-chat-content').ProductData
+      const lines: string[] = []
+      for (let i = 0; i < productSegments.length; i++) {
+        const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
         const price = p.price ? ` — ${p.price}` : ''
-        return `${i + 1}. *${p.name}*${price}`
-      })
+        let linkLine = ''
+
+        // Create tracked link if product has a URL
+        if (p.url && !p.url.includes('google.com/search')) {
+          try {
+            const trackedUrl = await createTrackedLink({
+              productName: p.name,
+              targetUrl: p.url,
+              userId,
+              source: 'WHATSAPP',
+            })
+            linkLine = `\n${trackedUrl}`
+          } catch {}
+        }
+
+        lines.push(`${i + 1}. *${p.name}*${price}${linkLine}`)
+
+        // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
+        if (!p.id && p.name) {
+          try {
+            const existingItem = await prisma.item.findFirst({
+              where: {
+                userId,
+                OR: [
+                  ...(p.url ? [{ url: p.url }] : []),
+                  { name: { equals: p.name, mode: 'insensitive' as const } },
+                ],
+              },
+            })
+            if (!existingItem) {
+              let priceValue: number | null = null
+              if (p.price) {
+                const match = p.price.replace(/,/g, '').match(/[\d.]+/)
+                if (match) priceValue = parseFloat(match[0])
+              }
+
+              const feeCalc = calculateGoalAmount(priceValue)
+              const newItem = await prisma.item.create({
+                data: {
+                  userId,
+                  name: p.name,
+                  price: p.price || null,
+                  priceValue,
+                  url: p.url || `https://www.google.com/search?q=${encodeURIComponent(p.name)}`,
+                  domain: p.url ? (() => { try { return new URL(p.url).hostname } catch { return 'unknown' } })() : 'google.com',
+                  source: 'WHATSAPP_AI',
+                  goalAmount: feeCalc.goalAmount,
+                },
+              })
+
+              // Add to user's default gift list
+              const giftList = await prisma.giftList.findFirst({
+                where: { userId, name: 'WhatsApp Saves' },
+              })
+              if (giftList) {
+                await prisma.giftListItem.create({
+                  data: { listId: giftList.id, itemId: newItem.id, addedById: userId },
+                })
+              }
+
+              // Enrich with real image in background
+              enrichItem(newItem.id, p.name).catch(() => {})
+
+              createActivity({
+                userId,
+                type: 'ITEM_ADDED',
+                visibility: 'PUBLIC',
+                itemId: newItem.id,
+                metadata: { itemName: p.name, source: 'WHATSAPP_AI' },
+              }).catch(() => {})
+
+              autoSavedCount++
+            }
+          } catch (err) {
+            console.error('WhatsApp auto-save product error:', err)
+          }
+        }
+      }
       productList = lines.join('\n') + '\n\n'
     }
 
@@ -1193,16 +1288,21 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       ? '\n\n' + addToEventConfirmations.join('\n')
       : ''
 
-    // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection
+    // Auto-save confirmation
+    const autoSaveNote = autoSavedCount > 0
+      ? `\n\nI've added ${autoSavedCount} item${autoSavedCount > 1 ? 's' : ''} to your wishlist! View at *giftist.ai*`
+      : ''
+
+    // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection or autoSaveNote
     let chatWebCta = ''
-    if (!ateSection) {
+    if (!ateSection && !autoSaveNote) {
       const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
       if (msgCount > 0 && msgCount % 5 === 0) {
         chatWebCta = '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
       }
     }
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + chatWebCta
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
@@ -1320,14 +1420,12 @@ export function getWelcomeMessage(name?: string): string {
   return `${greeting} Welcome to *The Giftist* — I'm your personal gift concierge.
 
 Here's how it works:
-1. *Save items* — Send me a link or photo and I'll add it to your wishlist
-2. *Link to events* — Tell me about birthdays, holidays, or celebrations
-3. *Add your circle* — Share phone numbers of friends and family
-4. *They contribute* — Your circle sees your wishlist and can chip in
+1. *Tell me who you're shopping for* — I'll suggest the perfect gift
+2. *Save items* — Send me a link or photo and I'll add it to your wishlist
+3. *Link to events* — Tell me about birthdays, holidays, or celebrations
+4. *Add your circle* — Share phone numbers of friends and family
 
-I've already set up events for Christmas, Mother's Day, Father's Day, and more — type *events* to see them!
-
-Try it now — send me a link to something you've been eyeing!`
+Who are you shopping for? Tell me about someone special and I'll find the perfect gift!`
 }
 
 export function getHelpMessage(): string {

@@ -2,6 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from './db'
 import { logApiCall } from './api-logger'
 import { smartWhatsAppSend } from './notifications'
+import { sendSms } from './sms'
+import { sendEmail } from './email'
 
 const anthropic = new Anthropic()
 
@@ -737,4 +739,163 @@ async function updateFunnelStage(userId: string, state: FunnelState) {
     where: { id: userId },
     data: { funnelStage: JSON.stringify(state) },
   })
+}
+
+// ── One-time SMS Re-engagement for Churned US Users ──
+
+export async function sendSmsReengagement() {
+  const results = { sent: 0, skipped: 0, errors: 0 }
+
+  // Find US users who signed up but have 0 non-seed items (never activated)
+  const users = await prisma.user.findMany({
+    where: {
+      phone: { not: null },
+      isActive: true,
+      digestOptOut: false,
+    },
+    select: {
+      id: true,
+      phone: true,
+      name: true,
+      funnelStage: true,
+      _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+    },
+  })
+
+  for (const user of users) {
+    if (!user.phone) continue
+
+    // Only US numbers (+1, 11 digits)
+    if (!user.phone.startsWith('1') || user.phone.length !== 11) {
+      results.skipped++
+      continue
+    }
+
+    // Only target users with 0 real items (never activated)
+    if (user._count.items > 0) {
+      results.skipped++
+      continue
+    }
+
+    // Dedup: check if we already sent this
+    const state = parseFunnelStage(user.funnelStage)
+    if (state.reengagementSent) {
+      results.skipped++
+      continue
+    }
+
+    const displayName = user.name || 'there'
+
+    try {
+      const smsBody = `Hey ${displayName}! Your Gift Concierge found some new picks for you. Tap to check them out: https://wa.me/15014438478\n\nReply STOP to opt out`
+      await sendSms(user.phone, smsBody)
+
+      state.reengagementSent = new Date().toISOString()
+      await updateFunnelStage(user.id, state)
+      results.sent++
+      console.log(`[SMSReengagement] Sent to ${user.phone}`)
+
+      // Pace SMS: 1 per second to avoid rate limits
+      await new Promise(r => setTimeout(r, 1000))
+    } catch (err) {
+      console.error(`[SMSReengagement] Error for user ${user.id}:`, err)
+      results.errors++
+    }
+  }
+
+  console.log(`[SMSReengagement] Done: ${results.sent} sent, ${results.skipped} skipped, ${results.errors} errors`)
+  return results
+}
+
+// ── One-time Email Re-engagement for Churned Email-Only Users ──
+
+export async function sendEmailReengagement() {
+  const results = { sent: 0, skipped: 0, errors: 0 }
+
+  // Find users who signed up with email but have 0 non-seed items
+  const users = await prisma.user.findMany({
+    where: {
+      email: { not: null },
+      isActive: true,
+      digestOptOut: false,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      phone: true,
+      funnelStage: true,
+      _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+    },
+  })
+
+  for (const user of users) {
+    if (!user.email) continue
+
+    // Only target users with 0 real items (never activated)
+    if (user._count.items > 0) {
+      results.skipped++
+      continue
+    }
+
+    // Skip if user has a phone — they'll get the SMS re-engagement instead
+    if (user.phone) {
+      results.skipped++
+      continue
+    }
+
+    // Dedup: check if we already sent this
+    const state = parseFunnelStage(user.funnelStage)
+    if (state.reengagementSent) {
+      results.skipped++
+      continue
+    }
+
+    const displayName = user.name || 'there'
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `${displayName === 'there' ? 'Hey' : `Hey ${displayName}`} — your Gift Concierge found some picks for you`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="margin: 0 0 16px;">Hey ${displayName}!</h2>
+            <p style="color: #333; line-height: 1.6;">
+              Your Gift Concierge has been finding trending gifts and curating picks just for you. Come check them out!
+            </p>
+            <p style="color: #333; line-height: 1.6;">
+              Tell me who you're shopping for and I'll find the perfect gift — whether it's a birthday, anniversary, or just because.
+            </p>
+            <div style="margin: 24px 0;">
+              <a href="https://giftist.ai/chat" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Chat with your Gift Concierge
+              </a>
+            </div>
+            <p style="color: #333; line-height: 1.6; font-size: 14px;">
+              Or message us on WhatsApp: <a href="https://wa.me/15014438478" style="color: #7c3aed;">+1 (501) 443-8478</a>
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #999; font-size: 12px;">
+              The Giftist — Your Personal Gift Concierge<br/>
+              <a href="https://giftist.ai" style="color: #999;">giftist.ai</a>
+            </p>
+          </div>
+        `,
+      })
+
+      state.reengagementSent = new Date().toISOString()
+      await updateFunnelStage(user.id, state)
+      results.sent++
+      console.log(`[EmailReengagement] Sent to ${user.email}`)
+
+      // Pace emails: 200ms between sends
+      await new Promise(r => setTimeout(r, 200))
+    } catch (err) {
+      console.error(`[EmailReengagement] Error for user ${user.id}:`, err)
+      results.errors++
+    }
+  }
+
+  console.log(`[EmailReengagement] Done: ${results.sent} sent, ${results.skipped} skipped, ${results.errors} errors`)
+  return results
 }

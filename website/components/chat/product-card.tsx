@@ -156,10 +156,10 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               href={viewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted hover:text-gray-900 transition"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition"
             >
               <ExternalLink className="h-3 w-3" />
-              View
+              Buy Now
             </a>
           )}
         </div>
