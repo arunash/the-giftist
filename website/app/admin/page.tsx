@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -51,6 +51,24 @@ interface Stats {
     positive: number
     negative: number
     recent: Array<{ id: string; rating: string; comment: string | null; source: string; createdAt: string; user: { name: string | null; phone: string | null } }>
+  }
+  reengagement: {
+    smsSent: number
+    whatsappSent: number
+    emailSent: number
+    activated: number
+    eligible: number
+    users: Array<{
+      id: string
+      name: string | null
+      phone: string | null
+      email: string | null
+      items: number
+      status: string
+      channel: string | null
+      sentAt: string | null
+      createdAt: string
+    }>
   }
 }
 
@@ -390,6 +408,86 @@ export default function AdminDashboard() {
           {stats.feedback.recent.length === 0 && (
             <p className="p-3 text-sm text-muted text-center">No feedback collected yet.</p>
           )}
+        </div>
+      </div>
+
+      {/* Re-engagement */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">
+          <Send className="inline h-5 w-5 mr-2 text-primary" />
+          Re-engagement
+          <span className="text-sm font-normal text-muted ml-2">
+            {stats.reengagement.smsSent + stats.reengagement.whatsappSent + stats.reengagement.emailSent} sent · {stats.reengagement.activated} activated · {stats.reengagement.eligible} eligible
+          </span>
+        </h2>
+        <div className="grid grid-cols-4 gap-4 mb-4">
+          <div className="bg-surface rounded-xl p-4 border border-border text-center">
+            <p className="text-2xl font-bold text-green-500">{stats.reengagement.smsSent}</p>
+            <p className="text-xs text-muted mt-1">SMS Sent</p>
+          </div>
+          <div className="bg-surface rounded-xl p-4 border border-border text-center">
+            <p className="text-2xl font-bold text-green-400">{stats.reengagement.whatsappSent}</p>
+            <p className="text-xs text-muted mt-1">WhatsApp Sent</p>
+          </div>
+          <div className="bg-surface rounded-xl p-4 border border-border text-center">
+            <p className="text-2xl font-bold text-blue-500">{stats.reengagement.emailSent}</p>
+            <p className="text-xs text-muted mt-1">Email Sent</p>
+          </div>
+          <div className="bg-surface rounded-xl p-4 border border-border text-center">
+            <p className="text-2xl font-bold text-primary">{stats.reengagement.activated}</p>
+            <p className="text-xs text-muted mt-1">Activated (have items)</p>
+          </div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-muted">
+                <th className="text-left p-3 font-medium">User</th>
+                <th className="text-left p-3 font-medium">Contact</th>
+                <th className="text-left p-3 font-medium">Items</th>
+                <th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium">Channel</th>
+                <th className="text-left p-3 font-medium">Sent At</th>
+                <th className="text-left p-3 font-medium">Signed Up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.reengagement.users.length === 0 ? (
+                <tr><td colSpan={7} className="p-3 text-muted text-center">No re-engagement data.</td></tr>
+              ) : stats.reengagement.users.map((u) => (
+                <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover">
+                  <td className="p-3 font-medium">{u.name || '—'}</td>
+                  <td className="p-3 text-muted text-xs">
+                    {u.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{u.phone}</span>}
+                    {u.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{u.email}</span>}
+                  </td>
+                  <td className="p-3">{u.items}</td>
+                  <td className="p-3">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      u.status === 'sent' ? 'bg-green-500/20 text-green-600' :
+                      u.status === 'eligible' ? 'bg-yellow-500/20 text-yellow-600' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {u.status}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    {u.channel ? (
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        u.channel === 'sms' ? 'bg-blue-500/20 text-blue-600' :
+                        u.channel === 'whatsapp' ? 'bg-green-500/20 text-green-600' :
+                        'bg-purple-500/20 text-purple-600'
+                      }`}>
+                        {u.channel}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="p-3 text-muted text-xs">{u.sentAt ? new Date(u.sentAt).toLocaleString() : '—'}</td>
+                  <td className="p-3 text-muted text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

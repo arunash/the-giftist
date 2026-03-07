@@ -69,6 +69,7 @@ export async function GET() {
     totalClicks,
     totalLinks,
     topClicked,
+    allUsersForReengagement,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -211,6 +212,20 @@ export async function GET() {
     prisma.productClick.aggregate({ _sum: { clicks: true } }),
     prisma.productClick.count(),
     prisma.productClick.findMany({ where: { clicks: { gt: 0 } }, orderBy: { clicks: 'desc' }, take: 10, select: { productName: true, clicks: true, source: true, targetUrl: true } }),
+    // Re-engagement: all users with their funnel state + item counts
+    prisma.user.findMany({
+      where: { isActive: true, digestOptOut: false },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        funnelStage: true,
+        createdAt: true,
+        _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
   ])
 
   // Build costs map
@@ -280,6 +295,49 @@ export async function GET() {
 
   const totalCosts = Object.values(costsMap).reduce((sum, c) => sum + c.total, 0)
   const todayCosts = Object.values(costsMap).reduce((sum, c) => sum + c.today, 0)
+
+  // Build re-engagement data
+  const reengagementUsers = allUsersForReengagement.map(u => {
+    let funnelState: any = {}
+    try { funnelState = u.funnelStage ? JSON.parse(u.funnelStage as string) : {} } catch {}
+    const isUS = u.phone && u.phone.startsWith('1') && u.phone.length === 11
+    const hasItems = u._count.items > 0
+    const reengagementSentAt = funnelState.reengagementSent || null
+
+    let channel: string | null = null
+    let status: string
+    if (hasItems) {
+      status = 'activated'
+    } else if (reengagementSentAt) {
+      status = 'sent'
+      channel = u.phone ? (isUS ? 'sms' : 'whatsapp') : 'email'
+    } else if (!u.phone && !u.email) {
+      status = 'no_contact'
+    } else {
+      status = 'eligible'
+    }
+
+    return {
+      id: u.id,
+      name: u.name,
+      phone: u.phone,
+      email: u.email,
+      items: u._count.items,
+      status,
+      channel,
+      sentAt: reengagementSentAt,
+      createdAt: u.createdAt,
+    }
+  })
+
+  const reengagementStats = {
+    smsSent: reengagementUsers.filter(u => u.status === 'sent' && u.channel === 'sms').length,
+    whatsappSent: reengagementUsers.filter(u => u.status === 'sent' && u.channel === 'whatsapp').length,
+    emailSent: reengagementUsers.filter(u => u.status === 'sent' && u.channel === 'email').length,
+    activated: reengagementUsers.filter(u => u.status === 'activated').length,
+    eligible: reengagementUsers.filter(u => u.status === 'eligible').length,
+    users: reengagementUsers.filter(u => u.status !== 'activated'),
+  }
 
   return NextResponse.json({
     users: {
@@ -358,5 +416,6 @@ export async function GET() {
       totalLinks,
       topClicked,
     },
+    reengagement: reengagementStats,
   })
 }
