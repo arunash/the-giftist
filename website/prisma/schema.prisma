@@ -56,6 +56,7 @@ model User {
   subscription                  Subscription?
   wallet                        Wallet?
   feedbacks                     Feedback[]
+  devices                       Device[]
 }
 
 model Account {
@@ -403,4 +404,15 @@ model Feedback {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  pushToken String   @unique
+  platform  String   // "ios" | "android"
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

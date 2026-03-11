@@ -1,0 +1,123 @@
+{
+  "expo": {
+    "name": "Giftist",
+    "slug": "giftist",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "giftist",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f9f9f9"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.giftist.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Scan products to add to your wishlist",
+        "NSContactsUsageDescription": "Import contacts to your gift circle",
+        "NSFaceIDUsageDescription": "Secure your wallet and payments",
+        "UIBackgroundModes": ["remote-notification"]
+      },
+      "associatedDomains": [
+        "applinks:giftist.ai",
+        "webcredentials:giftist.ai"
+      ],
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#f9f9f9"
+      },
+      "package": "ai.giftist.app",
+      "permissions": [
+        "CAMERA",
+        "READ_CONTACTS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "giftist.ai",
+              "pathPrefix": "/u/"
+            },
+            {
+              "scheme": "https",
+              "host": "giftist.ai",
+              "pathPrefix": "/events/"
+            },
+            {
+              "scheme": "https",
+              "host": "giftist.ai",
+              "pathPrefix": "/items/"
+            },
+            {
+              "scheme": "https",
+              "host": "giftist.ai",
+              "pathPrefix": "/contribute/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "SEND",
+          "category": ["DEFAULT"],
+          "data": [{ "mimeType": "text/plain" }]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#e84d3d"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Scan products to add to your wishlist"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Import contacts to your gift circle"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Secure your wallet and payments"
+        }
+      ],
+      "expo-image-picker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      },
+      "apiUrl": "https://giftist.ai"
+    }
+  }
+}

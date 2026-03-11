@@ -171,6 +171,54 @@ export async function notify(opts: NotifyOptions): Promise<void> {
       console.error(`[Notify] WhatsApp failed for ${opts.type}:`, err)
     )
   }
+
+  // 4. Send push notifications to registered mobile devices (fire-and-forget)
+  sendExpoPush(opts.userId, opts.title, opts.body, opts.metadata).catch((err) =>
+    console.error(`[Notify] Push failed for ${opts.type}:`, err)
+  )
+}
+
+// ── Expo Push Notifications ──
+
+async function sendExpoPush(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, any>
+): Promise<void> {
+  const devices = await prisma.device.findMany({
+    where: { userId },
+    select: { pushToken: true },
+  })
+
+  if (devices.length === 0) return
+
+  const messages = devices.map((d) => ({
+    to: d.pushToken,
+    sound: 'default' as const,
+    title,
+    body,
+    data: data || {},
+  }))
+
+  // Expo push API accepts batches of up to 100
+  const chunks: typeof messages[] = []
+  for (let i = 0; i < messages.length; i += 100) {
+    chunks.push(messages.slice(i, i + 100))
+  }
+
+  for (const chunk of chunks) {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(chunk),
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      console.error(`[Notify] Expo push API error: ${res.status} ${text}`)
+    }
+  }
 }
 
 // ── Per-action notification helpers ──

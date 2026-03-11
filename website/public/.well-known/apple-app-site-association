@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAM_ID.ai.giftist.app"],
+        "paths": [
+          "/u/*",
+          "/events/*",
+          "/items/*",
+          "/contribute/*",
+          "/chat",
+          "/chat/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAM_ID.ai.giftist.app"]
+  }
+}
