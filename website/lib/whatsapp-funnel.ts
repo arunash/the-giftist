@@ -787,7 +787,10 @@ export async function sendSmsReengagement() {
     const displayName = user.name || 'there'
 
     try {
-      const smsBody = `Hey ${displayName}! Your Gift Concierge found some new picks for you. Tap to check them out: https://wa.me/15014438478\n\nReply STOP to opt out`
+      let smsBody = `Hey ${displayName}! Your Gift Concierge found some new picks for you. Tap to check them out: https://wa.me/15014438478`
+      if (!smsBody.includes('STOP')) {
+        smsBody += '\n\nReply STOP to opt out.'
+      }
       await sendSms(user.phone, smsBody)
 
       state.reengagementSent = new Date().toISOString()

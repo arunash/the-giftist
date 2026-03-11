@@ -226,6 +226,7 @@ export default function PrivacyPage() {
         <div className="mt-12 pt-8 border-t border-border">
           <div className="flex gap-6 text-xs text-muted">
             <Link href="/terms" className="hover:text-gray-900 transition">Terms of Service</Link>
+            <Link href="/sms-terms" className="hover:text-gray-900 transition">SMS Terms</Link>
             <Link href="/about" className="hover:text-gray-900 transition">About</Link>
             <Link href="/" className="hover:text-gray-900 transition">Home</Link>
           </div>
