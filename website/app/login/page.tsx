@@ -138,6 +138,12 @@ function LoginForm() {
                 {error && (
                   <p className="text-red-400 text-sm mb-4">{error}</p>
                 )}
+                <p className="text-xs text-muted mb-4">
+                  By entering your phone number, you consent to receive SMS and WhatsApp messages from Giftist
+                  including gift recommendations, event reminders, and account notifications.
+                  Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out.
+                  See our <a href="/sms-terms" target="_blank" className="underline hover:text-gray-900">SMS Terms</a>.
+                </p>
                 <button
                   type="submit"
                   disabled={phoneLoading || googleLoading || !phone}
