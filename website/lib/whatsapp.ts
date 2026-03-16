@@ -5,6 +5,16 @@ import { isPrivateUrl } from './url-safety'
 const GRAPH_API = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}`
 const TOKEN = () => process.env.WHATSAPP_ACCESS_TOKEN!
 
+// Blocked numbers — no outbound messages will be sent to these
+const BLOCKED_NUMBERS = new Set([
+  '15550000000',
+])
+
+function isBlocked(phone: string): boolean {
+  const digits = phone.replace(/\D/g, '')
+  return BLOCKED_NUMBERS.has(digits)
+}
+
 async function graphPost(endpoint: string, body: object) {
   const res = await fetch(`${GRAPH_API}${endpoint}`, {
     method: 'POST',
@@ -22,6 +32,7 @@ async function graphPost(endpoint: string, body: object) {
 }
 
 export async function sendTextMessage(to: string, body: string) {
+  if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
@@ -39,6 +50,7 @@ export async function sendTextMessage(to: string, body: string) {
 }
 
 export async function sendTemplateMessage(to: string, templateName: string, parameters: string[]) {
+  if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
@@ -65,6 +77,7 @@ export async function sendTemplateMessage(to: string, templateName: string, para
 }
 
 export async function sendImageMessage(to: string, imageUrl: string, caption: string) {
+  if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
@@ -139,6 +152,7 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
 }
 
 export async function sendContactMessage(to: string) {
+  if (isBlocked(to)) return { messages: [] }
   return graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
