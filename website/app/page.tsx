@@ -54,12 +54,12 @@ export default async function Home() {
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] mb-4">
-            Who are you<br />
-            <span className="text-primary">shopping for?</span>
+            Ask your AI<br />
+            <span className="text-primary">Gift Concierge</span>
           </h1>
 
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-10">
-            Tell your Gift Concierge what you need. It handles the rest.
+            Describe who you're shopping for. Get curated gift ideas instantly.
           </p>
 
           <HeroChatInput />
