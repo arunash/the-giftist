@@ -4,6 +4,7 @@ import { logApiCall } from './api-logger'
 import { smartWhatsAppSend } from './notifications'
 import { sendSms } from './sms'
 import { sendEmail } from './email'
+import { getSlugForHoliday } from './holiday-slugs'
 
 const anthropic = new Anthropic()
 
@@ -97,16 +98,20 @@ export async function runDailyEngagement() {
   const now = new Date()
   const results = { nudges: 0, eventPrompts: 0, circlePrompts: 0, reengagements: 0, weeklyDigests: 0 }
 
-  // Find all users with phone numbers who haven't opted out
+  // Find all users with phone or email who haven't opted out
   const users = await prisma.user.findMany({
     where: {
-      phone: { not: null },
       isActive: true,
       digestOptOut: false,
+      OR: [
+        { phone: { not: null } },
+        { email: { not: null } },
+      ],
     },
     select: {
       id: true,
       phone: true,
+      email: true,
       name: true,
       funnelStage: true,
       createdAt: true,
@@ -114,8 +119,32 @@ export async function runDailyEngagement() {
     },
   })
 
+  // Helper: send message via SMS/WhatsApp or email
+  async function sendToUser(user: { phone: string | null; email: string | null }, subject: string, text: string, template: string, vars: string[]) {
+    if (user.phone) {
+      await smartWhatsAppSend(user.phone, text, template, vars)
+    } else if (user.email) {
+      await sendEmail({
+        to: user.email,
+        subject,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <p style="color: #333; line-height: 1.6; white-space: pre-line;">${text}</p>
+            <div style="margin: 24px 0;">
+              <a href="https://giftist.ai/chat" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Chat with your Gift Concierge
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #999; font-size: 12px;">The Giftist — <a href="https://giftist.ai" style="color: #999;">giftist.ai</a></p>
+          </div>
+        `,
+      })
+    }
+  }
+
   for (const user of users) {
-    if (!user.phone) continue
+    if (!user.phone && !user.email) continue
     const state = parseFunnelStage(user.funnelStage)
     const displayName = user.name || 'there'
     const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24))
@@ -125,7 +154,7 @@ export async function runDailyEngagement() {
       if (!state.day1Nudge && daysSinceSignup >= 1 && user._count.items < 3) {
         state.day1Nudge = true
         const text = `Hey ${displayName}! Your Gift Concierge here. You've saved ${user._count.items} item(s) so far.\n\nBuilding a bigger wishlist helps your friends and family find the perfect gift for you. Try:\n- Sending me a link from any store\n- Telling me your interests so I can suggest trending gifts\n- Sending a screenshot of something you spotted online\n\nWhat are you eyeing lately?\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'day1_nudge', [displayName, String(user._count.items)])
+        await sendToUser(user, 'Your Gift Concierge checking in', text, 'day1_nudge', [displayName, String(user._count.items)])
         results.nudges++
         await updateFunnelStage(user.id, state)
         continue
@@ -135,7 +164,7 @@ export async function runDailyEngagement() {
       if (!state.day3EventPrompt && daysSinceSignup >= 3 && user._count.events === 0) {
         state.day3EventPrompt = true
         const text = `Quick question — do you have any birthdays, holidays, or celebrations coming up?\n\nI can help you plan gifts and even remind your friends and family to contribute. Just tell me about an upcoming event!\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'day3_event_prompt', [displayName])
+        await sendToUser(user, 'Any celebrations coming up?', text, 'day3_event_prompt', [displayName])
         results.eventPrompts++
         await updateFunnelStage(user.id, state)
         continue
@@ -145,7 +174,7 @@ export async function runDailyEngagement() {
       if (!state.day5CirclePrompt && daysSinceSignup >= 2 && user._count.circleMembers === 0) {
         state.day5CirclePrompt = true
         const text = `Quick reminder — adding people to your Gift Circle means they'll get notified about your events and see your wishlist. Just send me their phone number and name!\n\nTry: *add circle 555-123-4567 Mom*\n\nYou can always view your giftlist, wallet, and activity at *giftist.ai*`
-        await smartWhatsAppSend(user.phone, text, 'day5_circle_prompt', [displayName])
+        await sendToUser(user, 'Build your Gift Circle', text, 'day5_circle_prompt', [displayName])
         results.circlePrompts++
         await updateFunnelStage(user.id, state)
         continue
@@ -178,7 +207,7 @@ export async function runDailyEngagement() {
                   return `📅 ${evt.name} — ${daysUntil} day(s) away`
                 }).join('\n')
               : 'No upcoming events — create one by chatting with me!'
-            await smartWhatsAppSend(user.phone, text, 'weekly_digest', [displayName, eventSummary])
+            await sendToUser(user, 'Your weekly Giftist update', text, 'weekly_digest', [displayName, eventSummary])
             state.weeklyDigestSent = now.toISOString()
             results.weeklyDigests++
             await updateFunnelStage(user.id, state)
@@ -208,29 +237,31 @@ export async function runDailyEngagement() {
             ? " You haven't added any gift ideas yet — want me to help you find something perfect?"
             : ` You have ${evt._count.items} item(s) lined up. Need any last-minute additions?`
         }`
-        await smartWhatsAppSend(user.phone, text, 'event_countdown', [displayName, evt.name, String(days)])
+        await sendToUser(user, `${evt.name} is ${days} days away!`, text, 'event_countdown', [displayName, evt.name, String(days)])
         nudgedIds.push(evt.id)
         state.eventNudgesSent = nudgedIds
         await updateFunnelStage(user.id, state)
       }
 
-      // Stage 8: Re-engagement (14 days inactive)
-      const lastMessage = await prisma.whatsAppMessage.findFirst({
-        where: { phone: user.phone },
-        orderBy: { createdAt: 'desc' },
-      })
-      if (lastMessage) {
-        const daysSinceLastMessage = Math.floor((now.getTime() - lastMessage.createdAt.getTime()) / (1000 * 60 * 60 * 24))
-        const lastReengagement = state.reengagementSent ? new Date(state.reengagementSent) : null
-        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+      // Stage 8: Re-engagement (14 days inactive — phone users only, email users handled in lifecycle)
+      if (user.phone) {
+        const lastMessage = await prisma.whatsAppMessage.findFirst({
+          where: { phone: user.phone },
+          orderBy: { createdAt: 'desc' },
+        })
+        if (lastMessage) {
+          const daysSinceLastMessage = Math.floor((now.getTime() - lastMessage.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+          const lastReengagement = state.reengagementSent ? new Date(state.reengagementSent) : null
+          const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-        if (daysSinceLastMessage >= 14 && (!lastReengagement || lastReengagement < twoWeeksAgo)) {
-          const text = `Hey ${displayName}! Your Gift Concierge misses you.\n\nYou have ${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}.\n\nView your giftlist, wallet, and activity at *giftist.ai*\n\nReply anytime — I'm here to help with all things gifting!`
-          const itemSummary = `${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}`
-          await smartWhatsAppSend(user.phone, text, 'reengagement_nudge', [displayName, itemSummary])
-          state.reengagementSent = now.toISOString()
-          results.reengagements++
-          await updateFunnelStage(user.id, state)
+          if (daysSinceLastMessage >= 14 && (!lastReengagement || lastReengagement < twoWeeksAgo)) {
+            const text = `Hey ${displayName}! Your Gift Concierge misses you.\n\nYou have ${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}.\n\nView your giftlist, wallet, and activity at *giftist.ai*\n\nReply anytime — I'm here to help with all things gifting!`
+            const itemSummary = `${user._count.items} item(s) on your wishlist${user._count.events > 0 ? ` and ${user._count.events} upcoming event(s)` : ''}`
+            await sendToUser(user, 'Your Gift Concierge misses you!', text, 'reengagement_nudge', [displayName, itemSummary])
+            state.reengagementSent = now.toISOString()
+            results.reengagements++
+            await updateFunnelStage(user.id, state)
+          }
         }
       }
     } catch (err) {
@@ -561,65 +592,65 @@ interface Holiday {
 function getHolidays(year: number): Holiday[] {
   return [
     // January
-    { name: "New Year's Day", month: 0, day: 1, message: "New Year's is here! Start the year right — create a wishlist for yourself or find a gift for someone who made last year special." },
-    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "MLK Day weekend is coming up. A great time to give back — need gift ideas for a teacher, mentor, or community leader?" },
+    { name: "New Year's Day", month: 0, day: 1, message: "New Year's is here! Start the year right — find a gift for someone who made last year special: https://giftist.ai/c/new-year" },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "MLK Day weekend is coming up. A great time to give back — find a gift for a teacher, mentor, or community leader: https://giftist.ai/c/mlk-day" },
 
     // February
-    { name: "Galentine's Day", month: 1, day: 13, message: "Galentine's Day is tomorrow! Need a last-minute gift for your best friend? I've got ideas." },
-    { name: "Valentine's Day", month: 1, day: 14, message: "Valentine's Day is 2 weeks away! Want to set up a wishlist for your partner or find the perfect gift?" },
-    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Lunar New Year is coming! Need gift ideas? Red envelopes, treats, or something special for family?" },
+    { name: "Galentine's Day", month: 1, day: 13, message: "Galentine's Day is coming! Need a gift for your best friend? Tap here and I'll help: https://giftist.ai/c/galentines" },
+    { name: "Valentine's Day", month: 1, day: 14, message: "Valentine's Day is 2 weeks away! Let me help you find the perfect gift: https://giftist.ai/c/valentines" },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Lunar New Year is coming! Need gift ideas for family? Tap here: https://giftist.ai/c/lunar-new-year" },
 
     // March
-    { name: "International Women's Day", month: 2, day: 8, message: "International Women's Day is coming up. Want to find a thoughtful gift for an important woman in your life?" },
-    { name: "St. Patrick's Day", month: 2, day: 17, message: "St. Patrick's Day is around the corner. Hosting or attending a party? I can help with host gifts!" },
+    { name: "International Women's Day", month: 2, day: 8, message: "International Women's Day is coming up. Find a thoughtful gift for an important woman in your life: https://giftist.ai/c/womens-day" },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "St. Patrick's Day is around the corner. Need a host gift? I'll find one: https://giftist.ai/c/st-patricks" },
 
     // April
-    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Easter is 2 weeks away! Need basket ideas, host gifts, or something special for the kids?" },
-    { name: 'Earth Day', month: 3, day: 22, message: "Earth Day is coming up. Looking for eco-friendly or sustainable gift ideas? I've got great ones." },
-    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Administrative Professionals Day is coming up! Want to find a thoughtful thank-you gift for someone at work?" },
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Easter is coming up! Need gift ideas — baskets, host gifts, or something for family? Tap here: https://giftist.ai/c/easter" },
+    { name: 'Earth Day', month: 3, day: 22, message: "Earth Day is coming up. Looking for eco-friendly gift ideas? I've got great ones: https://giftist.ai/c/earth-day" },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Admin Professionals Day is coming! Find a thoughtful thank-you gift: https://giftist.ai/c/admin-day" },
 
     // May
-    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Mother's Day is 2 weeks away! Let me help you find something she'll actually love — not another candle." },
-    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Cinco de Mayo is coming! Hosting or attending a party? I can help with host gifts and celebration ideas." },
-    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Teacher Appreciation Week is coming up! Want to find a gift your kid's teacher will actually love?" },
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Mother's Day is 2 weeks away! Let me help you find something she'll actually love — not another candle: https://giftist.ai/c/mothers-day" },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Cinco de Mayo is coming! Need host gifts or celebration ideas? Tap here: https://giftist.ai/c/cinco-de-mayo" },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Teacher Appreciation Week is coming! Find a gift your kid's teacher will love: https://giftist.ai/c/teacher" },
 
     // June
-    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Father's Day is 2 weeks away! Tell me about your dad and I'll find something perfect." },
-    { name: 'Juneteenth', month: 5, day: 19, message: "Juneteenth is coming up. Looking for meaningful gifts to celebrate or support Black-owned businesses? I can help." },
-    { name: 'Graduation Season', month: 5, day: 1, message: "It's graduation season! Know any graduates? Let me help you find the perfect congratulations gift." },
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Father's Day is 2 weeks away! Tell me about him and I'll find something perfect: https://giftist.ai/c/fathers-day" },
+    { name: 'Juneteenth', month: 5, day: 19, message: "Juneteenth is coming up. Looking for meaningful gifts or Black-owned businesses? I can help: https://giftist.ai/c/juneteenth" },
+    { name: 'Graduation Season', month: 5, day: 1, message: "It's graduation season! Know any graduates? Find the perfect congratulations gift: https://giftist.ai/c/graduation" },
 
     // July
-    { name: 'Independence Day', month: 6, day: 4, message: "4th of July is coming! Hosting a cookout? I can help with host gifts and party essentials." },
+    { name: 'Independence Day', month: 6, day: 4, message: "4th of July is coming! Need host gifts or party essentials? Tap here: https://giftist.ai/c/july-4th" },
 
     // August
-    { name: 'Back to School', month: 7, day: 15, message: "Back to school season is here! Need gift ideas for students, teachers, or dorm room essentials?" },
-    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Friendship Day is this weekend! Want to surprise your bestie with something thoughtful?" },
+    { name: 'Back to School', month: 7, day: 15, message: "Back to school season is here! Need gift ideas for students or teachers? https://giftist.ai/c/back-to-school" },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Friendship Day is this weekend! Surprise your bestie with something thoughtful: https://giftist.ai/c/friendship-day" },
 
     // September
-    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Labor Day weekend is coming! Great time to thank a hardworking person in your life. Need gift ideas?" },
-    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Grandparents' Day is this Sunday! Want to find something special for grandma or grandpa?" },
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Labor Day weekend is coming! Thank a hardworking person in your life: https://giftist.ai/c/labor-day" },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Grandparents' Day is this Sunday! Find something special: https://giftist.ai/c/grandparents-day" },
 
     // October
-    { name: "Boss's Day", month: 9, day: 16, message: "Boss's Day is coming up on Oct 16. Want to find a tasteful gift or organize a group gift from the team?" },
-    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Sweetest Day is this Saturday! A great excuse to surprise your partner with something sweet." },
-    { name: 'Halloween', month: 9, day: 31, message: "Halloween is 2 weeks away! Need costume accessories, party host gifts, or trick-or-treat goodies?" },
+    { name: "Boss's Day", month: 9, day: 16, message: "Boss's Day is coming up! Find a tasteful gift or organize a group gift: https://giftist.ai/c/boss-day" },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Sweetest Day is this Saturday! Surprise your partner with something sweet: https://giftist.ai/c/sweetest-day" },
+    { name: 'Halloween', month: 9, day: 31, message: "Halloween is 2 weeks away! Need costume accessories, host gifts, or trick-or-treat goodies? https://giftist.ai/c/halloween" },
 
     // November
-    { name: 'Veterans Day', month: 10, day: 11, message: "Veterans Day is coming up. Want to find a meaningful gift for a veteran or active service member?" },
-    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Thanksgiving is 2 weeks away! Need host gifts, friendsgiving ideas, or holiday prep essentials?" },
-    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Black Friday is coming! Your wishlist is the perfect shopping list. Share it with family so they know what to get you." },
+    { name: 'Veterans Day', month: 10, day: 11, message: "Veterans Day is coming up. Find a meaningful gift for a veteran or service member: https://giftist.ai/c/veterans-day" },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Thanksgiving is 2 weeks away! Need host gifts or friendsgiving ideas? https://giftist.ai/c/thanksgiving" },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Black Friday is coming! Find the best deals for gifts on your list: https://giftist.ai/c/black-friday" },
 
     // December
-    { name: 'Christmas', month: 11, day: 25, message: "Christmas is 2 weeks away! Time to finalize your wishlist and share it with family. Need last-minute gift ideas?" },
-    { name: "New Year's Eve", month: 11, day: 31, message: "New Year's Eve is coming! Hosting a party or attending one? I can help with host gifts and celebration ideas." },
-    { name: 'Secret Santa Season', month: 11, day: 10, message: "Secret Santa season is here! Need gift ideas under $25? Tell me about the person and I'll find something great." },
+    { name: 'Christmas', month: 11, day: 25, message: "Christmas is 2 weeks away! Need gift ideas? Tell me who you're shopping for: https://giftist.ai/c/christmas" },
+    { name: "New Year's Eve", month: 11, day: 31, message: "New Year's Eve is coming! Need host gifts or party ideas? https://giftist.ai/c/nye" },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "Secret Santa season is here! Need gift ideas under $25? Tell me about the person: https://giftist.ai/c/secret-santa" },
   ]
 }
 
 export async function runSeasonalReminders() {
   const now = new Date()
   const year = now.getFullYear()
-  const results = { sent: 0 }
+  const results = { sent: 0, emailed: 0 }
 
   const holidays = getHolidays(year)
 
@@ -631,34 +662,66 @@ export async function runSeasonalReminders() {
     if (daysUntil < 13 || daysUntil > 15) continue
 
     const dedup = `${holiday.name}_${year}`
+    const slug = getSlugForHoliday(holiday.name)
+    const ctaUrl = slug ? `https://giftist.ai/c/${slug}` : 'https://giftist.ai/chat'
 
+    // Find all active users (phone or email)
     const users = await prisma.user.findMany({
       where: {
-        phone: { not: null },
         isActive: true,
         digestOptOut: false,
+        OR: [
+          { phone: { not: null } },
+          { email: { not: null } },
+        ],
       },
-      select: { id: true, phone: true, name: true, funnelStage: true },
+      select: { id: true, phone: true, email: true, name: true, funnelStage: true },
     })
 
     for (const user of users) {
-      if (!user.phone) continue
       const state = parseFunnelStage(user.funnelStage)
       const seasonalMap = state.seasonalSent || {}
       if (seasonalMap[dedup]) continue
 
       const displayName = user.name || 'there'
       const text = `Hey ${displayName}! ${holiday.message}`
-      await smartWhatsAppSend(user.phone, text, 'seasonal_reminder', [displayName, holiday.name]).catch(() => {})
+
+      if (user.phone) {
+        // SMS/WhatsApp for phone users
+        await smartWhatsAppSend(user.phone, text, 'seasonal_reminder', [displayName, holiday.name]).catch(() => {})
+        results.sent++
+      } else if (user.email) {
+        // Email for email-only users
+        await sendEmail({
+          to: user.email,
+          subject: `${holiday.name} is coming up — need gift ideas?`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+              <h2 style="margin: 0 0 16px;">Hey ${displayName}!</h2>
+              <p style="color: #333; line-height: 1.6;">${holiday.message.replace(/(https:\/\/giftist\.ai\/c\/\S+)/, '')}</p>
+              <div style="margin: 24px 0;">
+                <a href="${ctaUrl}" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                  Find the perfect gift
+                </a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+              <p style="color: #999; font-size: 12px;">
+                The Giftist — Your Personal Gift Concierge<br/>
+                <a href="https://giftist.ai" style="color: #999;">giftist.ai</a>
+              </p>
+            </div>
+          `,
+        }).catch(() => {})
+        results.emailed++
+      }
 
       seasonalMap[dedup] = true
       state.seasonalSent = seasonalMap
       await updateFunnelStage(user.id, state)
-      results.sent++
     }
   }
 
-  console.log(`[Seasonal] Done: ${results.sent} sent`)
+  console.log(`[Seasonal] Done: ${results.sent} sent (SMS/WA), ${results.emailed} emailed`)
   return results
 }
 
@@ -721,13 +784,17 @@ export async function runLifecycleNudges() {
 
   const users = await prisma.user.findMany({
     where: {
-      phone: { not: null },
       isActive: true,
       digestOptOut: false,
+      OR: [
+        { phone: { not: null } },
+        { email: { not: null } },
+      ],
     },
     select: {
       id: true,
       phone: true,
+      email: true,
       name: true,
       funnelStage: true,
       createdAt: true,
@@ -735,20 +802,47 @@ export async function runLifecycleNudges() {
     },
   })
 
+  // Helper: send message via SMS/WhatsApp or email
+  async function sendToUser(user: { phone: string | null; email: string | null }, subject: string, text: string, template: string, vars: string[]) {
+    if (user.phone) {
+      await smartWhatsAppSend(user.phone, text, template, vars)
+    } else if (user.email) {
+      await sendEmail({
+        to: user.email,
+        subject,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <p style="color: #333; line-height: 1.6; white-space: pre-line;">${text}</p>
+            <div style="margin: 24px 0;">
+              <a href="https://giftist.ai/chat" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Chat with your Gift Concierge
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #999; font-size: 12px;">The Giftist — <a href="https://giftist.ai" style="color: #999;">giftist.ai</a></p>
+          </div>
+        `,
+      })
+    }
+  }
+
   for (const user of users) {
-    if (!user.phone) continue
+    if (!user.phone && !user.email) continue
     const state = parseFunnelStage(user.funnelStage)
     const displayName = user.name || 'there'
     const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / 86400000)
 
-    // Find last inbound WhatsApp message
-    const lastMessage = await prisma.whatsAppMessage.findFirst({
-      where: { phone: user.phone },
-      orderBy: { createdAt: 'desc' },
-    })
-    const daysSinceLastMsg = lastMessage
-      ? Math.floor((now.getTime() - lastMessage.createdAt.getTime()) / 86400000)
-      : daysSinceSignup
+    // Find last inbound WhatsApp message (phone users only)
+    let daysSinceLastMsg = daysSinceSignup
+    if (user.phone) {
+      const lastMessage = await prisma.whatsAppMessage.findFirst({
+        where: { phone: user.phone },
+        orderBy: { createdAt: 'desc' },
+      })
+      if (lastMessage) {
+        daysSinceLastMsg = Math.floor((now.getTime() - lastMessage.createdAt.getTime()) / 86400000)
+      }
+    }
 
     try {
       // RETURNING: User came back after 7-13 days of inactivity (before the 14-day re-engagement fires)
@@ -757,7 +851,7 @@ export async function runLifecycleNudges() {
         const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000)
         if (!lastWB || lastWB < twoWeeksAgo) {
           const text = `Welcome back ${displayName}! Your wishlist has ${user._count.items} item(s).${user._count.events > 0 ? ` You have ${user._count.events} event(s) coming up.` : ''} What are you looking for today?`
-          await smartWhatsAppSend(user.phone, text, 'returning_welcome_back', [displayName, String(user._count.items)])
+          await sendToUser(user, 'Welcome back!', text, 'returning_welcome_back', [displayName, String(user._count.items)])
           state.returningWelcomeBack = now.toISOString()
           await updateFunnelStage(user.id, state)
           results.returningWelcomeBack++
@@ -776,7 +870,7 @@ export async function runLifecycleNudges() {
           } else {
             tip = `Pro tip: Reply *remind* to send your Gift Circle a reminder about upcoming events with your wishlist link. They'll love the heads-up!`
           }
-          await smartWhatsAppSend(user.phone, `Hey ${displayName}! ${tip}`, 'mature_feature_discovery', [displayName])
+          await sendToUser(user, 'A tip from your Gift Concierge', `Hey ${displayName}! ${tip}`, 'mature_feature_discovery', [displayName])
           state.matureFeatureDiscovery = now.toISOString()
           await updateFunnelStage(user.id, state)
           results.matureFeatureDiscovery++
@@ -790,7 +884,7 @@ export async function runLifecycleNudges() {
         const monthAgo = new Date(now.getTime() - 30 * 86400000)
         if (!last30 || last30 < monthAgo) {
           const text = `Hey ${displayName}, it's been a while! We've added new features — personalized gift suggestions, group gifting, and more. Your ${user._count.items} saved item(s) are still here. What's the next occasion you're shopping for?`
-          await smartWhatsAppSend(user.phone, text, 'churned_30_day', [displayName, String(user._count.items)])
+          await sendToUser(user, "It's been a while — your Gift Concierge is here", text, 'churned_30_day', [displayName, String(user._count.items)])
           state.churned30Sent = now.toISOString()
           await updateFunnelStage(user.id, state)
           results.churned30++
@@ -804,7 +898,7 @@ export async function runLifecycleNudges() {
         const twoMonthsAgo = new Date(now.getTime() - 60 * 86400000)
         if (!last60 || last60 < twoMonthsAgo) {
           const text = `Hi ${displayName} — your Gift Concierge here. Need help finding a gift for someone? Just tell me who you're shopping for and I'll find something perfect. I'm always here when you need me!`
-          await smartWhatsAppSend(user.phone, text, 'churned_60_day', [displayName])
+          await sendToUser(user, 'Need help finding a gift?', text, 'churned_60_day', [displayName])
           state.churned60Sent = now.toISOString()
           await updateFunnelStage(user.id, state)
           results.churned60++
