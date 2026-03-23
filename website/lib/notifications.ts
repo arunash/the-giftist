@@ -90,9 +90,8 @@ export async function smartWhatsAppSend(
     await sendTextMessage(phone, textBody)
   } else if (phone.startsWith('1') && phone.length === 11) {
     // US number (+1) outside 24h window — marketing templates blocked since Apr 2025
-    // Fall back to SMS with a wa.me link to bring them back to WhatsApp
-    const waLink = `https://wa.me/15014438478`
-    const smsBody = `${textBody}\n\nReply on WhatsApp: ${waLink}\n\nReply STOP to opt out`
+    // Fall back to SMS — message already contains a giftist.ai CTA link
+    const smsBody = `${textBody}\n\nReply STOP to opt out`
     await sendSms(phone, smsBody)
   } else {
     // Non-US number — WhatsApp marketing templates still work
