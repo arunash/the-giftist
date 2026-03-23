@@ -15,7 +15,7 @@ interface WhatsAppMsg {
   processedAt: string | null
 }
 
-const STATUSES = ['', 'RECEIVED', 'PROCESSED', 'SENT', 'DELIVERED', 'READ', 'FAILED']
+const STATUSES = ['', 'RECEIVED', 'PROCESSED', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CLICKED']
 
 export default function AdminWhatsAppPage() {
   const [messages, setMessages] = useState<WhatsAppMsg[]>([])
@@ -67,6 +67,8 @@ export default function AdminWhatsAppPage() {
     switch (t) {
       case 'OUTBOUND': return 'bg-blue-500/10 text-blue-600'
       case 'OUTBOUND_TEMPLATE': return 'bg-purple-500/10 text-purple-600'
+      case 'SMS_OUTBOUND': return 'bg-green-500/10 text-green-600'
+      case 'REDIRECT': return 'bg-orange-500/10 text-orange-600'
       default: return 'bg-gray-500/10 text-gray-500'
     }
   }
@@ -74,7 +76,7 @@ export default function AdminWhatsAppPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">WhatsApp Messages ({total})</h1>
+        <h1 className="text-2xl font-bold">Messages ({total})</h1>
         <div className="flex items-center gap-2">
           <input
             type="text"

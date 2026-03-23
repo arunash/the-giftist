@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { logApiCall } from './api-logger'
 
 let _resend: Resend | null = null
 function getResend() {
@@ -22,5 +23,12 @@ export async function sendEmail({
     html,
   })
   if (error) throw new Error(`Resend error: ${error.message}`)
+
+  logApiCall({
+    provider: 'RESEND',
+    endpoint: 'emails/send',
+    source: 'EMAIL',
+  }).catch(() => {})
+
   return data
 }
