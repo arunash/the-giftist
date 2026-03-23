@@ -360,6 +360,19 @@ export async function POST(request: NextRequest) {
           })
         }
 
+        if (type === 'event_purchase') {
+          const { eventPurchaseId } = session.metadata
+          if (eventPurchaseId) {
+            await prisma.eventPurchase.update({
+              where: { id: eventPurchaseId },
+              data: {
+                status: 'COMPLETED',
+                stripePaymentId: session.payment_intent as string,
+              },
+            })
+          }
+        }
+
         break
       }
 

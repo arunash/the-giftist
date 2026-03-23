@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X } from 'lucide-react'
+import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X, Calendar } from 'lucide-react'
 import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 import { HeroChatInput } from '@/components/landing/hero-chat-input'
@@ -244,10 +244,10 @@ export default async function Home() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-              Free forever. Gold when you're ready.
+              Free to start. Pay for what you need.
             </h2>
             <p className="text-gray-500 max-w-lg mx-auto">
-              Everything you need to get started is free. Upgrade to Gold for the full concierge experience.
+              Everything you need to get started is free. Buy an Event Pass or go Gold for the full experience.
             </p>
           </div>
 
@@ -266,7 +266,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Free tier */}
             <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-1">Free</h3>
@@ -279,12 +279,11 @@ export default async function Home() {
                 <PricingItem included text="Unlimited wishlist items" />
                 <PricingItem included text="Add items by URL or photo" />
                 <PricingItem included text="Share lists via WhatsApp" />
-                <PricingItem included text="Create events and registries" />
+                <PricingItem included text="1 free event" />
                 <PricingItem included text="Group gift funding" />
-                <PricingItem included text="10 concierge messages/day" />
-                <PricingItem included={false} text="Unlimited concierge conversations" />
-                <PricingItem included={false} text="Priority AI recommendations" />
-                <PricingItem included={false} text="Early access to new features" />
+                <PricingItem included text="3 concierge messages/day" />
+                <PricingItem included={false} text="Unlimited events" />
+                <PricingItem included={false} text="Unlimited concierge" />
               </div>
               <Link
                 href="/login"
@@ -294,10 +293,41 @@ export default async function Home() {
               </Link>
             </div>
 
+            {/* Event Pass tier */}
+            <div className="bg-white rounded-2xl border border-primary/30 p-8 relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
+                Pay per event
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h3 className="text-xl font-bold text-gray-900">Event Pass</h3>
+              </div>
+              <p className="text-gray-500 text-sm mb-6">For special occasions</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-3xl font-bold text-gray-900">$2.99</span>
+                <span className="text-sm text-gray-400">/event</span>
+              </div>
+              <div className="space-y-3">
+                <PricingItem included text="Everything in Free" />
+                <PricingItem included text="Create a shareable registry" />
+                <PricingItem included text="Unlimited items per event" />
+                <PricingItem included text="Send reminders to your circle" />
+                <PricingItem included text="Full concierge for that event" />
+                <PricingItem included={false} text="Unlimited events" />
+                <PricingItem included={false} text="Priority recommendations" />
+              </div>
+              <Link
+                href="/login"
+                className="mt-8 w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm bg-primary text-white hover:bg-primary-hover transition"
+              >
+                Buy Event Pass
+              </Link>
+            </div>
+
             {/* Gold tier */}
             <div id="gold" className="bg-white rounded-2xl border border-yellow-500/30 p-8 relative overflow-hidden shadow-sm">
               <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
-                Popular
+                Best value
               </div>
               <div className="flex items-center gap-2 mb-1">
                 <Crown className="h-5 w-5 text-yellow-500" />
@@ -311,6 +341,7 @@ export default async function Home() {
               <div className="space-y-3">
                 <PricingItem included text="Everything in Free" />
                 <PricingItem included text="Unlimited concierge conversations" />
+                <PricingItem included text="Unlimited events & registries" />
                 <PricingItem included text="Priority AI recommendations" />
                 <PricingItem included text="Daily WhatsApp gift inspiration" />
                 <PricingItem included text="Early access to new features" />

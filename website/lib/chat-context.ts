@@ -1,6 +1,6 @@
 import { prisma } from './db'
 
-const FREE_DAILY_MESSAGE_LIMIT = 10
+const FREE_DAILY_MESSAGE_LIMIT = 3
 
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
   const [subscription, user] = await Promise.all([
@@ -343,6 +343,7 @@ GUIDELINES:
 - When the user explicitly asks to ADD items to an event (not just suggest), use [ADD_TO_EVENT] for each confirmed item.
 - When suggesting gifts, ALWAYS use [PRODUCT] blocks first. Ask the user which ones to add. Only use [ADD_TO_EVENT] after they confirm.
 - When a user asks "what's trending" or similar, suggest 3-4 real, specific products as [PRODUCT] blocks — NOT generic categories or text descriptions.
+- ALWAYS include a gift card option as a safe fallback in your recommendations. Suggest a specific gift card (e.g., Amazon, Visa, Target, Sephora, or a store relevant to the recipient's interests) with a concrete denomination and a real URL using a [PRODUCT] block. This ensures the user always has a no-risk, instant-delivery option.
 
 FIRST-TIME USER ACTIVATION:
 - When the user has 0 items on their list, treat ANY message (even "hi", "hello", or a greeting) as an activation opportunity.

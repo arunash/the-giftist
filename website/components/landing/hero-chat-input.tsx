@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Sparkles, Lock } from 'lucide-react'
+import { ArrowRight, Sparkles, Lock, Gift, ExternalLink, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { parseChatContent, type ProductData } from '@/lib/parse-chat-content'
+import { applyAffiliateTag } from '@/lib/affiliate'
 
 const suggestions = [
   'Gift for mom under $50',
@@ -40,40 +42,6 @@ const pastelColors = [
   'bg-indigo-100 text-indigo-600',
   'bg-teal-100 text-teal-600',
 ]
-
-// Teaser responses keyed by rough category
-const teaserResponses: Record<string, string[]> = {
-  mom: [
-    'I found 3 amazing options for her! A personalized recipe book, a luxe candle set, and a...',
-    'Based on popular picks, here are some curated ideas: a custom photo calendar, a spa gift basket, and...',
-  ],
-  partner: [
-    'Great taste! I have some ideas: a couples experience box, a custom star map of your first date, and...',
-    'Here are my top picks: a personalized love letter book, a sunset cruise voucher, and...',
-  ],
-  birthday: [
-    'Birthday shopping is my specialty! Here are 3 ideas: a custom illustration portrait, a curated snack box, and...',
-    'I pulled together some crowd favorites: a memory book, a surprise experience, and...',
-  ],
-  default: [
-    'I have some perfect suggestions! A curated gift box, a personalized keepsake, and...',
-    'Great question! Here are my top 3 picks: a thoughtful experience gift, a custom item, and...',
-  ],
-}
-
-function getTeaserResponse(query: string): string {
-  const lower = query.toLowerCase()
-  if (lower.includes('mom') || lower.includes('mother')) {
-    return teaserResponses.mom[Math.floor(Math.random() * teaserResponses.mom.length)]
-  }
-  if (lower.includes('partner') || lower.includes('wife') || lower.includes('husband') || lower.includes('boyfriend') || lower.includes('girlfriend') || lower.includes('anniversary')) {
-    return teaserResponses.partner[Math.floor(Math.random() * teaserResponses.partner.length)]
-  }
-  if (lower.includes('birthday')) {
-    return teaserResponses.birthday[Math.floor(Math.random() * teaserResponses.birthday.length)]
-  }
-  return teaserResponses.default[Math.floor(Math.random() * teaserResponses.default.length)]
-}
 
 function getColorForName(name: string) {
   let hash = 0
@@ -146,44 +114,133 @@ function TypingIndicator() {
   )
 }
 
-type Stage = 'input' | 'thinking' | 'teaser'
+// Lightweight product card for landing page (no "Add to List", just "Buy Now" affiliate link)
+function LandingProductCard({ product }: { product: ProductData }) {
+  const [previewImage, setPreviewImage] = useState<string | null>(product.image || null)
+  const [loadingImage, setLoadingImage] = useState(false)
+  const didFetch = useRef(false)
+
+  useEffect(() => {
+    if (previewImage || didFetch.current || (!product.url && !product.name)) return
+    didFetch.current = true
+    setLoadingImage(true)
+    const params = new URLSearchParams()
+    if (product.url) params.set('url', product.url)
+    if (product.name) params.set('name', product.name)
+    fetch(`/api/products/preview?${params.toString()}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.image) setPreviewImage(data.image)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingImage(false))
+  }, [previewImage, product.url, product.name])
+
+  const viewUrl = product.url && !product.url.includes('google.com/search')
+    ? applyAffiliateTag(product.url)
+    : null
+
+  return (
+    <div className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 my-2">
+      {viewUrl ? (
+        <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 block">
+          {previewImage ? (
+            <img src={previewImage} alt={product.name} className="w-full h-full object-cover" />
+          ) : loadingImage ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-4 w-4 text-gray-300 animate-spin" />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <Gift className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
+        </a>
+      ) : (
+        <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+          {previewImage ? (
+            <img src={previewImage} alt={product.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <Gift className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="min-w-0">
+          {viewUrl ? (
+            <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-900 line-clamp-1 hover:text-primary transition block">
+              {product.name}
+            </a>
+          ) : (
+            <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{product.name}</h4>
+          )}
+          {product.price && (
+            <p className="text-xs font-semibold text-primary mt-0.5">{product.price}</p>
+          )}
+        </div>
+        {viewUrl && (
+          <a
+            href={viewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Buy Now
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type Stage = 'input' | 'thinking' | 'response'
 
 export function HeroChatInput() {
   const [value, setValue] = useState('')
   const [stage, setStage] = useState<Stage>('input')
   const [submittedQuery, setSubmittedQuery] = useState('')
-  const [teaserText, setTeaserText] = useState('')
-  const [displayedTeaser, setDisplayedTeaser] = useState('')
+  const [responseText, setResponseText] = useState('')
+  const [products, setProducts] = useState<ProductData[]>([])
+  const [error, setError] = useState(false)
   const router = useRouter()
   const chatRef = useRef<HTMLDivElement>(null)
 
-  const submit = (text: string) => {
+  const submit = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return
     setSubmittedQuery(trimmed)
     setValue('')
     setStage('thinking')
+    setError(false)
 
-    // After a brief "thinking" delay, show teaser
-    setTimeout(() => {
-      const response = getTeaserResponse(trimmed)
-      setTeaserText(response)
-      setDisplayedTeaser('')
-      setStage('teaser')
-    }, 1800)
+    try {
+      const res = await fetch('/api/chat/quick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed }),
+      })
+
+      if (!res.ok) throw new Error('API error')
+
+      const data = await res.json()
+      const fullText = data.text || ''
+
+      // Parse the response to extract products and text
+      const segments = parseChatContent(fullText)
+      const textParts = segments.filter(s => s.type === 'text').map(s => s.type === 'text' ? s.content : '')
+      const productParts = segments.filter(s => s.type === 'product').map(s => s.type === 'product' ? s.data : null).filter(Boolean) as ProductData[]
+
+      setResponseText(textParts.join(' ').trim())
+      setProducts(productParts)
+      setStage('response')
+    } catch {
+      setError(true)
+      setStage('response')
+    }
   }
-
-  // Typewriter effect for teaser response
-  useEffect(() => {
-    if (stage !== 'teaser' || !teaserText) return
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setDisplayedTeaser(teaserText.slice(0, i))
-      if (i >= teaserText.length) clearInterval(interval)
-    }, 20)
-    return () => clearInterval(interval)
-  }, [stage, teaserText])
 
   // Scroll chat into view when stage changes
   useEffect(() => {
@@ -195,8 +252,9 @@ export function HeroChatInput() {
   const reset = () => {
     setStage('input')
     setSubmittedQuery('')
-    setTeaserText('')
-    setDisplayedTeaser('')
+    setResponseText('')
+    setProducts([])
+    setError(false)
   }
 
   if (stage === 'input') {
@@ -240,7 +298,7 @@ export function HeroChatInput() {
     )
   }
 
-  // Chat conversation view (thinking + teaser stages)
+  // Chat conversation view (thinking + response stages)
   return (
     <div ref={chatRef} className="w-full max-w-2xl mx-auto">
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden">
@@ -264,22 +322,33 @@ export function HeroChatInput() {
             </div>
           </div>
 
-          {/* AI thinking or teaser */}
+          {/* AI response */}
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-gray-100 text-gray-700">
               {stage === 'thinking' ? (
                 <TypingIndicator />
-              ) : (
+              ) : error ? (
                 <p className="px-4 py-2.5 text-[14px] leading-relaxed">
-                  {displayedTeaser}
+                  Something went wrong. Try again or{' '}
+                  <Link href="/login" className="text-primary font-medium hover:underline">sign up</Link>{' '}
+                  for the full experience.
                 </p>
+              ) : (
+                <div className="px-4 py-2.5">
+                  {responseText && (
+                    <p className="text-[14px] leading-relaxed mb-2">{responseText}</p>
+                  )}
+                  {products.map((product, i) => (
+                    <LandingProductCard key={i} product={product} />
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Signup gate */}
-        {stage === 'teaser' && displayedTeaser.length >= teaserText.length && (
+        {/* Signup nudge — shown after response loads */}
+        {stage === 'response' && !error && (
           <div className="mx-4 mb-4 p-4 bg-gradient-to-r from-primary/5 to-orange-50 border border-primary/15 rounded-xl animate-fade-in">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -287,10 +356,10 @@ export function HeroChatInput() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Sign up free to see full recommendations
+                  Sign up free to save items & get personalized picks
                 </p>
                 <p className="text-xs text-gray-500 mb-3">
-                  Get personalized gift ideas with prices, links, and one-tap saving to your wishlist.
+                  Create wishlists, track prices, and get recommendations tailored to your taste.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Link

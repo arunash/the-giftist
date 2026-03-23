@@ -57,6 +57,7 @@ model User {
   wallet                        Wallet?
   feedbacks                     Feedback[]
   devices                       Device[]
+  eventPurchases                EventPurchase[]
 }
 
 model Account {
@@ -152,6 +153,7 @@ model Event {
   items            EventItem[]
   giftLists        GiftList[]
   circleReminders  CircleEventReminder[]
+  eventPurchase    EventPurchase?
 
   @@index([userId])
 }
@@ -413,6 +415,21 @@ model Device {
   platform  String   // "ios" | "android"
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EventPurchase {
+  id              String   @id @default(cuid())
+  userId          String
+  eventId         String?  @unique
+  stripeSessionId String?  @unique
+  stripePaymentId String?
+  amount          Float    @default(2.99)
+  status          String   @default("PENDING") // PENDING, COMPLETED, REFUNDED
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event           Event?   @relation(fields: [eventId], references: [id])
 
   @@index([userId])
 }

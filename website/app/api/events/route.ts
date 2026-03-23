@@ -104,6 +104,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(existing, { status: 200 })
     }
 
+    // Check event creation limits: 1 free event, then need Event Pass or Gold
+    const FREE_EVENT_LIMIT = 1
+    const [subscription, existingEventCount, unusedPurchases] = await Promise.all([
+      prisma.subscription.findUnique({
+        where: { userId },
+        select: { status: true, currentPeriodEnd: true },
+      }),
+      prisma.event.count({ where: { userId } }),
+      prisma.eventPurchase.count({
+        where: { userId, status: 'COMPLETED', eventId: null },
+      }),
+    ])
+
+    const isGold = subscription?.status === 'ACTIVE' &&
+      (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
+
+    if (!isGold && existingEventCount >= FREE_EVENT_LIMIT && unusedPurchases <= 0) {
+      return NextResponse.json(
+        {
+          error: 'event_limit',
+          message: 'Purchase an Event Pass ($2.99) to create more events, or upgrade to Gold for unlimited events.',
+        },
+        { status: 403 }
+      )
+    }
+
     const event = await prisma.event.create({
       data: {
         userId,
@@ -127,6 +153,19 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    // Link to unused event purchase if applicable
+    if (!isGold && existingEventCount >= FREE_EVENT_LIMIT && unusedPurchases > 0) {
+      const unusedPurchase = await prisma.eventPurchase.findFirst({
+        where: { userId, status: 'COMPLETED', eventId: null },
+      })
+      if (unusedPurchase) {
+        await prisma.eventPurchase.update({
+          where: { id: unusedPurchase.id },
+          data: { eventId: event.id },
+        })
+      }
+    }
 
     // Emit activity event
     createActivity({
