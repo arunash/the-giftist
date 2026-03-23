@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logApiCall, logError } from '@/lib/api-logger'
+import { parseChatContent, type ProductData } from '@/lib/parse-chat-content'
+import { findProductUrl } from '@/lib/enrich-item'
+import { applyAffiliateTag } from '@/lib/affiliate'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -24,15 +27,26 @@ const SYSTEM_PROMPT = `You are the Giftist Gift Concierge — an opinionated per
 
 You are responding to an anonymous visitor on the landing page. Your goal is to give them amazing gift recommendations so they sign up.
 
+PREFERRED RETAILERS (ALWAYS use these — we earn affiliate commission):
+- Amazon (amazon.com) — electronics, books, household, branded products
+- Etsy (etsy.com) — handmade, personalized, unique gifts
+- Uncommon Goods (uncommongoods.com) — curated, creative gifts
+- Target (target.com) — home, kitchen, beauty
+- Walmart (walmart.com) — value/budget options
+- Nordstrom (nordstrom.com) — fashion, luxury accessories
+- Bookshop.org — books
+- Food52 (food52.com) — kitchen/cooking gifts
+- MasterClass (masterclass.com) — experience/learning gifts
+- Cratejoy (cratejoy.com) — subscription box gifts
+NEVER link to retailers outside this list.
+
 RULES:
-- Suggest 2-3 real, specific products with real prices and real retailer URLs.
+- Suggest 2-3 real, specific products with real prices and real retailer URLs from the preferred list above.
 - ALWAYS use [PRODUCT] blocks for each suggestion with "name", "price", and "url" fields.
-- ALWAYS include a gift card option as a safe fallback (e.g., Amazon, Sephora, Target gift card with a specific denomination and real URL).
+- ALWAYS include a gift card option as a safe fallback (Amazon, Sephora, Target gift card with specific denomination and URL).
 - Keep your text response to 1-2 short sentences max. Let the product cards do the talking.
-- Be specific — real brands, real products, real URLs from real retailers (Amazon, Etsy, Uncommon Goods, Nordstrom, Target, etc.).
+- Be specific — real brands, real products. Use real product page URLs (e.g., amazon.com/dp/B00NK3FHQW), NOT search pages.
 - Never suggest mugs, candles, or generic commodity items.
-- Prefer specialty retailers: Uncommon Goods, Etsy shops, Bookshop.org, Food52, MasterClass, niche DTC brands.
-- Amazon is OK for specific branded products (Kindle, AirPods, etc.) — never for generic filler.
 - Suggest across price tiers when possible.
 - Do NOT use any structured blocks except [PRODUCT].
 - Do NOT ask follow-up questions — just give your best recommendations immediately.
@@ -46,6 +60,42 @@ Here are some great picks for a cooking enthusiast:
 [PRODUCT]{"name":"Le Creuset Signature Dutch Oven","price":"$350","url":"https://www.amazon.com/dp/B00NK3FHQW"}[/PRODUCT]
 [PRODUCT]{"name":"Uncommon Goods Personalized Cutting Board","price":"$60","url":"https://www.uncommongoods.com/product/personalized-state-cutting-board"}[/PRODUCT]
 [PRODUCT]{"name":"Amazon Gift Card","price":"$50","url":"https://www.amazon.com/dp/B004LLIKVU"}[/PRODUCT]`
+
+// Validate a URL by checking if it resolves (HEAD request)
+async function validateUrl(url: string): Promise<boolean> {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
+    if (parsed.hostname.includes('google.com')) return false
+
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(5000),
+    })
+    return res.ok || res.status === 405 // some sites block HEAD but return 405
+  } catch {
+    return false
+  }
+}
+
+// Resolve product URLs: validate AI's URL, fallback to Google Shopping search
+async function resolveProductUrl(product: ProductData): Promise<string | null> {
+  // If AI provided a URL, validate it
+  if (product.url && !product.url.includes('google.com/search')) {
+    const valid = await validateUrl(product.url)
+    if (valid) return applyAffiliateTag(product.url)
+  }
+
+  // Fallback: search Google Shopping for the product by name
+  const found = await findProductUrl(product.name)
+  if (found) return applyAffiliateTag(found.url)
+
+  return null
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,7 +120,7 @@ export async function POST(request: NextRequest) {
       messages: [{ role: 'user', content: message }],
     }, { timeout: 15000 })
 
-    const text = response.content
+    const rawText = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('')
@@ -84,7 +134,29 @@ export async function POST(request: NextRequest) {
       source: 'LANDING',
     }).catch(() => {})
 
-    return NextResponse.json({ text })
+    // Parse products and resolve URLs server-side
+    const segments = parseChatContent(rawText)
+    const products = segments
+      .filter((s): s is { type: 'product'; data: ProductData } => s.type === 'product')
+      .map(s => s.data)
+
+    // Resolve all product URLs in parallel (validate + fallback search)
+    const resolvedProducts = await Promise.all(
+      products.map(async (product) => {
+        const resolvedUrl = await resolveProductUrl(product)
+        return { ...product, url: resolvedUrl || undefined }
+      })
+    )
+
+    // Rebuild the response text with resolved URLs
+    const textSegments = segments
+      .filter(s => s.type === 'text')
+      .map(s => s.type === 'text' ? s.content : '')
+
+    return NextResponse.json({
+      text: textSegments.join(' ').trim(),
+      products: resolvedProducts,
+    })
   } catch (error) {
     console.error('Quick chat error:', error)
     logError({ source: 'QUICK_CHAT', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

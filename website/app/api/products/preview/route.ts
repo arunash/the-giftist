@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractProductFromUrl } from '@/lib/extract'
 import { findProductImage } from '@/lib/product-image'
+import { findProductUrl } from '@/lib/enrich-item'
+import { applyAffiliateTag } from '@/lib/affiliate'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -20,6 +22,8 @@ export async function GET(request: NextRequest) {
   let image: string | null = null
   let productName: string | null = null
   let price: string | null = null
+  let resolvedUrl: string | null = null
+  let urlValid = false
 
   // Try URL scraping first (existing flow)
   if (url) {
@@ -35,6 +39,8 @@ export async function GET(request: NextRequest) {
           image = product.image
           productName = product.name
           price = product.price
+          urlValid = true
+          resolvedUrl = applyAffiliateTag(url)
         } catch {}
       }
     } catch {
@@ -42,8 +48,26 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fallback: if URL scraping didn't produce an image and we have a product name,
-  // search Google Shopping for a thumbnail
+  // If URL was bad or missing, search for a real product URL by name
+  if (!urlValid && name) {
+    try {
+      const found = await findProductUrl(name)
+      if (found) {
+        resolvedUrl = applyAffiliateTag(found.url)
+        // Try to scrape image from the found URL
+        if (!image) {
+          try {
+            const product = await extractProductFromUrl(found.url)
+            if (product.image) image = product.image
+            if (product.name) productName = product.name
+            if (product.price) price = product.price
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback: if still no image, search Google Shopping for a thumbnail
   if (!image && name) {
     try {
       image = await findProductImage(name)
@@ -51,7 +75,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { image, name: productName, price },
+    { image, name: productName, price, resolvedUrl },
     { headers: { 'Cache-Control': 'public, max-age=86400' } },
   )
 }

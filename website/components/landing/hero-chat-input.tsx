@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowRight, Sparkles, Lock, Gift, ExternalLink, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { parseChatContent, type ProductData } from '@/lib/parse-chat-content'
-import { applyAffiliateTag } from '@/lib/affiliate'
+import type { ProductData } from '@/lib/parse-chat-content'
 
 const suggestions = [
   'Gift for mom under $50',
@@ -136,9 +134,8 @@ function LandingProductCard({ product }: { product: ProductData }) {
       .finally(() => setLoadingImage(false))
   }, [previewImage, product.url, product.name])
 
-  const viewUrl = product.url && !product.url.includes('google.com/search')
-    ? applyAffiliateTag(product.url)
-    : null
+  // URLs come pre-validated and affiliate-tagged from the server
+  const viewUrl = product.url || null
 
   return (
     <div className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 my-2">
@@ -205,7 +202,6 @@ export function HeroChatInput() {
   const [responseText, setResponseText] = useState('')
   const [products, setProducts] = useState<ProductData[]>([])
   const [error, setError] = useState(false)
-  const router = useRouter()
   const chatRef = useRef<HTMLDivElement>(null)
 
   const submit = async (text: string) => {
@@ -226,15 +222,10 @@ export function HeroChatInput() {
       if (!res.ok) throw new Error('API error')
 
       const data = await res.json()
-      const fullText = data.text || ''
 
-      // Parse the response to extract products and text
-      const segments = parseChatContent(fullText)
-      const textParts = segments.filter(s => s.type === 'text').map(s => s.type === 'text' ? s.content : '')
-      const productParts = segments.filter(s => s.type === 'product').map(s => s.type === 'product' ? s.data : null).filter(Boolean) as ProductData[]
-
-      setResponseText(textParts.join(' ').trim())
-      setProducts(productParts)
+      // API returns pre-parsed text and products with resolved/validated URLs
+      setResponseText(data.text || '')
+      setProducts(data.products || [])
       setStage('response')
     } catch {
       setError(true)

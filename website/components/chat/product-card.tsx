@@ -16,12 +16,15 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
   const [added, setAdded] = useState(!!product.id)
   const [shareCopied, setShareCopied] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(product.image || null)
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
   const [loadingImage, setLoadingImage] = useState(false)
   const didFetch = useRef(false)
 
-  // Lazy-load image from product URL when no image provided
+  // Lazy-load image AND resolve URL from product preview API
   useEffect(() => {
-    if (previewImage || didFetch.current || (!product.url && !product.name)) return
+    if (didFetch.current || (!product.url && !product.name)) return
+    // If we already have an image, we still want to resolve the URL
+    if (previewImage && resolvedUrl) return
     didFetch.current = true
     setLoadingImage(true)
     const params = new URLSearchParams()
@@ -30,11 +33,13 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
     fetch(`/api/products/preview?${params.toString()}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.image) setPreviewImage(data.image)
+        if (data?.image && !previewImage) setPreviewImage(data.image)
+        // Use server-resolved URL (validated + affiliate tagged) over AI's raw URL
+        if (data?.resolvedUrl) setResolvedUrl(data.resolvedUrl)
       })
       .catch(() => {})
       .finally(() => setLoadingImage(false))
-  }, [previewImage, product.url])
+  }, [previewImage, resolvedUrl, product.url, product.name])
 
   const handleAdd = async () => {
     if (added || adding || !onAdd) return
@@ -49,10 +54,11 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
     }
   }
 
-  // Build affiliate link for "View" action
-  const viewUrl = product.url && !product.url.includes('google.com/search')
-    ? applyAffiliateTag(product.url)
-    : null
+  // Use resolved URL from server if available, fallback to affiliate-tagged AI URL
+  const viewUrl = resolvedUrl
+    || (product.url && !product.url.includes('google.com/search')
+      ? applyAffiliateTag(product.url)
+      : null)
 
   return (
     <div className="flex gap-3 p-3 bg-surface-hover rounded-xl border border-border my-2">
