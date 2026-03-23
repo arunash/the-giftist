@@ -551,23 +551,83 @@ export async function runPostEventFollowUp() {
 
 // ── Seasonal Holiday Reminders ──
 
+interface Holiday {
+  name: string
+  month: number // 0-indexed
+  day: number
+  message: string // personalized nudge message
+}
+
+function getHolidays(year: number): Holiday[] {
+  return [
+    // January
+    { name: "New Year's Day", month: 0, day: 1, message: "New Year's is here! Start the year right — create a wishlist for yourself or find a gift for someone who made last year special." },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "MLK Day weekend is coming up. A great time to give back — need gift ideas for a teacher, mentor, or community leader?" },
+
+    // February
+    { name: "Galentine's Day", month: 1, day: 13, message: "Galentine's Day is tomorrow! Need a last-minute gift for your best friend? I've got ideas." },
+    { name: "Valentine's Day", month: 1, day: 14, message: "Valentine's Day is 2 weeks away! Want to set up a wishlist for your partner or find the perfect gift?" },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Lunar New Year is coming! Need gift ideas? Red envelopes, treats, or something special for family?" },
+
+    // March
+    { name: "International Women's Day", month: 2, day: 8, message: "International Women's Day is coming up. Want to find a thoughtful gift for an important woman in your life?" },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "St. Patrick's Day is around the corner. Hosting or attending a party? I can help with host gifts!" },
+
+    // April
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Easter is 2 weeks away! Need basket ideas, host gifts, or something special for the kids?" },
+    { name: 'Earth Day', month: 3, day: 22, message: "Earth Day is coming up. Looking for eco-friendly or sustainable gift ideas? I've got great ones." },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Administrative Professionals Day is coming up! Want to find a thoughtful thank-you gift for someone at work?" },
+
+    // May
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Mother's Day is 2 weeks away! Let me help you find something she'll actually love — not another candle." },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Cinco de Mayo is coming! Hosting or attending a party? I can help with host gifts and celebration ideas." },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Teacher Appreciation Week is coming up! Want to find a gift your kid's teacher will actually love?" },
+
+    // June
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Father's Day is 2 weeks away! Tell me about your dad and I'll find something perfect." },
+    { name: 'Juneteenth', month: 5, day: 19, message: "Juneteenth is coming up. Looking for meaningful gifts to celebrate or support Black-owned businesses? I can help." },
+    { name: 'Graduation Season', month: 5, day: 1, message: "It's graduation season! Know any graduates? Let me help you find the perfect congratulations gift." },
+
+    // July
+    { name: 'Independence Day', month: 6, day: 4, message: "4th of July is coming! Hosting a cookout? I can help with host gifts and party essentials." },
+
+    // August
+    { name: 'Back to School', month: 7, day: 15, message: "Back to school season is here! Need gift ideas for students, teachers, or dorm room essentials?" },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Friendship Day is this weekend! Want to surprise your bestie with something thoughtful?" },
+
+    // September
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Labor Day weekend is coming! Great time to thank a hardworking person in your life. Need gift ideas?" },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Grandparents' Day is this Sunday! Want to find something special for grandma or grandpa?" },
+
+    // October
+    { name: "Boss's Day", month: 9, day: 16, message: "Boss's Day is coming up on Oct 16. Want to find a tasteful gift or organize a group gift from the team?" },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Sweetest Day is this Saturday! A great excuse to surprise your partner with something sweet." },
+    { name: 'Halloween', month: 9, day: 31, message: "Halloween is 2 weeks away! Need costume accessories, party host gifts, or trick-or-treat goodies?" },
+
+    // November
+    { name: 'Veterans Day', month: 10, day: 11, message: "Veterans Day is coming up. Want to find a meaningful gift for a veteran or active service member?" },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Thanksgiving is 2 weeks away! Need host gifts, friendsgiving ideas, or holiday prep essentials?" },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Black Friday is coming! Your wishlist is the perfect shopping list. Share it with family so they know what to get you." },
+
+    // December
+    { name: 'Christmas', month: 11, day: 25, message: "Christmas is 2 weeks away! Time to finalize your wishlist and share it with family. Need last-minute gift ideas?" },
+    { name: "New Year's Eve", month: 11, day: 31, message: "New Year's Eve is coming! Hosting a party or attending one? I can help with host gifts and celebration ideas." },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "Secret Santa season is here! Need gift ideas under $25? Tell me about the person and I'll find something great." },
+  ]
+}
+
 export async function runSeasonalReminders() {
   const now = new Date()
   const year = now.getFullYear()
   const results = { sent: 0 }
 
-  // Static holidays (month is 0-indexed)
-  const holidays = [
-    { name: "Valentine's Day", month: 1, day: 14 },
-    { name: "Mother's Day", month: 4, day: getMothersDay(year) },
-    { name: "Father's Day", month: 5, day: getFathersDay(year) },
-    { name: 'Christmas', month: 11, day: 25 },
-  ]
+  const holidays = getHolidays(year)
 
   for (const holiday of holidays) {
     const holidayDate = new Date(year, holiday.month, holiday.day)
     const daysUntil = Math.ceil((holidayDate.getTime() - now.getTime()) / 86400000)
 
+    // Send 13-15 days before (2 weeks out)
     if (daysUntil < 13 || daysUntil > 15) continue
 
     const dedup = `${holiday.name}_${year}`
@@ -588,7 +648,7 @@ export async function runSeasonalReminders() {
       if (seasonalMap[dedup]) continue
 
       const displayName = user.name || 'there'
-      const text = `Hey ${displayName}! ${holiday.name} is 2 weeks away. Want to create a wishlist or set up gifts for someone special?`
+      const text = `Hey ${displayName}! ${holiday.message}`
       await smartWhatsAppSend(user.phone, text, 'seasonal_reminder', [displayName, holiday.name]).catch(() => {})
 
       seasonalMap[dedup] = true
@@ -602,20 +662,55 @@ export async function runSeasonalReminders() {
   return results
 }
 
-// Mother's Day = 2nd Sunday of May
-function getMothersDay(year: number): number {
-  const may1 = new Date(year, 4, 1)
-  const dayOfWeek = may1.getDay()
-  const firstSunday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
-  return firstSunday + 7
+// Get the Nth occurrence of a weekday in a month
+// weekday: 0=Sun, 1=Mon, ..., 6=Sat
+// n: 1=first, 2=second, 3=third, 4=fourth
+function getNthWeekday(year: number, month: number, weekday: number, n: number): number {
+  const first = new Date(year, month, 1)
+  let day = 1 + ((weekday - first.getDay() + 7) % 7)
+  day += (n - 1) * 7
+  return day
 }
 
-// Father's Day = 3rd Sunday of June
-function getFathersDay(year: number): number {
-  const jun1 = new Date(year, 5, 1)
-  const dayOfWeek = jun1.getDay()
-  const firstSunday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
-  return firstSunday + 14
+// Get the last occurrence of a weekday in a month
+function getLastWeekday(year: number, month: number, weekday: number): number {
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  const lastDate = new Date(year, month, lastDay)
+  const diff = (lastDate.getDay() - weekday + 7) % 7
+  return lastDay - diff
+}
+
+// Easter (Gregorian) — Anonymous/Meeus algorithm
+function getEaster(year: number): { month: number; day: number } {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1 // 0-indexed
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return { month, day }
+}
+
+// Lunar New Year approximation (simplified — covers 2024-2030)
+function getLunarNewYear(year: number): { month: number; day: number } {
+  const dates: Record<number, { month: number; day: number }> = {
+    2024: { month: 1, day: 10 },  // Feb 10
+    2025: { month: 0, day: 29 },  // Jan 29
+    2026: { month: 1, day: 17 },  // Feb 17
+    2027: { month: 1, day: 6 },   // Feb 6
+    2028: { month: 0, day: 26 },  // Jan 26
+    2029: { month: 1, day: 13 },  // Feb 13
+    2030: { month: 1, day: 3 },   // Feb 3
+  }
+  return dates[year] || { month: 0, day: 25 } // fallback
 }
 
 // ── Lifecycle Nudges (returning, mature, churned) ──
