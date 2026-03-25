@@ -1,8 +1,12 @@
 import { prisma } from './db'
 
 const FREE_DAILY_MESSAGE_LIMIT = 3
+const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
 
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+  if (ADMIN_USER_IDS.has(userId)) {
+    return { allowed: true, remaining: Infinity }
+  }
   const [subscription, user] = await Promise.all([
     prisma.subscription.findUnique({
       where: { userId },
