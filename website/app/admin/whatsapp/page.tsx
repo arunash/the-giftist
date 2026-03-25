@@ -69,6 +69,7 @@ export default function AdminWhatsAppPage() {
       case 'OUTBOUND_TEMPLATE': return 'bg-purple-500/10 text-purple-600'
       case 'SMS_OUTBOUND': return 'bg-green-500/10 text-green-600'
       case 'REDIRECT': return 'bg-orange-500/10 text-orange-600'
+      case 'GROUP_MESSAGE': return 'bg-teal-500/10 text-teal-600'
       default: return 'bg-gray-500/10 text-gray-500'
     }
   }

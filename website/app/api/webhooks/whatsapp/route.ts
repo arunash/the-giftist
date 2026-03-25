@@ -9,6 +9,7 @@ import {
   handleDocumentMessage,
   getWelcomeMessage,
 } from '@/lib/whatsapp-handlers'
+import { handleGroupMessage } from '@/lib/group-monitor'
 import { logError } from '@/lib/api-logger'
 
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
@@ -95,6 +96,8 @@ export async function POST(request: NextRequest) {
     const rawPhone: string = message.from
     const messageType: string = message.type
     const profileName: string | undefined = contact?.profile?.name
+    // WhatsApp Cloud API: group messages include context.group_id
+    const groupId: string | undefined = message.context?.group_id || message.group_id
 
     const phone = normalizePhone(rawPhone)
 
@@ -103,6 +106,29 @@ export async function POST(request: NextRequest) {
       where: { waMessageId },
     })
     if (existing) {
+      return NextResponse.json({ status: 'ok' })
+    }
+
+    // ── Group message: buffer and return (don't process as DM) ──
+    if (groupId && messageType === 'text' && message.text?.body) {
+      await prisma.whatsAppMessage.create({
+        data: {
+          waMessageId,
+          phone,
+          type: 'GROUP_MESSAGE',
+          content: message.text.body,
+          status: 'RECEIVED',
+        },
+      })
+
+      await handleGroupMessage(
+        waMessageId,
+        groupId,
+        rawPhone,
+        profileName,
+        message.text.body,
+      )
+
       return NextResponse.json({ status: 'ok' })
     }
 

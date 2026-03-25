@@ -457,6 +457,24 @@ export async function handleTextMessage(
     return sendEventReminders(userId, phone)
   }
 
+  // Command: groups — list monitored group chats
+  if (trimmed === 'groups') {
+    const { listMonitoredGroups } = await import('@/lib/group-monitor')
+    return listMonitoredGroups(userId)
+  }
+
+  // Command: extract — manually trigger group profile extraction
+  if (trimmed === 'extract') {
+    const { extractGroupProfiles } = await import('@/lib/group-monitor')
+    await sendTextMessage(phone, 'Analyzing group conversations... This may take a minute.')
+    const result = await extractGroupProfiles(userId)
+    if (result.extracted === 0) {
+      return "Not enough new messages in your group chats yet. I need at least 30 messages from a person before I can build their profile."
+    }
+    const names = result.updated.slice(0, 5).join(', ')
+    return `Updated profiles for: *${names}*${result.updated.length > 5 ? ` and ${result.updated.length - 5} more` : ''}. Ask me for gift ideas for any of them!`
+  }
+
   // Command: edit <n> <field> <value>
   const editMatch = trimmed.match(/^edit\s+(\d+)\s+(name|price)\s+(.+)$/i)
   if (editMatch) {
@@ -1492,6 +1510,12 @@ export function getHelpMessage(): string {
 - *remove circle <number>* — Remove someone
 - *remind* — Send reminders to your circle about upcoming events
 
+*Auto-Monitor (learn friends' preferences):*
+- *Add me to a group chat* — I'll learn your friends' preferences automatically
+- *groups* — See monitored group chats
+- *extract* — Analyze group messages now
+- *Send a WhatsApp chat export (.txt)* — One-time analysis
+
 *Other:*
 - *Ask me anything* — Gift ideas, trends, recs
 - *share* — Get your shareable wishlist link
@@ -1501,7 +1525,6 @@ export function getHelpMessage(): string {
 - Visual wishlist with trending gifts
 - Event wishlists and group gifting
 - AI-powered gift recommendations
-- *Send a WhatsApp chat export (.txt)* — I'll analyze your friend's preferences for better gift ideas`
 }
 
 // ── Pending chat analysis state (in-memory, keyed by userId) ──

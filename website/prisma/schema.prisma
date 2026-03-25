@@ -421,6 +421,35 @@ model Device {
   @@index([userId])
 }
 
+model GroupChatMessage {
+  id        String   @id @default(cuid())
+  userId    String   // the Giftist user who added us to the group
+  groupId   String   // WhatsApp group JID
+  senderPhone String // who sent the message
+  senderName  String? // profile name of sender
+  content   String
+  waMessageId String @unique
+  createdAt DateTime @default(now())
+
+  @@index([userId, groupId])
+  @@index([groupId, senderPhone])
+  @@index([createdAt])
+}
+
+model GroupChat {
+  id             String    @id @default(cuid())
+  userId         String    // Giftist user who owns this monitoring
+  groupId        String    // WhatsApp group JID
+  groupName      String?
+  isActive       Boolean   @default(true)
+  lastExtractedAt DateTime?
+  messageCount   Int       @default(0) // running count since last extraction
+  createdAt      DateTime  @default(now())
+
+  @@unique([userId, groupId])
+  @@index([userId])
+}
+
 model EventPurchase {
   id              String   @id @default(cuid())
   userId          String
