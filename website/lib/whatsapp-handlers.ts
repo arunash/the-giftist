@@ -1731,7 +1731,7 @@ export async function handleDocumentMessage(
   phone: string,
 ): Promise<string> {
   if (!isSupportedChatFile(mimeType, filename)) {
-    return "I can analyze WhatsApp chat exports (.txt or .zip files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
+    return "I can analyze WhatsApp chat exports. To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat, then send me the file."
   }
 
   // Check taste profile limit
@@ -1774,7 +1774,7 @@ export async function handleDocumentMessage(
 
   const text = await extractChatText(buffer, mimeType, filename)
   if (!text) {
-    return "Couldn't find a chat file inside this zip. Make sure you're uploading a WhatsApp chat export (.txt or .zip)."
+    return "Couldn't read that file. Make sure you're sending a WhatsApp chat export — open a conversation → tap ⋮ → More → Export Chat, then send me the file."
   }
 
   const messages = parseWhatsAppExport(text)

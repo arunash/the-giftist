@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   if (!text) {
     return NextResponse.json({
-      error: 'Could not find a chat file. If uploading a .zip, make sure it contains the exported .txt file.',
+      error: 'Could not find a chat file. Make sure you exported the chat from WhatsApp (tap ⋮ → More → Export Chat) and upload the file here.',
     }, { status: 400 })
   }
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   if (messages.length < 10) {
     return NextResponse.json({
-      error: 'Could not parse as a WhatsApp chat export. Make sure you export the chat from WhatsApp (Settings → Chat → Export Chat) and upload the .txt or .zip file.',
+      error: 'Could not parse as a WhatsApp chat export. Make sure you export the chat from WhatsApp (tap ⋮ → More → Export Chat) and send me the file.',
     }, { status: 400 })
   }
 
