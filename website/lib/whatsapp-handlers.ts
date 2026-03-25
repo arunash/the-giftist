@@ -1416,12 +1416,20 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
         const price = p.price ? ` — ${p.price}` : ''
         let linkLine = ''
 
-        // Create tracked link if product has a URL
+        // Create Giftist product page link
         if (p.url && !p.url.includes('google.com/search')) {
           try {
+            let priceVal: number | null = null
+            if (p.price) {
+              const m = p.price.replace(/,/g, '').match(/[\d.]+/)
+              if (m) priceVal = parseFloat(m[0])
+            }
             const trackedUrl = await createTrackedLink({
               productName: p.name,
               targetUrl: p.url,
+              price: p.price || null,
+              priceValue: priceVal,
+              image: p.image || null,
               userId,
               source: 'WHATSAPP',
             })

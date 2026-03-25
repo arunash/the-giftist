@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { applyAffiliateTag } from '@/lib/affiliate'
 
 export async function GET(
   request: NextRequest,
@@ -16,8 +17,8 @@ export async function GET(
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Redirect to Giftist product landing page instead of directly to retailer
-    return NextResponse.redirect(new URL(`/p/${slug}`, request.url), 302)
+    const affiliateUrl = applyAffiliateTag(click.targetUrl)
+    return NextResponse.redirect(affiliateUrl, 302)
   } catch {
     return NextResponse.redirect(new URL('/', request.url))
   }

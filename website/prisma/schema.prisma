@@ -391,6 +391,9 @@ model ProductClick {
   slug        String   @unique
   productName String
   targetUrl   String
+  price       String?
+  priceValue  Float?
+  image       String?
   userId      String?
   source      String   @default("WEB") // WEB, WHATSAPP, CHAT
   clicks      Int      @default(0)

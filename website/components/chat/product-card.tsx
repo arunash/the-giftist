@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Gift, Plus, Check, Share2, Loader2, ExternalLink } from 'lucide-react'
+import { Gift, Plus, Check, Share2, Loader2, ShoppingCart, ExternalLink } from 'lucide-react'
 import { shareOrCopy, giftistShareText } from '@/lib/utils'
-import { applyAffiliateTag } from '@/lib/affiliate'
 import type { ProductData } from '@/lib/parse-chat-content'
 
 interface ProductCardProps {
@@ -16,15 +15,16 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
   const [added, setAdded] = useState(!!product.id)
   const [shareCopied, setShareCopied] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(product.image || null)
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
+  const [giftistUrl, setGiftistUrl] = useState<string | null>(null)
+  const [productSlug, setProductSlug] = useState<string | null>(null)
   const [loadingImage, setLoadingImage] = useState(false)
+  const [buyingLoading, setBuyingLoading] = useState(false)
   const didFetch = useRef(false)
 
-  // Lazy-load image AND resolve URL from product preview API
+  // Lazy-load image AND resolve Giftist product page URL
   useEffect(() => {
     if (didFetch.current || (!product.url && !product.name)) return
-    // If we already have an image, we still want to resolve the URL
-    if (previewImage && resolvedUrl) return
+    if (previewImage && giftistUrl) return
     didFetch.current = true
     setLoadingImage(true)
     const params = new URLSearchParams()
@@ -34,12 +34,16 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.image && !previewImage) setPreviewImage(data.image)
-        // Use server-resolved URL (validated + affiliate tagged) over AI's raw URL
-        if (data?.resolvedUrl) setResolvedUrl(data.resolvedUrl)
+        if (data?.resolvedUrl) {
+          setGiftistUrl(data.resolvedUrl)
+          // Extract slug from giftist URL
+          const match = data.resolvedUrl.match(/\/p\/([^/?]+)/)
+          if (match) setProductSlug(match[1])
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingImage(false))
-  }, [previewImage, resolvedUrl, product.url, product.name])
+  }, [previewImage, giftistUrl, product.url, product.name])
 
   const handleAdd = async () => {
     if (added || adding || !onAdd) return
@@ -54,50 +58,55 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
     }
   }
 
-  // Use resolved URL from server if available, fallback to affiliate-tagged AI URL
-  const viewUrl = resolvedUrl
-    || (product.url && !product.url.includes('google.com/search')
-      ? applyAffiliateTag(product.url)
-      : null)
+  const handleBuy = async () => {
+    if (!productSlug || buyingLoading) return
+    setBuyingLoading(true)
+    try {
+      const res = await fetch('/api/purchase/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: productSlug }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else if (res.status === 401) {
+        // Redirect to login, then back to product page
+        window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${productSlug}`)}`
+      } else {
+        setBuyingLoading(false)
+      }
+    } catch {
+      setBuyingLoading(false)
+    }
+  }
+
+  const imageEl = previewImage ? (
+    <img
+      src={previewImage}
+      alt={product.name}
+      className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02]"
+    />
+  ) : loadingImage ? (
+    <div className="flex items-center justify-center h-full">
+      <Loader2 className="h-5 w-5 text-gray-300 animate-spin" />
+    </div>
+  ) : (
+    <div className="flex items-center justify-center h-full">
+      <Gift className="h-6 w-6 text-[#333]" />
+    </div>
+  )
 
   return (
     <div className="flex gap-3 p-3 bg-surface-hover rounded-xl border border-border my-2">
-      {/* Image — clickable if view URL exists */}
-      {viewUrl ? (
-        <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-lg overflow-hidden bg-surface-raised flex-shrink-0 block">
-          {previewImage ? (
-            <img
-              src={previewImage}
-              alt={product.name}
-              className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02]"
-            />
-          ) : loadingImage ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 text-gray-300 animate-spin" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Gift className="h-6 w-6 text-[#333]" />
-            </div>
-          )}
+      {/* Image — links to Giftist product page */}
+      {giftistUrl ? (
+        <a href={giftistUrl} className="w-16 h-16 rounded-lg overflow-hidden bg-surface-raised flex-shrink-0 block">
+          {imageEl}
         </a>
       ) : (
         <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-raised flex-shrink-0">
-          {previewImage ? (
-            <img
-              src={previewImage}
-              alt={product.name}
-              className="w-full h-full object-cover saturate-[1.1] contrast-[1.05] brightness-[1.02]"
-            />
-          ) : loadingImage ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 text-gray-300 animate-spin" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Gift className="h-6 w-6 text-[#333]" />
-            </div>
-          )}
+          {imageEl}
         </div>
       )}
 
@@ -105,8 +114,8 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            {viewUrl ? (
-              <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-900 line-clamp-1 hover:text-primary transition block">
+            {giftistUrl ? (
+              <a href={giftistUrl} className="text-sm font-medium text-gray-900 line-clamp-1 hover:text-primary transition block">
                 {product.name}
               </a>
             ) : (
@@ -157,17 +166,24 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               {adding ? 'Adding...' : 'Add to List'}
             </button>
           )}
-          {viewUrl && (
+          {productSlug ? (
+            <button
+              onClick={handleBuy}
+              disabled={buyingLoading}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition disabled:opacity-50"
+            >
+              <ShoppingCart className="h-3 w-3" />
+              {buyingLoading ? 'Loading...' : 'Buy'}
+            </button>
+          ) : giftistUrl ? (
             <a
-              href={viewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={giftistUrl}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition"
             >
               <ExternalLink className="h-3 w-3" />
-              Buy Now
+              View
             </a>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

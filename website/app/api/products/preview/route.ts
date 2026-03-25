@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { extractProductFromUrl } from '@/lib/extract'
 import { findProductImage } from '@/lib/product-image'
 import { findProductUrl } from '@/lib/enrich-item'
-import { applyAffiliateTag } from '@/lib/affiliate'
+import { createTrackedLink } from '@/lib/product-link'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const userId = (session.user as any).id
   const url = request.nextUrl.searchParams.get('url')
   const name = request.nextUrl.searchParams.get('name')
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   let image: string | null = null
   let productName: string | null = null
   let price: string | null = null
-  let resolvedUrl: string | null = null
+  let targetUrl: string | null = null
   let urlValid = false
 
   // Try URL scraping first (existing flow)
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
           productName = product.name
           price = product.price
           urlValid = true
-          resolvedUrl = applyAffiliateTag(url)
+          targetUrl = url
         } catch {}
       }
     } catch {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     try {
       const found = await findProductUrl(name)
       if (found) {
-        resolvedUrl = applyAffiliateTag(found.url)
+        targetUrl = found.url
         // Try to scrape image from the found URL
         if (!image) {
           try {
@@ -74,8 +75,31 @@ export async function GET(request: NextRequest) {
     } catch {}
   }
 
+  // Create a Giftist product landing page link
+  const displayName = productName || name || 'Product'
+  let giftistUrl: string | null = null
+  let priceValue: number | null = null
+  if (price) {
+    const match = price.replace(/,/g, '').match(/[\d.]+/)
+    if (match) priceValue = parseFloat(match[0])
+  }
+
+  if (targetUrl) {
+    try {
+      giftistUrl = await createTrackedLink({
+        productName: displayName,
+        targetUrl,
+        price,
+        priceValue,
+        image,
+        userId,
+        source: 'CHAT',
+      })
+    } catch {}
+  }
+
   return NextResponse.json(
-    { image, name: productName, price, resolvedUrl },
+    { image, name: productName, price, resolvedUrl: giftistUrl, targetUrl },
     { headers: { 'Cache-Control': 'public, max-age=86400' } },
   )
 }
