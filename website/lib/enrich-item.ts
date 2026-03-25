@@ -27,25 +27,16 @@ export async function findProductUrl(productName: string): Promise<{ url: string
       const $ = cheerio.load(html)
 
       const productUrls: string[] = []
+      // Blocked domains — not retailers
+      const blockedDomains = ['google.com', 'youtube.com', 'wikipedia.org', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'reddit.com', 'pinterest.com', 'tiktok.com']
       $('a[href]').each((_, el) => {
         const href = $(el).attr('href') || ''
         const match = href.match(/\/url\?q=(https?:\/\/[^&]+)/)
         if (match) {
           const decoded = decodeURIComponent(match[1])
-          if (
-            (decoded.includes('amazon.com') ||
-              decoded.includes('target.com') ||
-              decoded.includes('walmart.com') ||
-              decoded.includes('bestbuy.com') ||
-              decoded.includes('etsy.com') ||
-              decoded.includes('nordstrom.com') ||
-              decoded.includes('wayfair.com') ||
-              decoded.includes('kohls.com') ||
-              decoded.includes('macys.com') ||
-              decoded.includes('barnesandnoble.com') ||
-              decoded.includes('bookshop.org')) &&
-            !decoded.includes('google.com')
-          ) {
+          // Accept any retailer/shop URL from Google Shopping — only block social/info sites
+          const isBlocked = blockedDomains.some(d => decoded.includes(d))
+          if (!isBlocked && decoded.startsWith('http')) {
             productUrls.push(decoded)
           }
         }

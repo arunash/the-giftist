@@ -1406,36 +1406,29 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     }
 
     // Extract product blocks, create tracked links, and auto-save to wishlist
-    // GUARDRAIL: Never show products without images on WhatsApp
+    // Every product MUST have a link. Images resolve on the landing page when clicked.
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
     let autoSavedCount = 0
     if (productSegments.length > 0) {
-      const { findProductImage } = await import('@/lib/product-image')
-      const { extractProductFromUrl } = await import('@/lib/extract')
+      const { findProductUrl } = await import('@/lib/enrich-item')
       const lines: string[] = []
-      let displayIndex = 0
       for (let i = 0; i < productSegments.length; i++) {
         const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
+        const price = p.price ? ` — ${p.price}` : ''
         let linkLine = ''
-        let image = p.image || null
 
-        // Try to resolve image if missing
-        if (!image && p.url && !p.url.includes('google.com/search')) {
+        // Resolve a real product URL if Claude didn't provide one
+        let targetUrl = p.url && !p.url.includes('google.com/search') ? p.url : null
+        if (!targetUrl) {
           try {
-            const scraped = await extractProductFromUrl(p.url)
-            if (scraped.image) image = scraped.image
+            const found = await findProductUrl(p.name)
+            if (found?.url) targetUrl = found.url
           } catch {}
         }
-        if (!image) {
-          try { image = await findProductImage(p.name) } catch {}
-        }
 
-        // Skip products without images — never show them on WhatsApp
-        if (!image) continue
-
-        // Create Giftist product page link
-        if (p.url && !p.url.includes('google.com/search')) {
+        // Create Giftist product page link (landing page auto-fetches images)
+        if (targetUrl) {
           try {
             let priceVal: number | null = null
             if (p.price) {
@@ -1444,10 +1437,10 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
             }
             const trackedUrl = await createTrackedLink({
               productName: p.name,
-              targetUrl: p.url,
+              targetUrl,
               price: p.price || null,
               priceValue: priceVal,
-              image,
+              image: p.image || null,
               userId,
               source: 'WHATSAPP',
             })
@@ -1455,9 +1448,10 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           } catch {}
         }
 
-        displayIndex++
-        const price = p.price ? ` — ${p.price}` : ''
-        lines.push(`${displayIndex}. *${p.name}*${price}${linkLine}`)
+        // Only show products that have links
+        if (!linkLine) continue
+
+        lines.push(`${i + 1}. *${p.name}*${price}${linkLine}`)
 
         // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
         if (!p.id && p.name) {
