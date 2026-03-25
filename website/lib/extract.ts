@@ -121,39 +121,70 @@ const PRICE_SELECTORS = [
 ]
 
 const IMAGE_SELECTORS = [
-  '#landingImage', '#imgBlkFront',
+  // Amazon
+  '#landingImage', '#imgBlkFront', '#main-image-container img',
+  // Schema / structured
   '[itemprop="image"]',
+  // Common e-commerce patterns
   '.product-image img', '.product-gallery img', '.pdp-image img',
   '.product__media img', '.product-single__photo img',
-  '.woocommerce-product-gallery img',
-  '.ux-image-carousel img',
-  '[data-test="product-image"] img',
-  'img[src*="product"]', 'main img',
+  '.product-image-main img', '.primary-image img',
+  // Shopify / WooCommerce
+  '.woocommerce-product-gallery img', '.product-featured-media img',
+  // eBay / AliExpress
+  '.ux-image-carousel img', '.magnifier-image',
+  // Target / Walmart / Best Buy
+  '[data-test="product-image"] img', '[data-testid="hero-image"] img',
+  '[data-testid="product-image"] img',
+  // Zoom images (high-res)
+  'img[data-zoom-image]', 'img[data-large]', 'img[data-old-hires]',
+  // Generic
+  'img[src*="product"]', 'main img', 'article img',
 ]
 
 function extractFromDOM($: cheerio.CheerioAPI): Partial<ProductInfo> {
-  const findFirst = (selectors: string[], attr: 'text' | 'src') => {
+  const findFirstText = (selectors: string[]) => {
     for (const sel of selectors) {
       try {
         const el = $(sel).first()
         if (!el.length) continue
-        if (attr === 'text') {
-          const text = el.text()?.trim()
-          if (text) return text
-        } else {
-          const src = el.attr('src') || el.attr('data-src') || el.attr('data-lazy-src')
-          if (src) return src
-        }
-      } catch {
-        // invalid selector
-      }
+        const text = el.text()?.trim()
+        if (text) return text
+      } catch {}
     }
     return null
   }
 
-  const name = findFirst(NAME_SELECTORS, 'text')
-  const priceText = findFirst(PRICE_SELECTORS, 'text')
-  const image = findFirst(IMAGE_SELECTORS, 'src')
+  /**
+   * Find the highest-resolution product image from DOM.
+   * Priority: data-zoom-image > data-large > srcset (largest) > data-src > src
+   */
+  const findBestImage = (selectors: string[]) => {
+    for (const sel of selectors) {
+      try {
+        const el = $(sel).first()
+        if (!el.length) continue
+        // Prefer high-res attributes first
+        const zoom = el.attr('data-zoom-image') || el.attr('data-zoom') || el.attr('data-large-image')
+        if (zoom) return zoom
+        const large = el.attr('data-large') || el.attr('data-hires') || el.attr('data-old-hires')
+        if (large) return large
+        // Try srcset — pick the largest resolution
+        const srcset = el.attr('srcset')
+        if (srcset) {
+          const best = parseSrcsetLargest(srcset)
+          if (best) return best
+        }
+        const src = el.attr('data-src') || el.attr('src') || el.attr('data-lazy-src')
+        if (src) return src
+      } catch {}
+    }
+    return null
+  }
+
+  const name = findFirstText(NAME_SELECTORS)
+  const priceText = findFirstText(PRICE_SELECTORS)
+  const image = findBestImage(IMAGE_SELECTORS)
 
   return {
     name: name ? cleanText(name) : undefined,
@@ -161,6 +192,29 @@ function extractFromDOM($: cheerio.CheerioAPI): Partial<ProductInfo> {
     priceValue: priceText ? extractPriceValue(priceText) : null,
     image,
   }
+}
+
+/** Parse srcset and return the URL with the largest width/pixel density */
+function parseSrcsetLargest(srcset: string): string | null {
+  const entries = srcset.split(',').map(s => s.trim()).filter(Boolean)
+  let bestUrl: string | null = null
+  let bestSize = 0
+  for (const entry of entries) {
+    const parts = entry.split(/\s+/)
+    if (parts.length < 1) continue
+    const url = parts[0]
+    const descriptor = parts[1] || ''
+    let size = 0
+    const wMatch = descriptor.match(/(\d+)w/)
+    if (wMatch) size = parseInt(wMatch[1])
+    const xMatch = descriptor.match(/([\d.]+)x/)
+    if (xMatch) size = parseFloat(xMatch[1]) * 1000
+    if (!bestUrl || size > bestSize) {
+      bestUrl = url
+      bestSize = size
+    }
+  }
+  return bestUrl
 }
 
 // --- Main export ---
