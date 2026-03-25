@@ -284,3 +284,55 @@ export function profileSummary(profile: FriendProfile, friendName: string): stri
 
   return parts.join('\n')
 }
+
+// ── Gift Suggestions from Profile ──
+
+export interface GiftSuggestion {
+  name: string
+  price: string
+  reason: string
+  url?: string
+}
+
+export async function suggestGiftsFromProfile(
+  profile: FriendProfile,
+  friendName: string,
+): Promise<GiftSuggestion[]> {
+  const profileStr = [
+    profile.interests.length ? `Interests: ${profile.interests.join(', ')}` : '',
+    profile.brands.length ? `Brands: ${profile.brands.join(', ')}` : '',
+    profile.categories.length ? `Categories: ${profile.categories.join(', ')}` : '',
+    profile.style ? `Style: ${profile.style}` : '',
+    profile.pricePreference ? `Budget: ${profile.pricePreference}` : '',
+    profile.dislikes.length ? `Dislikes: ${profile.dislikes.join(', ')}` : '',
+    profile.wishStatements.length ? `They said they want: ${profile.wishStatements.slice(0, 5).join('; ')}` : '',
+  ].filter(Boolean).join('\n')
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 800,
+    system: `You suggest gifts based on someone's taste profile. Return exactly 3 suggestions as a JSON array. Each item: {"name":"specific product name","price":"$XX","reason":"one sentence why this fits"}. Return ONLY the JSON array, no markdown.`,
+    messages: [{
+      role: 'user',
+      content: `Suggest 3 gift ideas for ${friendName} based on this profile:\n\n${profileStr}`,
+    }],
+  })
+
+  logApiCall({
+    provider: 'ANTHROPIC',
+    endpoint: '/messages',
+    model: 'claude-haiku-4-5-20251001',
+    inputTokens: response.usage?.input_tokens,
+    outputTokens: response.usage?.output_tokens,
+    source: 'GIFT_SUGGESTIONS',
+  }).catch(() => {})
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  try {
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0])
+    }
+  } catch {}
+  return []
+}

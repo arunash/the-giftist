@@ -58,6 +58,8 @@ model User {
   feedbacks                     Feedback[]
   devices                       Device[]
   eventPurchases                EventPurchase[]
+  giftsSent                     GiftSend[]      @relation("GiftsSent")
+  giftsReceived                 GiftSend[]      @relation("GiftsReceived")
 }
 
 model Account {
@@ -463,4 +465,33 @@ model EventPurchase {
   event           Event?   @relation(fields: [eventId], references: [id])
 
   @@index([userId])
+}
+
+model GiftSend {
+  id               String    @id @default(cuid())
+  senderId         String
+  recipientPhone   String
+  recipientName    String?
+  recipientUserId  String?
+  itemName         String
+  itemPrice        Float
+  itemUrl          String?
+  itemImage        String?
+  senderMessage    String?
+  amount           Float
+  platformFee      Float
+  totalCharged     Float
+  stripeSessionId  String?   @unique
+  stripePaymentId  String?
+  status           String    @default("PENDING")
+  redeemCode       String    @unique @default(cuid())
+  redeemedAt       DateTime?
+  redemptionMethod String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime?
+  sender           User      @relation("GiftsSent", fields: [senderId], references: [id])
+  recipient        User?     @relation("GiftsReceived", fields: [recipientUserId], references: [id])
+
+  @@index([senderId])
+  @@index([redeemCode])
 }

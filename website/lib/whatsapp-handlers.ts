@@ -18,6 +18,7 @@ import {
   filterAndSampleMessages,
   extractFriendProfile,
   profileSummary,
+  suggestGiftsFromProfile,
 } from '@/lib/chat-analysis'
 import { isSupportedChatFile, extractChatText } from '@/lib/extract-chat-file'
 import { listMonitoredGroups, extractGroupProfiles } from '@/lib/group-monitor'
@@ -375,6 +376,20 @@ export async function handleTextMessage(
   // Check for pending chat analysis replies (save, redo, sender number)
   const analysisReply = await handlePendingAnalysisReply(userId, phone, text)
   if (analysisReply) return analysisReply
+
+  // Gift redeem code detection (from WhatsApp redirect flow)
+  const giftRedeemMatch = trimmed.match(/redeem code:\s*([a-z0-9]+)/i) || trimmed.match(/^redeem\s+([a-z0-9]+)$/i)
+  if (giftRedeemMatch) {
+    const code = giftRedeemMatch[1]
+    const gift = await prisma.giftSend.findUnique({ where: { redeemCode: code } })
+    if (gift && (gift.status === 'PAID' || gift.status === 'NOTIFIED') && !gift.redeemedAt) {
+      const giftUrl = `https://giftist.ai/gift/${gift.redeemCode}?direct=1`
+      const senderName = gift.recipientName ? `from a friend` : ''
+      return `🎁 *You have a gift${senderName}!*\n\n"${gift.itemName}" — $${gift.amount.toFixed(2)}${gift.senderMessage ? `\n"${gift.senderMessage}"` : ''}\n\nTap to redeem: ${giftUrl}`
+    } else if (gift?.redeemedAt) {
+      return "This gift has already been redeemed."
+    }
+  }
 
   // Command: help
   if (trimmed === 'help') {
@@ -945,6 +960,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     const segments = parseChatContent(fullContent)
     const eventConfirmations: string[] = []
     const addToEventConfirmations: string[] = []
+    const giftCheckoutLinks: string[] = []
 
     for (const seg of segments) {
       if (seg.type === 'event') {
@@ -1249,6 +1265,82 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           console.error('WhatsApp UPDATE_PROFILE error:', err)
         }
       }
+
+      if (seg.type === 'send_gift') {
+        try {
+          const giftData = seg.data as import('@/lib/parse-chat-content').SendGiftData
+          // Resolve phone from circle member ref if needed
+          let recipientPhone = giftData.recipientPhone
+          if (!recipientPhone && giftData.recipientRef) {
+            const idx = parseInt(giftData.recipientRef.replace(/^C/i, '')) - 1
+            const members = await prisma.circleMember.findMany({
+              where: { userId },
+              orderBy: { name: 'asc' },
+              take: 20,
+            })
+            const member = members[idx]
+            if (member) recipientPhone = member.phone
+          }
+
+          if (recipientPhone) {
+            const amount = giftData.itemPrice
+            const platformFee = Math.round(amount * 0.05 * 100) / 100
+            const totalCharged = Math.round((amount + platformFee) * 100) / 100
+
+            const giftSend = await prisma.giftSend.create({
+              data: {
+                senderId: userId,
+                recipientPhone: recipientPhone.replace(/\D/g, ''),
+                recipientName: giftData.recipientName || null,
+                itemName: giftData.itemName,
+                itemPrice: amount,
+                itemUrl: giftData.itemUrl || null,
+                itemImage: giftData.itemImage || null,
+                senderMessage: giftData.senderMessage || null,
+                amount,
+                platformFee,
+                totalCharged,
+                status: 'PENDING',
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
+            })
+
+            // Create Stripe checkout link and send via WhatsApp
+            const { stripe } = await import('@/lib/stripe')
+            const stripeSession = await stripe.checkout.sessions.create({
+              mode: 'payment',
+              line_items: [{
+                price_data: {
+                  currency: 'usd',
+                  product_data: {
+                    name: `Gift: ${giftData.itemName}`,
+                    description: `Send "${giftData.itemName}" to ${giftData.recipientName || 'your friend'}`,
+                  },
+                  unit_amount: Math.round(totalCharged * 100),
+                },
+                quantity: 1,
+              }],
+              metadata: {
+                type: 'gift_send',
+                giftSendId: giftSend.id,
+                userId,
+              },
+              success_url: `https://giftist.ai/gift/sent?id=${giftSend.id}`,
+              cancel_url: 'https://giftist.ai',
+            })
+
+            await prisma.giftSend.update({
+              where: { id: giftSend.id },
+              data: { stripeSessionId: stripeSession.id },
+            })
+
+            // Store checkout link to append to reply
+            giftCheckoutLinks.push(`\n\n💳 Pay here to send the gift: ${stripeSession.url}`)
+          }
+        } catch (err) {
+          console.error('WhatsApp SEND_GIFT error:', err)
+        }
+      }
     }
 
     // Extract product blocks, create tracked links, and auto-save to wishlist
@@ -1362,7 +1454,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       }
     }
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + giftCheckoutLinks.join('') + chatWebCta
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
@@ -1627,7 +1719,11 @@ export async function handleDocumentMessage(
       })
 
       const summary = profileSummary(profile, friendName)
-      return summary + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
+      const suggestions = await suggestGiftsFromProfile(profile, friendName).catch(() => [])
+      const suggestionsText = suggestions.length > 0
+        ? '\n\n🎁 *Gift ideas for ' + friendName + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}`).join('\n')
+        : ''
+      return summary + suggestionsText + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {
       console.error('[DOC] Analysis failed:', e)
       return "Something went wrong analyzing the chat. Please try again."
@@ -1724,7 +1820,11 @@ export async function handlePendingAnalysisReply(
       pending.friendName = sender.name
 
       const summary = profileSummary(profile, sender.name)
-      return summary + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
+      const suggestions = await suggestGiftsFromProfile(profile, sender.name).catch(() => [])
+      const suggestionsText = suggestions.length > 0
+        ? '\n\n🎁 *Gift ideas for ' + sender.name + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}`).join('\n')
+        : ''
+      return summary + suggestionsText + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {
       console.error('[DOC] Analysis failed:', e)
       return "Something went wrong analyzing the chat. Please try again."

@@ -6,6 +6,7 @@ import {
   identifySenders,
   filterAndSampleMessages,
   extractFriendProfile,
+  suggestGiftsFromProfile,
 } from '@/lib/chat-analysis'
 import { extractChatText, isSupportedChatFile } from '@/lib/extract-chat-file'
 
@@ -72,11 +73,13 @@ export async function POST(request: NextRequest) {
   }
 
   const profile = await extractFriendProfile(filtered, friendName)
+  const suggestions = await suggestGiftsFromProfile(profile, friendName).catch(() => [])
 
   return NextResponse.json({
     step: 'review',
     friendName,
     messagesAnalyzed: filtered.length,
     profile,
+    suggestions,
   })
 }

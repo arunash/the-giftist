@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { parseChatContent, type ProductData, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
+import { parseChatContent, type ProductData, type EventData, type AddToEventData, type SendGiftData } from '@/lib/parse-chat-content'
 import { ProductCard } from './product-card'
+import { SendGiftCard } from './send-gift-card'
 import { Check, Calendar, Gift } from 'lucide-react'
 import Link from 'next/link'
 
@@ -341,6 +342,9 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
           }
           if (segment.type === 'add_to_event') {
             return <AddToEventConfirmation key={i} data={segment.data} autoExecute={autoExecute} />
+          }
+          if (segment.type === 'send_gift') {
+            return <SendGiftCard key={i} data={segment.data} autoExecute={autoExecute} />
           }
           return null
         })}

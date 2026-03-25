@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Upload, Loader2, X, Check, User, Sparkles, ArrowRight } from 'lucide-react'
-import type { FriendProfile } from '@/lib/chat-analysis'
+import { Upload, Loader2, X, Check, User, Sparkles, ArrowRight, Gift } from 'lucide-react'
+import type { FriendProfile, GiftSuggestion } from '@/lib/chat-analysis'
 
 type Step = 'upload' | 'pick_sender' | 'analyzing' | 'review' | 'saved'
 
@@ -22,6 +22,7 @@ export default function AnalyzeChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedMemberId, setSavedMemberId] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<GiftSuggestion[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
@@ -75,6 +76,7 @@ export default function AnalyzeChatPage() {
       setProfile(data.profile)
       setFriendName(data.friendName)
       setMessagesAnalyzed(data.messagesAnalyzed)
+      if (data.suggestions) setSuggestions(data.suggestions)
       setStep('review')
     } catch {
       setError('Analysis failed. Please try again.')
@@ -124,6 +126,7 @@ export default function AnalyzeChatPage() {
     setFriendName('')
     setError(null)
     setSavedMemberId(null)
+    setSuggestions([])
   }
 
   return (
@@ -292,6 +295,24 @@ export default function AnalyzeChatPage() {
                   </span>
                 ))}
               </div>
+            </Section>
+          )}
+
+          {/* Gift suggestions */}
+          {suggestions.length > 0 && (
+            <Section title={`Gift ideas for ${friendName}`}>
+              <div className="space-y-2">
+                {suggestions.map((s, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 bg-pink-50 border border-pink-100 rounded-xl">
+                    <Gift className="h-4 w-4 text-pink-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{s.name} <span className="text-pink-500">{s.price}</span></p>
+                      <p className="text-xs text-gray-500 mt-0.5">{s.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Save the profile first, then ask the Gift Concierge for personalized recommendations.</p>
             </Section>
           )}
 

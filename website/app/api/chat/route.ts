@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { parseChatContent, type EventData, type AddToEventData, type AddCircleData, type RemoveCircleData, type SendRemindersData, type FeedbackData } from '@/lib/parse-chat-content'
+import { parseChatContent, type EventData, type AddToEventData, type AddCircleData, type RemoveCircleData, type SendRemindersData, type FeedbackData, type SendGiftData } from '@/lib/parse-chat-content'
 import { normalizePhone, sendTextMessage } from '@/lib/whatsapp'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
@@ -369,6 +369,52 @@ async function processStructuredBlocks(userId: string, content: string) {
         }
       } catch (err) {
         console.error('Web chat SEND_REMINDERS error:', err)
+      }
+    }
+
+    if (seg.type === 'send_gift') {
+      const data = seg.data as SendGiftData
+      try {
+        // Resolve phone from circle member ref if needed
+        let recipientPhone = data.recipientPhone
+        if (!recipientPhone && data.recipientRef) {
+          const idx = parseInt(data.recipientRef.replace(/^C/i, '')) - 1
+          const members = await prisma.circleMember.findMany({
+            where: { userId },
+            orderBy: { name: 'asc' },
+            take: 20,
+          })
+          const member = members[idx]
+          if (member) {
+            recipientPhone = member.phone
+          }
+        }
+
+        if (recipientPhone) {
+          const amount = data.itemPrice
+          const platformFee = Math.round(amount * 0.05 * 100) / 100
+          const totalCharged = Math.round((amount + platformFee) * 100) / 100
+
+          await prisma.giftSend.create({
+            data: {
+              senderId: userId,
+              recipientPhone: recipientPhone.replace(/\D/g, ''),
+              recipientName: data.recipientName || null,
+              itemName: data.itemName,
+              itemPrice: amount,
+              itemUrl: data.itemUrl || null,
+              itemImage: data.itemImage || null,
+              senderMessage: data.senderMessage || null,
+              amount,
+              platformFee,
+              totalCharged,
+              status: 'PENDING',
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+          })
+        }
+      } catch (err) {
+        console.error('Web chat SEND_GIFT error:', err)
       }
     }
   }
