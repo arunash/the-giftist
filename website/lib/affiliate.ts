@@ -1,7 +1,7 @@
-// Existing affiliates
-const AMAZON_TAG = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG
-const WALMART_ID = process.env.NEXT_PUBLIC_WALMART_AFFILIATE_ID
-const TARGET_ID = process.env.NEXT_PUBLIC_TARGET_AFFILIATE_ID
+// Existing affiliates (trim to strip trailing newlines from env vars)
+const AMAZON_TAG = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG?.trim()
+const WALMART_ID = process.env.NEXT_PUBLIC_WALMART_AFFILIATE_ID?.trim()
+const TARGET_ID = process.env.NEXT_PUBLIC_TARGET_AFFILIATE_ID?.trim()
 
 // Awin publisher ID (shared across Etsy, Bookshop.org, and any future Awin merchants)
 const AWIN_PUBLISHER_ID = process.env.NEXT_PUBLIC_AWIN_PUBLISHER_ID || '2774156'

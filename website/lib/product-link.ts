@@ -2,6 +2,19 @@ import { prisma } from '@/lib/db'
 import { nanoid } from 'nanoid'
 
 /**
+ * Validate and sanitize a URL. Returns null if invalid.
+ */
+export function sanitizeUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url.trim())
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+/**
  * Create a tracked product landing page link.
  * Returns a giftist.ai/p/SLUG URL that shows a product page with buy options.
  */
@@ -14,6 +27,13 @@ export async function createTrackedLink(opts: {
   userId?: string
   source?: string
 }): Promise<string> {
+  // Sanitize the target URL
+  const cleanUrl = sanitizeUrl(opts.targetUrl)
+  if (!cleanUrl) {
+    throw new Error(`Invalid target URL: ${opts.targetUrl}`)
+  }
+  opts.targetUrl = cleanUrl
+
   // Dedup: if same product+target already exists, reuse the slug
   const existing = await prisma.productClick.findFirst({
     where: {
