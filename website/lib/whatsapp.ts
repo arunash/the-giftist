@@ -154,6 +154,7 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
 const MAX_DOC_SIZE = 20 * 1024 * 1024 // 20MB for documents
 const ALLOWED_DOC_TYPES = new Set([
   'text/plain', 'application/octet-stream',
+  'application/zip', 'application/x-zip-compressed',
 ])
 
 export async function downloadDocument(mediaId: string): Promise<Buffer> {
