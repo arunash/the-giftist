@@ -558,6 +558,43 @@ export async function handleTextMessage(
     return "Something went wrong generating your share link. Please try again."
   }
 
+  // Command: taste profile / profiles — explain what taste profiles are
+  if (trimmed === 'taste profile' || trimmed === 'taste profiles' || trimmed === 'profiles' || trimmed === 'what is a taste profile') {
+    const members = await prisma.circleMember.findMany({
+      where: { userId, tasteProfile: { not: null } },
+      select: { name: true },
+      take: 10,
+    })
+    const profiledNames = members.filter(m => m.name).map(m => m.name)
+
+    let response = `*Taste Profiles* — How Giftist Learns What People Like
+
+A taste profile is a snapshot of someone's preferences that I build by reading your conversations with them.
+
+*What I extract:*
+• Interests & hobbies
+• Favorite brands & stores
+• Style preferences (aesthetic, vibe)
+• Budget range
+• Sizes (clothing, shoes, rings)
+• Things they dislike (so I avoid bad suggestions)
+• Wish statements ("I really want..." quotes from chat)
+
+*How to create one:*
+1. Open a WhatsApp chat with the person
+2. Tap ⋮ → More → Export chat (no media)
+3. Send me the .txt file here
+
+I'll analyze the conversation and build a profile in ~30 seconds. Then whenever you ask for gift ideas for that person, I'll use their profile to suggest things they'll actually love.`
+
+    if (profiledNames.length > 0) {
+      response += `\n\n*People with profiles:* ${profiledNames.join(', ')}`
+    }
+
+    response += `\n\nFree: 2 profiles/day | Credit Pack: 5 more for $5 | Gold: unlimited`
+    return response
+  }
+
   // Command: share
   if (trimmed === 'share') {
     const sharer = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true, name: true } })
@@ -1625,11 +1662,12 @@ export function getHelpMessage(): string {
 - *remove circle <number>* — Remove someone
 - *remind* — Send reminders to your circle about upcoming events
 
-*Auto-Monitor (learn friends' preferences):*
-- *Add me to a group chat* — I'll learn your friends' preferences automatically
+*Taste Profiles (learn friends' preferences):*
+- *taste profile* — What is a taste profile?
+- *Send a WhatsApp chat export (.txt)* — Build a profile from your conversations
+- *Add me to a group chat* — I'll learn preferences automatically
 - *groups* — See monitored group chats
 - *extract* — Analyze group messages now
-- *Send a WhatsApp chat export (.txt)* — One-time analysis
 
 *Other:*
 - *Ask me anything* — Gift ideas, trends, recs
