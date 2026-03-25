@@ -52,6 +52,12 @@ export type ChatSegment =
   | { type: 'send_reminders'; data: SendRemindersData }
   | { type: 'share_event'; data: ShareEventData }
   | { type: 'feedback'; data: FeedbackData }
+  | { type: 'update_profile'; data: UpdateProfileData }
+
+export interface UpdateProfileData {
+  circleMemberRef: string
+  updates: Record<string, any>
+}
 
 export interface ProductData {
   name: string
@@ -70,6 +76,7 @@ const REMOVE_CIRCLE_REGEX = /\[REMOVE_CIRCLE\]([\s\S]*?)\[\/REMOVE_CIRCLE\]/g
 const SEND_REMINDERS_REGEX = /\[SEND_REMINDERS\]([\s\S]*?)\[\/SEND_REMINDERS\]/g
 const SHARE_EVENT_REGEX = /\[SHARE_EVENT\]([\s\S]*?)\[\/SHARE_EVENT\]/g
 const FEEDBACK_REGEX = /\[FEEDBACK\]([\s\S]*?)\[\/FEEDBACK\]/g
+const UPDATE_PROFILE_REGEX = /\[UPDATE_PROFILE\]([\s\S]*?)\[\/UPDATE_PROFILE\]/g
 
 export function parseChatContent(content: string): ChatSegment[] {
   const segments: ChatSegment[] = []
@@ -170,6 +177,16 @@ export function parseChatContent(content: string): ChatSegment[] {
     })
   }
 
+  const updateProfileRegex = new RegExp(UPDATE_PROFILE_REGEX.source, 'g')
+  while ((match = updateProfileRegex.exec(content)) !== null) {
+    blocks.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: 'update_profile',
+      raw: match[1],
+    })
+  }
+
   // Sort by position
   blocks.sort((a, b) => a.start - b.start)
 
@@ -200,6 +217,8 @@ export function parseChatContent(content: string): ChatSegment[] {
         segments.push({ type: 'share_event', data: parsed as ShareEventData })
       } else if (block.type === 'feedback') {
         segments.push({ type: 'feedback', data: parsed as FeedbackData })
+      } else if (block.type === 'update_profile') {
+        segments.push({ type: 'update_profile', data: parsed as UpdateProfileData })
       } else {
         segments.push({ type: 'preferences', data: parsed })
       }
@@ -233,6 +252,7 @@ export function stripSpecialBlocks(content: string): string {
     .replace(SEND_REMINDERS_REGEX, '')
     .replace(SHARE_EVENT_REGEX, '')
     .replace(FEEDBACK_REGEX, '')
+    .replace(UPDATE_PROFILE_REGEX, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

@@ -6,6 +6,7 @@ import {
   resolveUserAndList,
   handleTextMessage,
   handleImageMessage,
+  handleDocumentMessage,
   getWelcomeMessage,
 } from '@/lib/whatsapp-handlers'
 import { logError } from '@/lib/api-logger'
@@ -144,8 +145,18 @@ export async function POST(request: NextRequest) {
           media.caption,
           phone,
         )
+      } else if (messageType === 'document') {
+        const doc = message.document
+        reply = await handleDocumentMessage(
+          userId,
+          listId,
+          doc.id,
+          doc.mime_type,
+          doc.filename,
+          phone,
+        )
       } else {
-        reply = "I can process links and photos. Send me a product URL or image!"
+        reply = "I can process links, photos, and WhatsApp chat exports (.txt). Send me a product URL, image, or exported chat!"
       }
 
       // Send reply (empty string means handler already sent a reply)

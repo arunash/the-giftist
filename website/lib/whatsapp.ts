@@ -151,6 +151,49 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
   return Buffer.from(arrayBuffer)
 }
 
+const MAX_DOC_SIZE = 20 * 1024 * 1024 // 20MB for documents
+const ALLOWED_DOC_TYPES = new Set([
+  'text/plain', 'application/octet-stream',
+])
+
+export async function downloadDocument(mediaId: string): Promise<Buffer> {
+  const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+    headers: { Authorization: `Bearer ${TOKEN()}` },
+  })
+  if (!metaRes.ok) throw new Error(`Failed to get media URL: ${metaRes.status}`)
+  const meta = await metaRes.json()
+  const { url, file_size, mime_type } = meta
+
+  if (file_size && Number(file_size) > MAX_DOC_SIZE) {
+    throw new Error(`Document too large: ${file_size} bytes (max ${MAX_DOC_SIZE})`)
+  }
+
+  if (mime_type && !ALLOWED_DOC_TYPES.has(mime_type)) {
+    throw new Error(`Unsupported document type: ${mime_type}`)
+  }
+
+  try {
+    const parsedUrl = new URL(url)
+    if (isPrivateUrl(parsedUrl)) throw new Error('Invalid media URL: private network')
+  } catch (e: any) {
+    if (e.message?.includes('private network')) throw e
+    throw new Error(`Invalid media URL: ${url}`)
+  }
+
+  const dataRes = await fetch(url, {
+    headers: { Authorization: `Bearer ${TOKEN()}` },
+    signal: AbortSignal.timeout(30000),
+  })
+  if (!dataRes.ok) throw new Error(`Failed to download document: ${dataRes.status}`)
+
+  const arrayBuffer = await dataRes.arrayBuffer()
+  if (arrayBuffer.byteLength > MAX_DOC_SIZE) {
+    throw new Error(`Document too large: ${arrayBuffer.byteLength} bytes`)
+  }
+
+  return Buffer.from(arrayBuffer)
+}
+
 export async function sendContactMessage(to: string) {
   if (isBlocked(to)) return { messages: [] }
   return graphPost('/messages', {

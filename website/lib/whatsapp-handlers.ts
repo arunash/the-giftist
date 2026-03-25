@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
-import { downloadMedia, sendTextMessage, sendImageMessage, normalizePhone } from '@/lib/whatsapp'
+import { downloadMedia, downloadDocument, sendTextMessage, sendImageMessage, normalizePhone } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
 import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData, type FeedbackData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
@@ -12,6 +12,13 @@ import { createDefaultEventsForUser } from '@/lib/default-events'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { checkAndSendFunnelMessages, sendFirstItemNudge } from '@/lib/whatsapp-funnel'
 import { createTrackedLink } from '@/lib/product-link'
+import {
+  parseWhatsAppExport,
+  identifySenders,
+  filterAndSampleMessages,
+  extractFriendProfile,
+  profileSummary,
+} from '@/lib/chat-analysis'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -362,6 +369,10 @@ export async function handleTextMessage(
     // Any other message clears the pending product (they moved on)
     await prisma.user.update({ where: { id: userId }, data: { pendingProduct: null } })
   }
+
+  // Check for pending chat analysis replies (save, redo, sender number)
+  const analysisReply = await handlePendingAnalysisReply(userId, phone, text)
+  if (analysisReply) return analysisReply
 
   // Command: help
   if (trimmed === 'help') {
@@ -1189,6 +1200,37 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           console.error('WhatsApp FEEDBACK save error:', err)
         }
       }
+
+      if (seg.type === 'update_profile') {
+        try {
+          const { circleMemberRef, updates } = seg.data as { circleMemberRef: string; updates: Record<string, any> }
+          const idx = parseInt(circleMemberRef.replace(/^C/i, '')) - 1
+          const members = await prisma.circleMember.findMany({
+            where: { userId },
+            orderBy: { name: 'asc' },
+            take: 20,
+          })
+          const member = members[idx]
+          if (member) {
+            const existing = member.tasteProfile ? JSON.parse(member.tasteProfile) : {}
+            // Merge arrays, overwrite scalars
+            for (const [key, val] of Object.entries(updates)) {
+              if (Array.isArray(val) && Array.isArray(existing[key])) {
+                const merged = [...existing[key], ...val]
+                existing[key] = [...new Set(merged)].slice(0, 15)
+              } else {
+                existing[key] = val
+              }
+            }
+            await prisma.circleMember.update({
+              where: { id: member.id },
+              data: { tasteProfile: JSON.stringify(existing), profileUpdatedAt: new Date() },
+            })
+          }
+        } catch (err) {
+          console.error('WhatsApp UPDATE_PROFILE error:', err)
+        }
+      }
     }
 
     // Extract product blocks, create tracked links, and auto-save to wishlist
@@ -1458,5 +1500,212 @@ export function getHelpMessage(): string {
 *On the web (giftist.ai):*
 - Visual wishlist with trending gifts
 - Event wishlists and group gifting
-- AI-powered gift recommendations`
+- AI-powered gift recommendations
+- *Send a WhatsApp chat export (.txt)* — I'll analyze your friend's preferences for better gift ideas`
+}
+
+// ── Pending chat analysis state (in-memory, keyed by userId) ──
+// Stored temporarily during the multi-step document analysis flow
+
+interface PendingAnalysis {
+  senders: { name: string; count: number }[]
+  messages: import('@/lib/chat-analysis').ParsedMessage[]
+  profile?: import('@/lib/chat-analysis').FriendProfile
+  friendName?: string
+  expiresAt: number
+}
+
+const pendingAnalysisMap = new Map<string, PendingAnalysis>()
+
+// Clean up expired entries periodically
+function cleanupPending() {
+  const now = Date.now()
+  for (const [key, val] of pendingAnalysisMap) {
+    if (now > val.expiresAt) pendingAnalysisMap.delete(key)
+  }
+}
+
+export function getPendingAnalysis(userId: string): PendingAnalysis | undefined {
+  cleanupPending()
+  return pendingAnalysisMap.get(userId)
+}
+
+export function clearPendingAnalysis(userId: string) {
+  pendingAnalysisMap.delete(userId)
+}
+
+// ── Document Message Handler ──
+
+export async function handleDocumentMessage(
+  userId: string,
+  listId: string,
+  mediaId: string,
+  mimeType: string,
+  filename: string | undefined,
+  phone: string,
+): Promise<string> {
+  // Only accept text files
+  const isText = mimeType === 'text/plain' ||
+    mimeType === 'application/octet-stream' ||
+    filename?.endsWith('.txt')
+
+  if (!isText) {
+    return "I can only analyze WhatsApp chat exports (.txt files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
+  }
+
+  let buffer: Buffer
+  try {
+    buffer = await downloadDocument(mediaId)
+  } catch (e) {
+    console.error('[DOC] Download failed:', e)
+    return "Couldn't download the file. Please try again."
+  }
+
+  const text = buffer.toString('utf-8')
+  const messages = parseWhatsAppExport(text)
+
+  if (messages.length < 10) {
+    return "This doesn't look like a WhatsApp chat export, or the chat is too short. To export: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
+  }
+
+  const senders = identifySenders(messages)
+
+  // If it's a 1:1 chat (2 senders), try to auto-pick the friend
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  })
+
+  if (senders.length === 2) {
+    // Auto-pick: the sender whose name doesn't match the Giftist user
+    const userName = user?.name?.toLowerCase() || ''
+    const friend = senders.find(s => !s.name.toLowerCase().includes(userName) && !userName.includes(s.name.toLowerCase()))
+    const friendName = friend?.name || senders[1].name // fallback to less frequent sender
+
+    // Store messages and run extraction
+    const filtered = filterAndSampleMessages(messages, friendName)
+    if (filtered.length < 5) {
+      return `Not enough messages from ${friendName} to analyze (found ${filtered.length}). Try a longer chat.`
+    }
+
+    await sendTextMessage(phone, `Analyzing ${filtered.length} messages from ${friendName}... This may take a moment.`)
+
+    try {
+      const profile = await extractFriendProfile(filtered, friendName)
+
+      // Store pending for confirmation
+      pendingAnalysisMap.set(userId, {
+        senders,
+        messages,
+        profile,
+        friendName,
+        expiresAt: Date.now() + 30 * 60 * 1000, // 30 min expiry
+      })
+
+      const summary = profileSummary(profile, friendName)
+      return `${summary}\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person.`
+    } catch (e) {
+      console.error('[DOC] Analysis failed:', e)
+      return "Something went wrong analyzing the chat. Please try again."
+    }
+  }
+
+  // Group chat or 3+ senders — ask user to pick
+  pendingAnalysisMap.set(userId, {
+    senders,
+    messages,
+    expiresAt: Date.now() + 30 * 60 * 1000,
+  })
+
+  let reply = `I found ${messages.length} messages from ${senders.length} people:\n`
+  senders.forEach((s, i) => {
+    reply += `\n${i + 1}. ${s.name} (${s.count} messages)`
+  })
+  reply += `\n\nReply with the *number* of the person you want me to analyze.`
+  return reply
+}
+
+// ── Handle pending analysis replies (called from handleTextMessage) ──
+
+export async function handlePendingAnalysisReply(
+  userId: string,
+  phone: string,
+  text: string,
+): Promise<string | null> {
+  const pending = pendingAnalysisMap.get(userId)
+  if (!pending) return null
+
+  const lower = text.toLowerCase().trim()
+
+  // Save confirmed profile
+  if (lower === 'save' && pending.profile && pending.friendName) {
+    const existing = await prisma.circleMember.findFirst({
+      where: { userId, name: pending.friendName },
+    })
+
+    if (existing) {
+      await prisma.circleMember.update({
+        where: { id: existing.id },
+        data: {
+          tasteProfile: JSON.stringify(pending.profile),
+          profileUpdatedAt: new Date(),
+        },
+      })
+    } else {
+      await prisma.circleMember.create({
+        data: {
+          userId,
+          phone: `chat-${Date.now()}`,
+          name: pending.friendName,
+          source: 'WHATSAPP',
+          tasteProfile: JSON.stringify(pending.profile),
+          profileUpdatedAt: new Date(),
+        },
+      })
+    }
+
+    clearPendingAnalysis(userId)
+    return `Saved ${pending.friendName}'s taste profile to your Gift Circle! Now when you ask me for gift ideas for ${pending.friendName}, I'll use what I learned.\n\nTry: "What should I get ${pending.friendName} for their birthday?"`
+  }
+
+  // Redo — re-show sender list
+  if (lower === 'redo') {
+    pending.profile = undefined
+    pending.friendName = undefined
+
+    let reply = `Pick someone to analyze:\n`
+    pending.senders.forEach((s, i) => {
+      reply += `\n${i + 1}. ${s.name} (${s.count} messages)`
+    })
+    reply += `\n\nReply with the *number* of the person.`
+    return reply
+  }
+
+  // Number selection for sender
+  const num = parseInt(lower)
+  if (!isNaN(num) && num >= 1 && num <= pending.senders.length && !pending.profile) {
+    const sender = pending.senders[num - 1]
+    const filtered = filterAndSampleMessages(pending.messages, sender.name)
+
+    if (filtered.length < 5) {
+      return `Not enough messages from ${sender.name} to analyze (found ${filtered.length}). Pick someone else or try a longer chat.`
+    }
+
+    await sendTextMessage(phone, `Analyzing ${filtered.length} messages from ${sender.name}... This may take a moment.`)
+
+    try {
+      const profile = await extractFriendProfile(filtered, sender.name)
+      pending.profile = profile
+      pending.friendName = sender.name
+
+      const summary = profileSummary(profile, sender.name)
+      return `${summary}\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person.`
+    } catch (e) {
+      console.error('[DOC] Analysis failed:', e)
+      return "Something went wrong analyzing the chat. Please try again."
+    }
+  }
+
+  // No match — not a pending analysis reply
+  return null
 }

@@ -317,6 +317,36 @@ async function processStructuredBlocks(userId: string, content: string) {
       }
     }
 
+    if (seg.type === 'update_profile') {
+      try {
+        const { circleMemberRef, updates } = seg.data as { circleMemberRef: string; updates: Record<string, any> }
+        const idx = parseInt(circleMemberRef.replace(/^C/i, '')) - 1
+        const members = await prisma.circleMember.findMany({
+          where: { userId },
+          orderBy: { name: 'asc' },
+          take: 20,
+        })
+        const member = members[idx]
+        if (member) {
+          const existing = member.tasteProfile ? JSON.parse(member.tasteProfile) : {}
+          for (const [key, val] of Object.entries(updates)) {
+            if (Array.isArray(val) && Array.isArray(existing[key])) {
+              const merged = [...existing[key], ...val]
+              existing[key] = [...new Set(merged)].slice(0, 15)
+            } else {
+              existing[key] = val
+            }
+          }
+          await prisma.circleMember.update({
+            where: { id: member.id },
+            data: { tasteProfile: JSON.stringify(existing), profileUpdatedAt: new Date() },
+          })
+        }
+      } catch (err) {
+        console.error('Web chat UPDATE_PROFILE error:', err)
+      }
+    }
+
     if (seg.type === 'send_reminders') {
       const data = seg.data as SendRemindersData
       try {

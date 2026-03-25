@@ -339,14 +339,16 @@ model ErrorLog {
 }
 
 model CircleMember {
-  id           String   @id @default(cuid())
-  userId       String
-  phone        String
-  name         String?
-  relationship String?
-  source       String   @default("MANUAL")
-  createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String
+  phone            String
+  name             String?
+  relationship     String?
+  source           String    @default("MANUAL")
+  createdAt        DateTime  @default(now())
+  tasteProfile     String?   // JSON: extracted preferences from chat analysis
+  profileUpdatedAt DateTime? // when taste profile was last extracted
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, phone])
   @@index([userId])
