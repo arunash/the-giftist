@@ -183,8 +183,8 @@ export default function AnalyzeChatPage() {
             <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
               <li>Open the chat with your friend in WhatsApp</li>
               <li>Tap the menu (⋮) → More → Export Chat</li>
-              <li>Choose "Without Media"</li>
-              <li>Save or share the .txt file, then upload it here</li>
+              <li>Choose "Without Media" (recommended)</li>
+              <li>Share or save the exported file, then upload it here</li>
             </ol>
           </div>
         </div>

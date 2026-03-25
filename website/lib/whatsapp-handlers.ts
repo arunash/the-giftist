@@ -582,8 +582,8 @@ A taste profile is a snapshot of someone's preferences that I build by reading y
 
 *How to create one:*
 1. Open a WhatsApp chat with the person
-2. Tap ⋮ → More → Export chat (no media)
-3. Send me the .txt file here
+2. Tap ⋮ → More → Export Chat
+3. Share it with me here
 
 I'll analyze the conversation and build a profile in ~30 seconds. Then whenever you ask for gift ideas for that person, I'll use their profile to suggest things they'll actually love.`
 
@@ -1664,7 +1664,7 @@ export function getHelpMessage(): string {
 
 *Taste Profiles (learn friends' preferences):*
 - *taste profile* — What is a taste profile?
-- *Send a WhatsApp chat export (.txt)* — Build a profile from your conversations
+- *Share a WhatsApp chat export* — Build a profile from your conversations
 - *Add me to a group chat* — I'll learn preferences automatically
 - *groups* — See monitored group chats
 - *extract* — Analyze group messages now

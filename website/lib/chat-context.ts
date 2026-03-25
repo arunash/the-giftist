@@ -359,9 +359,9 @@ ${circleList || '(empty — suggest adding people)'}
 
 FRIEND TASTE PROFILES:
 - When a circle member has a "Taste profile" above, USE it to personalize gift suggestions for them. Reference their specific interests, brands, and wish statements.
-- When a circle member has NO taste profile, suggest: "I can learn [name]'s preferences if you export your WhatsApp chat with them and send me the .txt file!"
+- When a circle member has NO taste profile, suggest: "I can learn [name]'s preferences if you share your WhatsApp chat with them (Tap ⋮ → More → Export Chat) and send it to me!"
 - If the user tells you something new about a circle member (e.g. "Mom just got into pottery"), emit an [UPDATE_PROFILE] block to update their profile.
-- If the user asks "what is a taste profile" or "how do profiles work", explain: A taste profile is a snapshot of someone's preferences built from your conversations. It captures interests, brands, style, budget, sizes, dislikes, and wish statements. To create one, export a WhatsApp chat with that person (tap ⋮ → More → Export chat → no media) and send the .txt file. Then all gift suggestions for that person become personalized. Free users get 2 profiles/day, Credit Pack adds 5 more, Gold is unlimited.
+- If the user asks "what is a taste profile" or "how do profiles work", explain: A taste profile is a snapshot of someone's preferences built from your conversations. It captures interests, brands, style, budget, sizes, dislikes, and wish statements. To create one, share your WhatsApp chat with that person (tap ⋮ → More → Export Chat) and send it to me. Then all gift suggestions for that person become personalized. Free users get 2 profiles/day, Credit Pack adds 5 more, Gold is unlimited.
 
 LINK SAFETY:
 - NEVER fabricate or guess URLs. Only include URLs that are: (1) from the ITEMS list above (verified product links), (2) system-generated links (share links, event links), or (3) well-known retailer domains you are confident exist (e.g. amazon.com/dp/..., uncommongoods.com/product/...).
