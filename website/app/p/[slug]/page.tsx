@@ -221,7 +221,7 @@ function ProductPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading gift...
                 </button>
-              ) : !purchased ? (
+              ) : !purchased && product.image ? (
                 <button
                   onClick={handleBuyClick}
                   disabled={buyingLoading || !product.priceValue}
@@ -232,7 +232,7 @@ function ProductPage() {
                 </button>
               ) : null}
 
-              {!purchased && total && fee && (
+              {!purchased && product.image && total && fee && (
                 <div className="text-center">
                   <p className="text-xs text-gray-400">
                     {product.price} + ${fee.toFixed(2)} service fee
@@ -243,16 +243,25 @@ function ProductPage() {
                 </div>
               )}
 
-              {/* View on retailer */}
-              <a
-                href={`/go-r/${slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View on {product.domain}
-              </a>
+              {/* View on retailer — only when product has image */}
+              {product.image && (
+                <a
+                  href={`/go-r/${slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on {product.domain}
+                </a>
+              )}
+
+              {/* No image fallback */}
+              {!product.image && !purchased && (
+                <p className="text-xs text-gray-400 text-center py-2">
+                  Product image unavailable. Ask our concierge for help finding this item.
+                </p>
+              )}
             </div>
           </div>
         </div>

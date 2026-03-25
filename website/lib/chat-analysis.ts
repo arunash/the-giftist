@@ -337,10 +337,12 @@ export async function suggestGiftsFromProfile(
     }
   } catch {}
 
-  // Create tracked Giftist links for each suggestion
+  // Create tracked Giftist links for each suggestion, resolving images
   if (suggestions.length > 0) {
     const { createTrackedLink } = await import('@/lib/product-link')
     const { findProductUrl } = await import('@/lib/enrich-item')
+    const { findProductImage } = await import('@/lib/product-image')
+    const { extractProductFromUrl } = await import('@/lib/extract')
 
     await Promise.all(suggestions.map(async (s) => {
       try {
@@ -348,23 +350,40 @@ export async function suggestGiftsFromProfile(
         const found = await findProductUrl(s.name).catch(() => null)
         const targetUrl = found?.url || `https://www.google.com/search?q=${encodeURIComponent(s.name)}`
 
+        // Try to resolve an image
+        let image: string | null = null
+        if (targetUrl && !targetUrl.includes('google.com/search')) {
+          try {
+            const scraped = await extractProductFromUrl(targetUrl)
+            if (scraped.image) image = scraped.image
+          } catch {}
+        }
+        if (!image) {
+          try { image = await findProductImage(s.name) } catch {}
+        }
+
         let priceValue: number | null = null
         if (s.price) {
           const m = s.price.replace(/,/g, '').match(/[\d.]+/)
           if (m) priceValue = parseFloat(m[0])
         }
 
-        s.url = await createTrackedLink({
-          productName: s.name,
-          targetUrl,
-          price: s.price,
-          priceValue,
-          userId: opts?.userId,
-          source: opts?.source || 'SUGGESTION',
-        })
+        // Only create tracked link if we have an image
+        if (image) {
+          s.url = await createTrackedLink({
+            productName: s.name,
+            targetUrl,
+            price: s.price,
+            priceValue,
+            image,
+            userId: opts?.userId,
+            source: opts?.source || 'SUGGESTION',
+          })
+        }
       } catch {}
     }))
   }
 
-  return suggestions
+  // Filter out suggestions without images/URLs — never show links without images
+  return suggestions.filter(s => s.url)
 }

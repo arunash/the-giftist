@@ -149,7 +149,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — only show buy/view when we have an image */}
         <div className="mt-2 flex items-center gap-2">
           {added ? (
             <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
@@ -166,7 +166,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               {adding ? 'Adding...' : 'Add to List'}
             </button>
           )}
-          {productSlug ? (
+          {previewImage && productSlug ? (
             <button
               onClick={handleBuy}
               disabled={buyingLoading}
@@ -175,7 +175,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               <ShoppingCart className="h-3 w-3" />
               {buyingLoading ? 'Loading...' : 'Buy'}
             </button>
-          ) : giftistUrl ? (
+          ) : previewImage && giftistUrl ? (
             <a
               href={giftistUrl}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition"

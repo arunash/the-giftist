@@ -98,8 +98,9 @@ export async function GET(request: NextRequest) {
     } catch {}
   }
 
+  // Only expose product links when we have an image (no image = no buy/view)
   return NextResponse.json(
-    { image, name: productName, price, resolvedUrl: giftistUrl, targetUrl },
+    { image, name: productName, price, resolvedUrl: image ? giftistUrl : null, targetUrl: image ? targetUrl : null },
     { headers: { 'Cache-Control': 'public, max-age=86400' } },
   )
 }
