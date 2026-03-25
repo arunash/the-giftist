@@ -899,9 +899,9 @@ async function handleInstagramLink(
 
 async function handleChatMessage(userId: string, text: string): Promise<string> {
   // Check daily message limit for free users
-  const { allowed } = await checkChatLimit(userId)
+  const { allowed, remaining } = await checkChatLimit(userId)
   if (!allowed) {
-    return "You've reached your daily limit of 10 messages. Upgrade to Gold for unlimited conversations! Visit giftist.ai/settings to upgrade."
+    return "You've reached your daily free message limit. Upgrade to Gold for unlimited conversations! Visit giftist.ai/settings to upgrade."
   }
 
   // Save user message
