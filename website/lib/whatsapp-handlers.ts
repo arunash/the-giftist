@@ -1413,6 +1413,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     if (productSegments.length > 0) {
       const { findProductUrl } = await import('@/lib/enrich-item')
       const lines: string[] = []
+      let displayIdx = 0
       for (let i = 0; i < productSegments.length; i++) {
         const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
         const price = p.price ? ` — ${p.price}` : ''
@@ -1427,7 +1428,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           } catch {}
         }
 
-        // Create Giftist product page link (landing page auto-fetches images)
+        // Create Giftist product page link (landing page resolves images via 3-layer system)
         if (targetUrl) {
           try {
             let priceVal: number | null = null
@@ -1451,7 +1452,8 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
         // Only show products that have links
         if (!linkLine) continue
 
-        lines.push(`${i + 1}. *${p.name}*${price}${linkLine}`)
+        displayIdx++
+        lines.push(`${displayIdx}. *${p.name}*${price}${linkLine}`)
 
         // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
         if (!p.id && p.name) {

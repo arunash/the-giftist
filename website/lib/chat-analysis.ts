@@ -343,6 +343,9 @@ export async function suggestGiftsFromProfile(
     const { findProductUrl } = await import('@/lib/enrich-item')
     const { findProductImage } = await import('@/lib/product-image')
     const { extractProductFromUrl } = await import('@/lib/extract')
+    const { aiImageFallback } = await import('@/lib/ai-image-fallback')
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
 
     await Promise.all(suggestions.map(async (s) => {
       try {
@@ -350,7 +353,7 @@ export async function suggestGiftsFromProfile(
         const found = await findProductUrl(s.name).catch(() => null)
         const targetUrl = found?.url || `https://www.google.com/search?q=${encodeURIComponent(s.name)}`
 
-        // Try to resolve an image
+        // Layer 1: Try scraping from retailer URL
         let image: string | null = null
         if (targetUrl && !targetUrl.includes('google.com/search')) {
           try {
@@ -358,8 +361,15 @@ export async function suggestGiftsFromProfile(
             if (scraped.image) image = scraped.image
           } catch {}
         }
+
+        // Layer 2: Search engines (Bing, Google, DDG)
         if (!image) {
           try { image = await findProductImage(s.name) } catch {}
+        }
+
+        // Layer 3: AI-powered fallback (Claude generates search queries + branded card)
+        if (!image) {
+          try { image = await aiImageFallback(s.name, baseUrl) } catch {}
         }
 
         let priceValue: number | null = null
@@ -368,14 +378,14 @@ export async function suggestGiftsFromProfile(
           if (m) priceValue = parseFloat(m[0])
         }
 
-        // Only create tracked link if we have an image
+        // Always create tracked link — AI fallback guarantees an image
         if (image) {
           s.url = await createTrackedLink({
             productName: s.name,
             targetUrl,
             price: s.price,
             priceValue,
-            image,
+            image: image.includes('/api/product-image') ? null : image,
             userId: opts?.userId,
             source: opts?.source || 'SUGGESTION',
           })
