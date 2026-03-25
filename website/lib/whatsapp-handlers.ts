@@ -585,7 +585,9 @@ A taste profile is a snapshot of someone's preferences that I build by reading y
 2. Tap ⋮ → More → Export Chat
 3. Share it with me here
 
-I'll analyze the conversation and build a profile in ~30 seconds. Then whenever you ask for gift ideas for that person, I'll use their profile to suggest things they'll actually love.`
+I'll analyze the conversation and build a profile in ~30 seconds. Then whenever you ask for gift ideas for that person, I'll use their profile to suggest things they'll actually love.
+
+*Privacy:* We never store the conversation. It's only used to extract the profile, then immediately discarded.`
 
     if (profiledNames.length > 0) {
       response += `\n\n*People with profiles:* ${profiledNames.join(', ')}`
