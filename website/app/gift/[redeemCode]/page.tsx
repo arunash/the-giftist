@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { Gift, Loader2, Check, DollarSign, Wallet, Heart, Send, ArrowRight, BanknoteIcon, Phone, Lock } from 'lucide-react'
+import { Gift, Loader2, Check, Wallet, Heart, Send, Phone, Lock } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
 
 interface GiftData {
   id: string
@@ -25,7 +24,7 @@ interface GiftData {
 function GiftRedeemInner() {
   const params = useParams()
   const redeemCode = params.redeemCode as string
-  const { data: session, status: authStatus } = useSession()
+  const { status: authStatus } = useSession()
 
   const [gift, setGift] = useState<GiftData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,8 +39,6 @@ function GiftRedeemInner() {
   // Redemption
   const [redeeming, setRedeeming] = useState(false)
   const [redeemed, setRedeemed] = useState(false)
-  const [redeemedMethod, setRedeemedMethod] = useState<string | null>(null)
-  const [showRedeemOptions, setShowRedeemOptions] = useState(false)
 
   // Thank you
   const [thankYouMessage, setThankYouMessage] = useState('')
@@ -58,7 +55,7 @@ function GiftRedeemInner() {
           setGift(data)
           if (data.redeemedAt) {
             setRedeemed(true)
-            setPhoneVerified(true) // already redeemed, no need to verify
+            setPhoneVerified(true)
           }
         }
         setLoading(false)
@@ -73,7 +70,6 @@ function GiftRedeemInner() {
     if (!phoneInput.trim()) return
     setVerifying(true)
     setPhoneError('')
-
     try {
       const res = await fetch('/api/gift-send/verify-phone', {
         method: 'POST',
@@ -93,15 +89,7 @@ function GiftRedeemInner() {
     }
   }
 
-  const handleRedeemClick = () => {
-    if (authStatus !== 'authenticated') {
-      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/gift/${redeemCode}`)}`
-      return
-    }
-    setShowRedeemOptions(true)
-  }
-
-  const handleRedeem = async (method: 'CASH_OUT' | 'WALLET') => {
+  const handleRedeem = async () => {
     if (!gift) return
     if (authStatus !== 'authenticated') {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(`/gift/${redeemCode}`)}`
@@ -113,7 +101,7 @@ function GiftRedeemInner() {
       const res = await fetch('/api/gift-send/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redeemCode, method }),
+        body: JSON.stringify({ redeemCode, method: 'WALLET' }),
       })
       const data = await res.json()
 
@@ -124,8 +112,6 @@ function GiftRedeemInner() {
 
       if (data.success) {
         setRedeemed(true)
-        setRedeemedMethod(method)
-        setShowRedeemOptions(false)
       } else {
         setError(data.error || 'Failed to redeem gift')
       }
@@ -152,7 +138,6 @@ function GiftRedeemInner() {
     }
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-white to-purple-50">
@@ -164,7 +149,6 @@ function GiftRedeemInner() {
     )
   }
 
-  // Error state
   if (error && !gift) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-white to-purple-50 px-4">
@@ -183,13 +167,12 @@ function GiftRedeemInner() {
 
   const isRedeemable = !gift.redeemedAt && !redeemed && (gift.status === 'PAID' || gift.status === 'NOTIFIED')
 
-  // Phone verification gate — show before revealing gift details
+  // Phone verification gate
   if (!phoneVerified && !redeemed) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-            {/* Header */}
             <div className="relative bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-6 py-8 text-white text-center overflow-hidden">
               <div className="absolute top-2 left-4 w-3 h-3 bg-yellow-300 rounded-full opacity-60" />
               <div className="absolute top-6 right-8 w-2 h-2 bg-green-300 rounded-full opacity-60" />
@@ -227,11 +210,7 @@ function GiftRedeemInner() {
                     autoFocus
                   />
                 </div>
-
-                {phoneError && (
-                  <p className="text-xs text-red-500 px-1">{phoneError}</p>
-                )}
-
+                {phoneError && <p className="text-xs text-red-500 px-1">{phoneError}</p>}
                 <button
                   onClick={handleVerifyPhone}
                   disabled={verifying || !phoneInput.trim()}
@@ -303,77 +282,33 @@ function GiftRedeemInner() {
               </div>
             )}
 
-            {/* Redeem button */}
-            {isRedeemable && !showRedeemOptions && (
-              <button
-                onClick={handleRedeemClick}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-pink-600 hover:to-purple-600 transition-all shadow-lg shadow-pink-200/50"
-              >
-                <Gift className="h-5 w-5" />
-                Redeem Gift
-              </button>
-            )}
-
-            {/* Redeem options */}
-            {isRedeemable && showRedeemOptions && (
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-600 text-center mb-1">How would you like to redeem?</p>
-
+            {/* Redeem button — single option: add to Giftist Wallet */}
+            {isRedeemable && (
+              <div>
                 <button
-                  onClick={() => handleRedeem('CASH_OUT')}
+                  onClick={handleRedeem}
                   disabled={redeeming}
-                  className="w-full flex items-center gap-3 bg-primary text-white px-5 py-4 rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-pink-600 hover:to-purple-600 transition-all shadow-lg shadow-pink-200/50 disabled:opacity-50"
                 >
-                  {redeeming ? <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" /> : <DollarSign className="h-5 w-5 flex-shrink-0" />}
-                  <div className="text-left flex-1">
-                    <p>Redeem Amount</p>
-                    <p className="text-xs font-normal opacity-80 mt-0.5">Withdraw ${gift.amount.toFixed(2)} to your bank account</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+                  {redeeming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5" />}
+                  Redeem to Giftist Wallet
                 </button>
-
-                <button
-                  onClick={() => handleRedeem('WALLET')}
-                  disabled={redeeming}
-                  className="w-full flex items-center gap-3 bg-gray-100 text-gray-900 px-5 py-4 rounded-xl font-semibold text-sm hover:bg-gray-200 transition disabled:opacity-50"
-                >
-                  {redeeming ? <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" /> : <Wallet className="h-5 w-5 flex-shrink-0" />}
-                  <div className="text-left flex-1">
-                    <p>Add to Giftist Wallet</p>
-                    <p className="text-xs font-normal text-gray-500 mt-0.5">Use ${gift.amount.toFixed(2)} for gifts on Giftist</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 flex-shrink-0 text-gray-400" />
-                </button>
-
-                <button onClick={() => setShowRedeemOptions(false)} className="w-full text-sm text-gray-400 hover:text-gray-600 transition py-1">
-                  Cancel
-                </button>
+                <p className="text-xs text-gray-400 text-center mt-3">
+                  Funds will be available to withdraw to your bank account within 5–7 business days.
+                </p>
               </div>
             )}
 
-            {/* Just redeemed — success + next steps */}
+            {/* Redeemed — success + thank you */}
             {redeemed && !thankYouSent && (
               <div className="mt-1">
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2 flex items-center gap-2">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                   <p className="text-sm font-medium text-green-700">Gift redeemed successfully!</p>
                 </div>
-
-                {redeemedMethod === 'CASH_OUT' && (
-                  <Link href="/wallet" className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition mb-4">
-                    <BanknoteIcon className="h-4 w-4" />
-                    Set up withdrawal to bank
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
-
-                {redeemedMethod === 'WALLET' && (
-                  <Link href="/wallet" className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-900 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition mb-4">
-                    <Wallet className="h-4 w-4" />
-                    View your Giftist Wallet
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
+                <p className="text-xs text-gray-400 mb-5 px-1">
+                  ${gift.amount.toFixed(2)} has been added to your Giftist Wallet. Funds will be available to withdraw to your bank account within 5–7 business days.
+                </p>
 
                 <div className="border border-gray-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -399,12 +334,16 @@ function GiftRedeemInner() {
               </div>
             )}
 
+            {/* Thank you sent */}
             {thankYouSent && (
               <div className="mt-1">
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2 flex items-center gap-2">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                   <p className="text-sm font-medium text-green-700">Gift redeemed successfully!</p>
                 </div>
+                <p className="text-xs text-gray-400 mb-4 px-1">
+                  ${gift.amount.toFixed(2)} has been added to your Giftist Wallet. Funds will be available to withdraw to your bank account within 5–7 business days.
+                </p>
                 <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-4 text-center">
                   <Heart className="h-6 w-6 text-pink-500 mx-auto mb-2" />
                   <p className="text-sm font-medium text-purple-800">Thank you sent to {gift.senderName}!</p>
