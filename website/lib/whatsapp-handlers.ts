@@ -1406,15 +1406,33 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     }
 
     // Extract product blocks, create tracked links, and auto-save to wishlist
+    // GUARDRAIL: Never show products without images on WhatsApp
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
     let autoSavedCount = 0
     if (productSegments.length > 0) {
+      const { findProductImage } = await import('@/lib/product-image')
+      const { extractProductFromUrl } = await import('@/lib/extract')
       const lines: string[] = []
+      let displayIndex = 0
       for (let i = 0; i < productSegments.length; i++) {
         const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
-        const price = p.price ? ` — ${p.price}` : ''
         let linkLine = ''
+        let image = p.image || null
+
+        // Try to resolve image if missing
+        if (!image && p.url && !p.url.includes('google.com/search')) {
+          try {
+            const scraped = await extractProductFromUrl(p.url)
+            if (scraped.image) image = scraped.image
+          } catch {}
+        }
+        if (!image) {
+          try { image = await findProductImage(p.name) } catch {}
+        }
+
+        // Skip products without images — never show them on WhatsApp
+        if (!image) continue
 
         // Create Giftist product page link
         if (p.url && !p.url.includes('google.com/search')) {
@@ -1429,7 +1447,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               targetUrl: p.url,
               price: p.price || null,
               priceValue: priceVal,
-              image: p.image || null,
+              image,
               userId,
               source: 'WHATSAPP',
             })
@@ -1437,7 +1455,9 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
           } catch {}
         }
 
-        lines.push(`${i + 1}. *${p.name}*${price}${linkLine}`)
+        displayIndex++
+        const price = p.price ? ` — ${p.price}` : ''
+        lines.push(`${displayIndex}. *${p.name}*${price}${linkLine}`)
 
         // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
         if (!p.id && p.name) {
