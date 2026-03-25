@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { Gift, Loader2, Check, DollarSign, Wallet, Heart, Send, ArrowRight, BanknoteIcon } from 'lucide-react'
+import { Gift, Loader2, Check, DollarSign, Wallet, Heart, Send, ArrowRight, BanknoteIcon, Phone, Lock } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
@@ -19,6 +19,7 @@ interface GiftData {
   status: string
   redeemCode: string
   redeemedAt: string | null
+  phoneLast4: string | null
 }
 
 function GiftRedeemInner() {
@@ -29,10 +30,20 @@ function GiftRedeemInner() {
   const [gift, setGift] = useState<GiftData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Phone verification
+  const [phoneInput, setPhoneInput] = useState('')
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [phoneError, setPhoneError] = useState('')
+  const [verifying, setVerifying] = useState(false)
+
+  // Redemption
   const [redeeming, setRedeeming] = useState(false)
   const [redeemed, setRedeemed] = useState(false)
   const [redeemedMethod, setRedeemedMethod] = useState<string | null>(null)
   const [showRedeemOptions, setShowRedeemOptions] = useState(false)
+
+  // Thank you
   const [thankYouMessage, setThankYouMessage] = useState('')
   const [sendingThankYou, setSendingThankYou] = useState(false)
   const [thankYouSent, setThankYouSent] = useState(false)
@@ -47,6 +58,7 @@ function GiftRedeemInner() {
           setGift(data)
           if (data.redeemedAt) {
             setRedeemed(true)
+            setPhoneVerified(true) // already redeemed, no need to verify
           }
         }
         setLoading(false)
@@ -56,6 +68,30 @@ function GiftRedeemInner() {
         setLoading(false)
       })
   }, [redeemCode])
+
+  const handleVerifyPhone = async () => {
+    if (!phoneInput.trim()) return
+    setVerifying(true)
+    setPhoneError('')
+
+    try {
+      const res = await fetch('/api/gift-send/verify-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redeemCode, phone: phoneInput.trim() }),
+      })
+      const data = await res.json()
+      if (data.verified) {
+        setPhoneVerified(true)
+      } else {
+        setPhoneError(data.error || 'Phone number does not match. Please try again.')
+      }
+    } catch {
+      setPhoneError('Verification failed. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
+  }
 
   const handleRedeemClick = () => {
     if (authStatus !== 'authenticated') {
@@ -67,15 +103,12 @@ function GiftRedeemInner() {
 
   const handleRedeem = async (method: 'CASH_OUT' | 'WALLET') => {
     if (!gift) return
-
-    // Both methods require auth
     if (authStatus !== 'authenticated') {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(`/gift/${redeemCode}`)}`
       return
     }
 
     setRedeeming(true)
-
     try {
       const res = await fetch('/api/gift-send/redeem', {
         method: 'POST',
@@ -106,7 +139,6 @@ function GiftRedeemInner() {
   const handleSendThankYou = async () => {
     if (!thankYouMessage.trim()) return
     setSendingThankYou(true)
-
     try {
       const res = await fetch('/api/gift-send/thank-you', {
         method: 'POST',
@@ -114,12 +146,8 @@ function GiftRedeemInner() {
         body: JSON.stringify({ redeemCode, message: thankYouMessage.trim() }),
       })
       const data = await res.json()
-      if (data.success) {
-        setThankYouSent(true)
-      }
-    } catch {
-      // silently fail
-    } finally {
+      if (data.success) setThankYouSent(true)
+    } catch {} finally {
       setSendingThankYou(false)
     }
   }
@@ -155,15 +183,84 @@ function GiftRedeemInner() {
 
   const isRedeemable = !gift.redeemedAt && !redeemed && (gift.status === 'PAID' || gift.status === 'NOTIFIED')
 
+  // Phone verification gate — show before revealing gift details
+  if (!phoneVerified && !redeemed) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm">
+          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+            {/* Header */}
+            <div className="relative bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-6 py-8 text-white text-center overflow-hidden">
+              <div className="absolute top-2 left-4 w-3 h-3 bg-yellow-300 rounded-full opacity-60" />
+              <div className="absolute top-6 right-8 w-2 h-2 bg-green-300 rounded-full opacity-60" />
+              <div className="absolute bottom-4 left-12 w-2 h-2 bg-blue-300 rounded-full opacity-60" />
+              <div className="absolute bottom-3 right-6 w-3 h-3 bg-yellow-200 rounded-full opacity-50" />
+              <p className="text-4xl mb-3">🎁</p>
+              <p className="text-xl font-bold">You received a gift!</p>
+              <p className="text-sm opacity-80 mt-1">from {gift.senderName}</p>
+            </div>
+
+            <div className="px-6 py-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Lock className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Verify your phone number</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Enter your phone number to unlock this gift
+                    {gift.phoneLast4 && <span> (ending in {gift.phoneLast4})</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={phoneInput}
+                    onChange={e => { setPhoneInput(e.target.value); setPhoneError('') }}
+                    placeholder="Enter your phone number"
+                    className="w-full pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition"
+                    onKeyDown={e => e.key === 'Enter' && handleVerifyPhone()}
+                    autoFocus
+                  />
+                </div>
+
+                {phoneError && (
+                  <p className="text-xs text-red-500 px-1">{phoneError}</p>
+                )}
+
+                <button
+                  onClick={handleVerifyPhone}
+                  disabled={verifying || !phoneInput.trim()}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-600 transition disabled:opacity-50"
+                >
+                  {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                  Unlock Gift
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-3 text-center">
+              <p className="text-xs text-gray-400">
+                Powered by <a href="https://giftist.ai" className="text-primary hover:underline">The Giftist</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        {/* Gift card */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
 
-          {/* Confetti-style gradient banner */}
+          {/* Banner */}
           <div className="relative bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-6 py-8 text-white text-center overflow-hidden">
-            {/* Decorative circles */}
             <div className="absolute top-2 left-4 w-3 h-3 bg-yellow-300 rounded-full opacity-60" />
             <div className="absolute top-6 right-8 w-2 h-2 bg-green-300 rounded-full opacity-60" />
             <div className="absolute bottom-4 left-12 w-2 h-2 bg-blue-300 rounded-full opacity-60" />
@@ -192,11 +289,7 @@ function GiftRedeemInner() {
           <div className="px-6 py-6">
             {gift.itemImage && (
               <div className="w-full h-48 rounded-2xl overflow-hidden mb-4 bg-gray-50">
-                <img
-                  src={gift.itemImage}
-                  alt={gift.itemName}
-                  className="w-full h-full object-cover"
-                />
+                <img src={gift.itemImage} alt={gift.itemName} className="w-full h-full object-cover" />
               </div>
             )}
 
@@ -210,7 +303,7 @@ function GiftRedeemInner() {
               </div>
             )}
 
-            {/* Redeem button (not yet redeemed) */}
+            {/* Redeem button */}
             {isRedeemable && !showRedeemOptions && (
               <button
                 onClick={handleRedeemClick}
@@ -252,10 +345,7 @@ function GiftRedeemInner() {
                   <ArrowRight className="h-4 w-4 flex-shrink-0 text-gray-400" />
                 </button>
 
-                <button
-                  onClick={() => setShowRedeemOptions(false)}
-                  className="w-full text-sm text-gray-400 hover:text-gray-600 transition py-1"
-                >
+                <button onClick={() => setShowRedeemOptions(false)} className="w-full text-sm text-gray-400 hover:text-gray-600 transition py-1">
                   Cancel
                 </button>
               </div>
@@ -269,12 +359,8 @@ function GiftRedeemInner() {
                   <p className="text-sm font-medium text-green-700">Gift redeemed successfully!</p>
                 </div>
 
-                {/* Show next step based on redemption method */}
                 {redeemedMethod === 'CASH_OUT' && (
-                  <Link
-                    href="/wallet"
-                    className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition mb-4"
-                  >
+                  <Link href="/wallet" className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition mb-4">
                     <BanknoteIcon className="h-4 w-4" />
                     Set up withdrawal to bank
                     <ArrowRight className="h-4 w-4" />
@@ -282,17 +368,13 @@ function GiftRedeemInner() {
                 )}
 
                 {redeemedMethod === 'WALLET' && (
-                  <Link
-                    href="/wallet"
-                    className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-900 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition mb-4"
-                  >
+                  <Link href="/wallet" className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-900 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition mb-4">
                     <Wallet className="h-4 w-4" />
                     View your Giftist Wallet
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
 
-                {/* Thank you section */}
                 <div className="border border-gray-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Heart className="h-4 w-4 text-pink-500" />
@@ -317,7 +399,6 @@ function GiftRedeemInner() {
               </div>
             )}
 
-            {/* Thank you sent confirmation */}
             {thankYouSent && (
               <div className="mt-1">
                 <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
@@ -331,7 +412,7 @@ function GiftRedeemInner() {
               </div>
             )}
 
-            {/* Already redeemed (loaded in that state, not just-now redeemed) */}
+            {/* Already redeemed (loaded in that state) */}
             {!isRedeemable && gift.redeemedAt && !redeemed && (
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                 <Check className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -340,7 +421,6 @@ function GiftRedeemInner() {
             )}
           </div>
 
-          {/* Footer */}
           <div className="border-t border-gray-100 px-6 py-3 text-center">
             <p className="text-xs text-gray-400">
               Powered by <a href="https://giftist.ai" className="text-primary hover:underline">The Giftist</a>

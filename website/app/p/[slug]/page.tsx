@@ -80,7 +80,7 @@ function ProductPage() {
   }
 
   const handleCheckout = async () => {
-    if (!product || buyingLoading || !recipientName.trim()) return
+    if (!product || buyingLoading || !recipientName.trim() || !recipientPhone.trim()) return
     setBuyingLoading(true)
     try {
       const res = await fetch('/api/purchase/checkout', {
@@ -115,7 +115,7 @@ function ProductPage() {
   const shareViaWhatsApp = () => {
     if (!giftData) return
     const phone = recipientPhone.replace(/\D/g, '')
-    const text = `I got you something! 🎁\n\n${giftData.itemName}\n\nOpen your gift: ${giftUrl}`
+    const text = `I got you something! 🎁\n\nOpen your gift: ${giftUrl}`
     if (phone) {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
     } else {
@@ -127,8 +127,8 @@ function ProductPage() {
     if (!giftData) return
     try {
       await navigator.share({
-        title: `Gift for ${giftData.recipientName || 'you'}`,
-        text: `I got you something! ${giftData.itemName}`,
+        title: `You received a gift!`,
+        text: `I got you something! 🎁`,
         url: giftUrl,
       })
     } catch {
@@ -360,7 +360,7 @@ function ProductPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Their phone number (optional)
+                  Their phone number *
                 </label>
                 <input
                   type="tel"
@@ -370,7 +370,7 @@ function ProductPage() {
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition"
                 />
                 <p className="text-[10px] text-gray-400 mt-1">
-                  We&apos;ll notify them via WhatsApp when payment completes
+                  Required to verify the recipient when they open the gift
                 </p>
               </div>
 
@@ -389,7 +389,7 @@ function ProductPage() {
 
               <button
                 onClick={handleCheckout}
-                disabled={buyingLoading || !recipientName.trim()}
+                disabled={buyingLoading || !recipientName.trim() || !recipientPhone.trim()}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
               >
                 <ShoppingCart className="h-4 w-4" />

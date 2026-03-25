@@ -403,25 +403,21 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient via WhatsApp if phone exists
+              // Notify recipient via WhatsApp if phone exists — don't reveal what the gift is
               if (gift.recipientPhone) {
                 const senderName = gift.sender.name || 'Someone'
                 const giftUrl = `${process.env.NEXTAUTH_URL || 'https://giftist.ai'}/gift/${gift.redeemCode}`
                 const msgParts = [
-                  `🎁 You received a gift from ${senderName}!`,
+                  `🎁 ${senderName} sent you a gift!`,
                   ``,
-                  `"${gift.itemName}" — $${gift.amount.toFixed(2)}`,
+                  `Open it here: ${giftUrl}`,
                 ]
-                if (gift.senderMessage) {
-                  msgParts.push(`"${gift.senderMessage}"`)
-                }
-                msgParts.push(``, `Redeem your gift: ${giftUrl}`)
 
                 smartWhatsAppSend(
                   gift.recipientPhone,
                   msgParts.join('\n'),
                   'gift_received',
-                  [senderName, gift.itemName, gift.amount.toFixed(2)],
+                  [senderName],
                   { skipTimeCheck: true }
                 ).catch(() => {})
 
@@ -458,24 +454,20 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient via WhatsApp
+              // Notify recipient via WhatsApp — don't reveal what the gift is
               const senderName = gift.sender.name || 'Someone'
               const giftUrl = `${process.env.NEXTAUTH_URL || 'https://giftist.ai'}/gift/${gift.redeemCode}`
               const msgParts = [
-                `🎁 You received a gift from ${senderName}!`,
+                `🎁 ${senderName} sent you a gift!`,
                 ``,
-                `"${gift.itemName}" — $${gift.amount.toFixed(2)}`,
+                `Open it here: ${giftUrl}`,
               ]
-              if (gift.senderMessage) {
-                msgParts.push(`"${gift.senderMessage}"`)
-              }
-              msgParts.push(``, `Redeem your gift: ${giftUrl}`)
 
               smartWhatsAppSend(
                 recipientPhone,
                 msgParts.join('\n'),
                 'gift_received',
-                [senderName, gift.itemName, gift.amount.toFixed(2)],
+                [senderName],
                 { skipTimeCheck: true }
               ).catch(() => {})
 

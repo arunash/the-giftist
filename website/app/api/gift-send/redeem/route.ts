@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
+  // Show last 4 digits of recipient phone as hint
+  const phoneDigits = (gift.recipientPhone || '').replace(/\D/g, '')
+  const phoneLast4 = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : null
+
   return NextResponse.json({
     id: gift.id,
     senderName: gift.sender.name || 'A friend',
@@ -34,6 +38,7 @@ export async function GET(request: NextRequest) {
     status: gift.status,
     redeemCode: gift.redeemCode,
     redeemedAt: gift.redeemedAt,
+    phoneLast4,
   })
 }
 

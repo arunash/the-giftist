@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
   const userId = (session.user as any).id
   const { slug, recipientName, recipientPhone, senderMessage } = await request.json()
 
-  if (!slug || !recipientName) {
-    return NextResponse.json({ error: 'slug and recipientName required' }, { status: 400 })
+  if (!slug || !recipientName || !recipientPhone) {
+    return NextResponse.json({ error: 'slug, recipientName, and recipientPhone required' }, { status: 400 })
   }
 
   const product = await prisma.productClick.findUnique({ where: { slug } })

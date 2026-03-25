@@ -32,24 +32,28 @@ export async function GET(
 
     let image = product.image
 
-    // If no image, try to fetch one and cache it
+    // Always try to resolve image if missing — never cache null
     if (!image) {
-      try {
-        // Try scraping from the target URL first
-        if (product.targetUrl && !product.targetUrl.includes('google.com/search')) {
+      // Try scraping from the target URL first
+      if (product.targetUrl && !product.targetUrl.includes('google.com/search')) {
+        try {
           const scraped = await extractProductFromUrl(product.targetUrl)
           if (scraped.image) image = scraped.image
+        } catch (err) {
+          console.error(`[product-image] scrape failed for ${product.targetUrl}:`, err)
         }
-      } catch {}
+      }
 
-      // Fallback: search for product image by name
+      // Fallback: search for product image by name (tries Bing, Google, DDG)
       if (!image) {
         try {
           image = await findProductImage(product.productName)
-        } catch {}
+        } catch (err) {
+          console.error(`[product-image] search failed for ${product.productName}:`, err)
+        }
       }
 
-      // Cache the image for next time (fire-and-forget)
+      // Only cache when we actually found an image — never cache null
       if (image) {
         prisma.productClick.update({
           where: { slug },
