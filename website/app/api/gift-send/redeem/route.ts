@@ -109,13 +109,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, method: 'WALLET', walletBalance: wallet.balance })
   }
 
-  if (method === 'ITEM_CLICK') {
+  if (method === 'CASH_OUT') {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
+    }
+
+    const userId = (session.user as any).id
+
+    // Add to wallet first, then user can withdraw from wallet page
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: gift.amount },
+      update: { balance: { increment: gift.amount } },
+    })
+
+    await prisma.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        type: 'GIFT_RECEIVED',
+        amount: gift.amount,
+        status: 'COMPLETED',
+        description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}" (pending withdrawal)`,
+      },
+    })
+
     await prisma.giftSend.update({
       where: { id: gift.id },
       data: {
         status: 'REDEEMED',
         redeemedAt: new Date(),
-        redemptionMethod: 'ITEM_CLICK',
+        redemptionMethod: 'CASH_OUT',
+        recipientUserId: userId,
       },
     })
 
@@ -129,7 +154,7 @@ export async function POST(request: NextRequest) {
       ).catch(() => {})
     }
 
-    return NextResponse.json({ success: true, method: 'ITEM_CLICK', itemUrl: gift.itemUrl })
+    return NextResponse.json({ success: true, method: 'CASH_OUT', walletBalance: wallet.balance })
   }
 
   return NextResponse.json({ error: 'Invalid method' }, { status: 400 })

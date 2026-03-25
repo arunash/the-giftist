@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { Gift, Loader2, Check, ExternalLink, Wallet, Heart, Send } from 'lucide-react'
+import { Gift, Loader2, Check, DollarSign, Wallet, Heart, Send, ArrowRight, BanknoteIcon } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 
 interface GiftData {
   id: string
@@ -30,6 +31,7 @@ function GiftRedeemInner() {
   const [error, setError] = useState<string | null>(null)
   const [redeeming, setRedeeming] = useState(false)
   const [redeemed, setRedeemed] = useState(false)
+  const [redeemedMethod, setRedeemedMethod] = useState<string | null>(null)
   const [showRedeemOptions, setShowRedeemOptions] = useState(false)
   const [thankYouMessage, setThankYouMessage] = useState('')
   const [sendingThankYou, setSendingThankYou] = useState(false)
@@ -63,8 +65,15 @@ function GiftRedeemInner() {
     setShowRedeemOptions(true)
   }
 
-  const handleRedeem = async (method: 'ITEM_CLICK' | 'WALLET') => {
+  const handleRedeem = async (method: 'CASH_OUT' | 'WALLET') => {
     if (!gift) return
+
+    // Both methods require auth
+    if (authStatus !== 'authenticated') {
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/gift/${redeemCode}`)}`
+      return
+    }
+
     setRedeeming(true)
 
     try {
@@ -82,10 +91,8 @@ function GiftRedeemInner() {
 
       if (data.success) {
         setRedeemed(true)
+        setRedeemedMethod(method)
         setShowRedeemOptions(false)
-        if (method === 'ITEM_CLICK' && gift.itemUrl) {
-          window.open(gift.itemUrl, '_blank')
-        }
       } else {
         setError(data.error || 'Failed to redeem gift')
       }
@@ -169,7 +176,7 @@ function GiftRedeemInner() {
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Check className="h-6 w-6" />
                 </div>
-                <p className="text-xl font-bold">Gift Redeemed</p>
+                <p className="text-xl font-bold">Gift Redeemed Successfully!</p>
                 <p className="text-sm opacity-80 mt-1">from {gift.senderName}</p>
               </>
             ) : (
@@ -218,24 +225,33 @@ function GiftRedeemInner() {
             {isRedeemable && showRedeemOptions && (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-gray-600 text-center mb-1">How would you like to redeem?</p>
-                {gift.itemUrl && (
-                  <button
-                    onClick={() => handleRedeem('ITEM_CLICK')}
-                    disabled={redeeming}
-                    className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
-                  >
-                    {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                    Buy this item
-                  </button>
-                )}
+
+                <button
+                  onClick={() => handleRedeem('CASH_OUT')}
+                  disabled={redeeming}
+                  className="w-full flex items-center gap-3 bg-primary text-white px-5 py-4 rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
+                >
+                  {redeeming ? <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" /> : <DollarSign className="h-5 w-5 flex-shrink-0" />}
+                  <div className="text-left flex-1">
+                    <p>Redeem Amount</p>
+                    <p className="text-xs font-normal opacity-80 mt-0.5">Withdraw ${gift.amount.toFixed(2)} to your bank account</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+                </button>
+
                 <button
                   onClick={() => handleRedeem('WALLET')}
                   disabled={redeeming}
-                  className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-900 px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-gray-200 transition disabled:opacity-50"
+                  className="w-full flex items-center gap-3 bg-gray-100 text-gray-900 px-5 py-4 rounded-xl font-semibold text-sm hover:bg-gray-200 transition disabled:opacity-50"
                 >
-                  {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-                  Add ${gift.amount.toFixed(2)} to my wallet
+                  {redeeming ? <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" /> : <Wallet className="h-5 w-5 flex-shrink-0" />}
+                  <div className="text-left flex-1">
+                    <p>Add to Giftist Wallet</p>
+                    <p className="text-xs font-normal text-gray-500 mt-0.5">Use ${gift.amount.toFixed(2)} for gifts on Giftist</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 flex-shrink-0 text-gray-400" />
                 </button>
+
                 <button
                   onClick={() => setShowRedeemOptions(false)}
                   className="w-full text-sm text-gray-400 hover:text-gray-600 transition py-1"
@@ -245,15 +261,38 @@ function GiftRedeemInner() {
               </div>
             )}
 
-            {/* Already redeemed badge */}
+            {/* Just redeemed — success + next steps */}
             {redeemed && !thankYouSent && (
               <div className="mt-1">
-                {/* Thank you section */}
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-5 flex items-center gap-2">
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-2">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                   <p className="text-sm font-medium text-green-700">Gift redeemed successfully!</p>
                 </div>
 
+                {/* Show next step based on redemption method */}
+                {redeemedMethod === 'CASH_OUT' && (
+                  <Link
+                    href="/wallet"
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition mb-4"
+                  >
+                    <BanknoteIcon className="h-4 w-4" />
+                    Set up withdrawal to bank
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+
+                {redeemedMethod === 'WALLET' && (
+                  <Link
+                    href="/wallet"
+                    className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-900 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition mb-4"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    View your Giftist Wallet
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+
+                {/* Thank you section */}
                 <div className="border border-gray-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Heart className="h-4 w-4 text-pink-500" />
