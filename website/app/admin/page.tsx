@@ -29,6 +29,15 @@ interface Stats {
     contributions: number; contributionsToday: number
     contributionCount: number; contributionCountToday: number
     avgContribution: number; activeSubscriptions: number
+    giftSendFees: number; giftSendFeesToday: number
+    giftSendVolume: number; giftSendVolumeToday: number
+    giftSendCount: number; giftSendCountToday: number
+    giftSendByStatus: Record<string, number>
+    recentGiftSends: Array<{
+      id: string; itemName: string; amount: number; platformFee: number
+      totalCharged: number; status: string; recipientName: string | null
+      createdAt: string; sender: { name: string | null }
+    }>
   }
   engagement: {
     totalEvents: number; totalCircleMembers: number
@@ -276,26 +285,85 @@ export default function AdminDashboard() {
 
       {/* Revenue */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Revenue</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <KpiCard icon={DollarSign} label="Platform Fees" value={`$${stats.revenue.platformFees.toFixed(2)}`}>
+        <h2 className="text-lg font-semibold mb-3">
+          Revenue
+          <span className="text-sm font-normal text-muted ml-2">
+            Total earned: ${(stats.revenue.giftSendFees + stats.revenue.platformFees).toFixed(2)}
+          </span>
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard icon={DollarSign} label="Gift Send Fees (5%)" value={`$${stats.revenue.giftSendFees.toFixed(2)}`} sub={`${stats.revenue.giftSendCount} gifts sent`}>
+            <Breakdown items={[
+              { label: 'Today', value: `$${stats.revenue.giftSendFeesToday.toFixed(2)}`, color: 'text-green-500' },
+              { label: 'Gifts today', value: stats.revenue.giftSendCountToday },
+              { label: 'Avg fee/gift', value: stats.revenue.giftSendCount > 0 ? `$${(stats.revenue.giftSendFees / stats.revenue.giftSendCount).toFixed(2)}` : '$0.00' },
+            ]} />
+          </KpiCard>
+          <KpiCard icon={DollarSign} label="Gift Volume (GMV)" value={`$${stats.revenue.giftSendVolume.toFixed(2)}`} sub="total charged to senders">
+            <Breakdown items={[
+              { label: 'Today', value: `$${stats.revenue.giftSendVolumeToday.toFixed(2)}` },
+              ...(Object.keys(stats.revenue.giftSendByStatus).length > 0
+                ? Object.entries(stats.revenue.giftSendByStatus).map(([k, v]) => ({
+                    label: k,
+                    value: v,
+                    color: k === 'REDEEMED' ? 'text-green-500' : k === 'PAID' ? 'text-yellow-500' : undefined,
+                  }))
+                : []),
+            ]} />
+          </KpiCard>
+          <KpiCard icon={DollarSign} label="Contribution Fees" value={`$${stats.revenue.platformFees.toFixed(2)}`}>
             <Breakdown items={[
               { label: 'Today', value: `$${stats.revenue.platformFeesToday.toFixed(2)}` },
+              { label: 'Contributions', value: `${stats.revenue.contributionCount} ($${stats.revenue.contributions.toFixed(2)})` },
             ]} />
           </KpiCard>
-          <KpiCard icon={DollarSign} label="Total Contributions" value={`$${stats.revenue.contributions.toFixed(2)}`}>
-            <Breakdown items={[
-              { label: 'Today', value: `$${stats.revenue.contributionsToday.toFixed(2)}` },
-              { label: 'Count', value: `${stats.revenue.contributionCount} (${stats.revenue.contributionCountToday} today)` },
-              { label: 'Avg', value: `$${stats.revenue.avgContribution.toFixed(2)}` },
-            ]} />
-          </KpiCard>
-          <KpiCard icon={Crown} label="Active Subscriptions" value={stats.revenue.activeSubscriptions} sub="Gold members">
+          <KpiCard icon={Crown} label="Subscriptions" value={stats.revenue.activeSubscriptions} sub="Gold members">
             <Breakdown items={[
               { label: 'MRR (est)', value: `$${(stats.revenue.activeSubscriptions * 4.99).toFixed(2)}`, color: 'text-yellow-500' },
             ]} />
           </KpiCard>
         </div>
+
+        {/* Recent Gift Sends */}
+        {stats.revenue.recentGiftSends.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-muted mb-2">Recent Gift Sends</h3>
+            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted">
+                    <th className="text-left p-3 font-medium">From</th>
+                    <th className="text-left p-3 font-medium">To</th>
+                    <th className="text-left p-3 font-medium">Item</th>
+                    <th className="text-left p-3 font-medium">Amount</th>
+                    <th className="text-left p-3 font-medium">Fee</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.revenue.recentGiftSends.map((g) => (
+                    <tr key={g.id} className="border-b border-border/50 hover:bg-surface-hover">
+                      <td className="p-3">{g.sender.name || '—'}</td>
+                      <td className="p-3">{g.recipientName || '—'}</td>
+                      <td className="p-3 max-w-[200px] truncate">{g.itemName}</td>
+                      <td className="p-3">${g.totalCharged.toFixed(2)}</td>
+                      <td className="p-3 text-green-500">${g.platformFee.toFixed(2)}</td>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                          g.status === 'REDEEMED' ? 'bg-green-500/20 text-green-500' :
+                          g.status === 'PAID' || g.status === 'NOTIFIED' ? 'bg-yellow-500/20 text-yellow-500' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>{g.status}</span>
+                      </td>
+                      <td className="p-3 text-muted text-xs">{new Date(g.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Costs by Provider */}

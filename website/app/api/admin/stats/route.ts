@@ -75,6 +75,14 @@ export async function GET() {
     groupMessagesTotal,
     groupMessagesToday,
     groupProfilesCreated,
+    giftSendFeesTotal,
+    giftSendFeesToday,
+    giftSendVolumeTotal,
+    giftSendVolumeToday,
+    giftSendCount,
+    giftSendCountToday,
+    giftSendByStatus,
+    recentGiftSends,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -237,6 +245,48 @@ export async function GET() {
     prisma.groupChatMessage.count(),
     prisma.groupChatMessage.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.circleMember.count({ where: { source: 'GROUP_CHAT' } }),
+    // Gift Send revenue
+    prisma.giftSend.aggregate({
+      _sum: { platformFee: true },
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] } },
+    }),
+    prisma.giftSend.aggregate({
+      _sum: { platformFee: true },
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] }, createdAt: { gte: todayStart } },
+    }),
+    prisma.giftSend.aggregate({
+      _sum: { totalCharged: true },
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] } },
+    }),
+    prisma.giftSend.aggregate({
+      _sum: { totalCharged: true },
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] }, createdAt: { gte: todayStart } },
+    }),
+    prisma.giftSend.count({
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] } },
+    }),
+    prisma.giftSend.count({
+      where: { status: { in: ['PAID', 'NOTIFIED', 'REDEEMED'] }, createdAt: { gte: todayStart } },
+    }),
+    prisma.giftSend.groupBy({
+      by: ['status'],
+      _count: { id: true },
+    }),
+    prisma.giftSend.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        itemName: true,
+        amount: true,
+        platformFee: true,
+        totalCharged: true,
+        status: true,
+        recipientName: true,
+        createdAt: true,
+        sender: { select: { name: true } },
+      },
+    }),
   ])
 
   // Build costs map
@@ -390,6 +440,14 @@ export async function GET() {
       contributionCountToday,
       avgContribution: contributionCount > 0 ? (contributionsTotal._sum.amount || 0) / contributionCount : 0,
       activeSubscriptions,
+      giftSendFees: giftSendFeesTotal._sum.platformFee || 0,
+      giftSendFeesToday: giftSendFeesToday._sum.platformFee || 0,
+      giftSendVolume: giftSendVolumeTotal._sum.totalCharged || 0,
+      giftSendVolumeToday: giftSendVolumeToday._sum.totalCharged || 0,
+      giftSendCount,
+      giftSendCountToday,
+      giftSendByStatus: Object.fromEntries(giftSendByStatus.map(s => [s.status, s._count.id])),
+      recentGiftSends,
     },
     engagement: {
       totalEvents,

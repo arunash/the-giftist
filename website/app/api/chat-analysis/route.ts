@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Check taste profile limit
+  // Check Gift DNA limit
   const { checkProfileLimit } = await import('@/lib/chat-context')
   const { allowed: profileAllowed } = await checkProfileLimit((session.user as any).id)
   if (!profileAllowed) {
     return NextResponse.json({
-      error: "You've used your 2 free taste profile analyses for today. Buy a Credit Pack or upgrade to Gold for more!",
+      error: "You've used your 2 free Gift DNA analyses. Buy a Credit Pack or upgrade to Gold for more!",
     }, { status: 429 })
   }
 

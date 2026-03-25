@@ -57,7 +57,7 @@ export async function POST() {
           currency: 'usd',
           product_data: {
             name: 'Giftist Credit Pack',
-            description: '50 concierge messages + 5 taste profile analyses',
+            description: '50 concierge messages + 5 Gift DNA analyses',
           },
           unit_amount: 500, // $5.00
         },

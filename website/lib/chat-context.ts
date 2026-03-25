@@ -1,7 +1,7 @@
 import { prisma } from './db'
 
 const FREE_DAILY_MESSAGE_LIMIT = 10
-const FREE_DAILY_PROFILE_LIMIT = 2
+const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
 
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
@@ -82,19 +82,17 @@ export async function checkProfileLimit(userId: string): Promise<{ allowed: bool
     return { allowed: true, remaining: Infinity }
   }
 
-  const startOfUserDay = getStartOfDayInUTC(user?.timezone || 'UTC')
-
-  // Count taste profiles created today (CircleMember records with profileUpdatedAt today)
-  const todayProfiles = await prisma.circleMember.count({
+  // Count total Gift DNA analyses ever created (lifetime limit for free users)
+  const totalProfiles = await prisma.circleMember.count({
     where: {
       userId,
-      profileUpdatedAt: { gte: startOfUserDay },
+      profileUpdatedAt: { not: null },
     },
   })
 
-  const freeRemaining = Math.max(0, FREE_DAILY_PROFILE_LIMIT - todayProfiles)
+  const freeRemaining = Math.max(0, FREE_PROFILE_LIMIT - totalProfiles)
 
-  if (todayProfiles < FREE_DAILY_PROFILE_LIMIT) {
+  if (totalProfiles < FREE_PROFILE_LIMIT) {
     return { allowed: true, remaining: freeRemaining }
   }
 
@@ -237,7 +235,7 @@ export async function buildChatContext(userId: string): Promise<string> {
     ? `\nUSER PROFILE & PREFERENCES:\n${demographics.map(d => `- ${d}`).join('\n')}\n`
     : ''
 
-  // Derive taste profile from existing items
+  // Derive Gift DNA from existing items
   const categories = items.filter(i => i.category).map(i => i.category!)
   const domains = [...new Set(items.map(i => i.domain))]
   const priceRange = items.filter(i => i.priceValue).map(i => i.priceValue!)
@@ -245,7 +243,7 @@ export async function buildChatContext(userId: string): Promise<string> {
   const maxPrice = priceRange.length > 0 ? Math.max(...priceRange) : null
 
   const tasteSection = items.length > 0 ? `
-TASTE PROFILE (derived from their list):
+GIFT DNA (derived from their list):
 - Favorite categories: ${[...new Set(categories)].join(', ') || 'not enough data'}
 - Preferred stores: ${domains.slice(0, 5).join(', ')}
 - Average item price: ${avgPrice ? `$${avgPrice.toFixed(0)}` : 'unknown'}
@@ -267,7 +265,7 @@ TASTE PROFILE (derived from their list):
         if (tp.categories?.length) parts.push(`categories: ${tp.categories.slice(0, 5).join(', ')}`)
         if (tp.dislikes?.length) parts.push(`dislikes: ${tp.dislikes.slice(0, 3).join(', ')}`)
         if (tp.pricePreference) parts.push(`budget: ${tp.pricePreference}`)
-        if (parts.length) line += `\n    Taste profile: ${parts.join('; ')}`
+        if (parts.length) line += `\n    Gift DNA: ${parts.join('; ')}`
         if (tp.wishStatements?.length) {
           line += `\n    Recent wishes: ${tp.wishStatements.slice(0, 3).map((w: string) => `"${w}"`).join(', ')}`
         }
@@ -357,11 +355,11 @@ ${eventsList || '(none)'}
 GIFT CIRCLE:
 ${circleList || '(empty — suggest adding people)'}
 
-FRIEND TASTE PROFILES:
-- When a circle member has a "Taste profile" above, USE it to personalize gift suggestions for them. Reference their specific interests, brands, and wish statements.
-- When a circle member has NO taste profile, suggest: "I can learn [name]'s preferences if you share your WhatsApp chat with them (Tap ⋮ → More → Export Chat) and send it to me!"
+FRIEND GIFT DNA:
+- When a circle member has a "Gift DNA" above, USE it to personalize gift suggestions for them. Reference their specific interests, brands, and wish statements.
+- When a circle member has NO Gift DNA, suggest: "I can learn [name]'s preferences if you share your WhatsApp chat with them (Tap ⋮ → More → Export Chat) and send it to me!"
 - If the user tells you something new about a circle member (e.g. "Mom just got into pottery"), emit an [UPDATE_PROFILE] block to update their profile.
-- If the user asks "what is a taste profile" or "how do profiles work", explain: A taste profile is a snapshot of someone's preferences built from your conversations. It captures interests, brands, style, budget, sizes, dislikes, and wish statements. To create one, share your WhatsApp chat with that person (tap ⋮ → More → Export Chat) and send it to me. We never store the conversation — it's only used to extract the profile, then immediately discarded. Then all gift suggestions for that person become personalized. Free users get 2 profiles/day, Credit Pack adds 5 more, Gold is unlimited.
+- If the user asks "what is Gift DNA" or "how do profiles work", explain: Gift DNA is a snapshot of someone's preferences built from your conversations. It captures interests, brands, style, budget, sizes, dislikes, and wish statements. To create one, share your WhatsApp chat with that person (tap ⋮ → More → Export Chat) and send it to me. We never store the conversation — it's only used to extract the profile, then immediately discarded. Then all gift suggestions for that person become personalized. Free users get 2 analyses/day, Credit Pack adds 5 more, Gold is unlimited.
 
 LINK SAFETY:
 - NEVER fabricate or guess URLs. Only include URLs that are: (1) from the ITEMS list above (verified product links), (2) system-generated links (share links, event links), or (3) well-known retailer domains you are confident exist (e.g. amazon.com/dp/..., uncommongoods.com/product/...).

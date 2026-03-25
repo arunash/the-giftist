@@ -465,7 +465,7 @@ export default function AdminUserDetailPage() {
                   <th className="text-left p-2 font-medium">Phone</th>
                   <th className="text-left p-2 font-medium">Relationship</th>
                   <th className="text-left p-2 font-medium">Source</th>
-                  <th className="text-left p-2 font-medium">Taste Profile</th>
+                  <th className="text-left p-2 font-medium">Gift DNA</th>
                 </tr>
               </thead>
               <tbody>

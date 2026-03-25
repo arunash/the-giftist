@@ -140,7 +140,7 @@ export default function GoldUpgradeCard() {
             </div>
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary" />
-              <span className="text-sm text-secondary"><strong>{credits?.profileCredits}</strong> taste profiles</span>
+              <span className="text-sm text-secondary"><strong>{credits?.profileCredits}</strong> Gift DNA analyses</span>
             </div>
           </div>
         </div>
@@ -151,7 +151,7 @@ export default function GoldUpgradeCard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Credit Pack</h2>
-            <p className="text-sm text-muted">50 messages + 5 taste profiles</p>
+            <p className="text-sm text-muted">50 messages + 5 Gift DNA analyses</p>
           </div>
           <div className="p-2 bg-primary/10 rounded-full">
             <Zap className="h-5 w-5 text-primary" />
@@ -165,7 +165,7 @@ export default function GoldUpgradeCard() {
           </div>
           <div className="flex items-center gap-3">
             <User className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="text-sm text-secondary">5 extra taste profile analyses</span>
+            <span className="text-sm text-secondary">5 extra Gift DNA analyses</span>
           </div>
           <div className="flex items-center gap-3">
             <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
@@ -207,7 +207,7 @@ export default function GoldUpgradeCard() {
           </div>
           <div className="flex items-center gap-3">
             <User className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-            <span className="text-sm text-secondary">Unlimited taste profile analyses</span>
+            <span className="text-sm text-secondary">Unlimited Gift DNA analyses</span>
           </div>
           <div className="flex items-center gap-3">
             <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" />

@@ -62,7 +62,7 @@ export default function PrivacyPage() {
               <li>Provide, maintain, and improve the Service</li>
               <li>Create and manage your account</li>
               <li>Generate personalized AI-powered gift recommendations</li>
-              <li>Build and maintain your taste profile for better suggestions</li>
+              <li>Build and maintain your Gift DNA for better suggestions</li>
               <li>Process gift contributions and payments</li>
               <li>Send transactional messages (account verification, event reminders)</li>
               <li>Send promotional messages (with your consent; you may opt out at any time)</li>
@@ -84,7 +84,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">4. AI and Automated Processing</h2>
             <p>The Service uses artificial intelligence to analyze your preferences and provide personalized recommendations. This involves:</p>
             <ul className="list-disc pl-6 mt-2 space-y-1">
-              <li>Processing your wishlist items, stated preferences, and chat interactions to build a taste profile</li>
+              <li>Processing your wishlist items, stated preferences, and chat interactions to build your Gift DNA</li>
               <li>Sending relevant context to third-party AI providers (Anthropic/Claude) to generate recommendations</li>
               <li>Automated categorization and tagging of items you add</li>
             </ul>

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X, Calendar } from 'lucide-react'
+import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X, Calendar, Dna } from 'lucide-react'
 import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 import { HeroChatInput } from '@/components/landing/hero-chat-input'
@@ -239,6 +239,73 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Gift DNA */}
+      <section className="py-24 border-t border-gray-200">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full mb-6">
+                <Dna className="h-3.5 w-3.5 text-violet-400" />
+                <span className="text-xs font-semibold text-violet-400 uppercase tracking-wide">Gift DNA</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
+                Know exactly what<br />
+                <span className="text-gray-400">they actually want.</span>
+              </h2>
+              <p className="text-gray-500 leading-relaxed mb-8">
+                Share a WhatsApp chat with your Gift Concierge and it builds a Gift DNA profile — their interests, brands they love, things they've said they want, and more. No more guessing.
+              </p>
+              <div className="space-y-3">
+                <CheckItem text="Analyzes real conversations for genuine preferences" />
+                <CheckItem text="Extracts wish statements, brands, interests & dislikes" />
+                <CheckItem text="Get 3 personalized gift suggestions instantly" />
+                <CheckItem text="Works with any WhatsApp chat export" />
+              </div>
+            </div>
+
+            {/* Mock Gift DNA card */}
+            <div className="flex justify-center">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 w-full max-w-sm shadow-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                    <Dna className="h-5 w-5 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-sm">Sarah's Gift DNA</h3>
+                    <p className="text-[11px] text-gray-400">Built from 847 messages</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <DnaRow label="Interests" value="cooking, hiking, true crime podcasts" />
+                  <DnaRow label="Brands" value="Le Creuset, Patagonia, Glossier" />
+                  <DnaRow label="Style" value="minimalist, earthy tones" />
+                  <DnaRow label="Wish list" value={`"I need a good chef's knife"`} />
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                  <p className="text-[11px] text-violet-500 font-semibold uppercase tracking-wider mb-2">Top suggestions</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                      Miyabi Birchwood Chef's Knife — $179
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                      Patagonia Better Sweater — $139
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                      Le Creuset Salt Crock — $40
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing: Free vs Gold */}
       <section className="py-24 border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-6">
@@ -282,7 +349,7 @@ export default async function Home() {
                 <PricingItem included text="1 free event" />
                 <PricingItem included text="Group gift funding" />
                 <PricingItem included text="10 concierge messages/day" />
-                <PricingItem included text="2 taste profile analyses/day" />
+                <PricingItem included text="2 Gift DNA analyses" />
                 <PricingItem included={false} text="Unlimited concierge" />
               </div>
               <Link
@@ -310,7 +377,7 @@ export default async function Home() {
               <div className="space-y-3">
                 <PricingItem included text="Everything in Free" />
                 <PricingItem included text="50 extra concierge messages" />
-                <PricingItem included text="5 extra taste profile analyses" />
+                <PricingItem included text="5 extra Gift DNA analyses" />
                 <PricingItem included text="Use anytime — credits never expire" />
                 <PricingItem included text="Kicks in after daily free limit" />
                 <PricingItem included={false} text="Unlimited concierge" />
@@ -341,7 +408,7 @@ export default async function Home() {
               <div className="space-y-3">
                 <PricingItem included text="Everything in Free" />
                 <PricingItem included text="Unlimited concierge conversations" />
-                <PricingItem included text="Unlimited taste profile analyses" />
+                <PricingItem included text="Unlimited Gift DNA analyses" />
                 <PricingItem included text="Unlimited events & registries" />
                 <PricingItem included text="Priority AI recommendations" />
                 <PricingItem included text="Daily WhatsApp gift inspiration" />
@@ -442,6 +509,15 @@ function PricingItem({ included, text }: { included: boolean; text: string }) {
         </div>
       )}
       <span className={`text-sm ${included ? 'text-gray-600' : 'text-gray-400'}`}>{text}</span>
+    </div>
+  )
+}
+
+function DnaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium mb-0.5">{label}</p>
+      <p className="text-sm text-gray-700">{value}</p>
     </div>
   )
 }

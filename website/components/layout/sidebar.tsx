@@ -19,7 +19,7 @@ import {
 import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
 import { SidebarSummary } from './sidebar-summary'
-import { TasteProfile } from './taste-profile'
+import { GiftDNA } from './gift-dna'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 
 const navItems = [
@@ -89,7 +89,7 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
       {/* AI Summary — scrollable middle section */}
       <div className="flex-1 overflow-y-auto py-4">
         <SidebarSummary />
-        <TasteProfile />
+        <GiftDNA />
       </div>
 
       {/* Funds cards */}

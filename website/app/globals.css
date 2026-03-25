@@ -409,8 +409,8 @@ h3 { font-size: 1rem; line-height: 1.4; }
   color: hsl(var(--primary-hover));
 }
 
-/* ---- Taste Profile Teaser ---- */
-.taste-profile {
+/* ---- Gift DNA Teaser ---- */
+.gift-dna {
   border-top: 1px solid hsl(var(--border));
   padding-top: 0.75rem;
 }

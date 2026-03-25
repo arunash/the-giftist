@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         stripe.checkout.sessions.create({
           mode: 'payment',
           customer: stripeCustomerId,
-          line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+          line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 Gift DNA analyses' }, unit_amount: 500 }, quantity: 1 }],
           metadata: { type: 'credit_pack', userId },
           success_url: `${baseUrl}/chat?credits=success`,
           cancel_url: `${baseUrl}/chat`,

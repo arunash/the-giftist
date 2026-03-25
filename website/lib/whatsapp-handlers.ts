@@ -558,8 +558,8 @@ export async function handleTextMessage(
     return "Something went wrong generating your share link. Please try again."
   }
 
-  // Command: taste profile / profiles — explain what taste profiles are
-  if (trimmed === 'taste profile' || trimmed === 'taste profiles' || trimmed === 'profiles' || trimmed === 'what is a taste profile') {
+  // Command: gift dna / profiles — explain what Gift DNA is
+  if (trimmed === 'gift dna' || trimmed === 'taste profile' || trimmed === 'taste profiles' || trimmed === 'profiles' || trimmed === 'what is gift dna' || trimmed === 'what is a taste profile') {
     const members = await prisma.circleMember.findMany({
       where: { userId, tasteProfile: { not: null } },
       select: { name: true },
@@ -567,9 +567,9 @@ export async function handleTextMessage(
     })
     const profiledNames = members.filter(m => m.name).map(m => m.name)
 
-    let response = `*Taste Profiles* — How Giftist Learns What People Like
+    let response = `*Gift DNA* — How Giftist Learns What People Like
 
-A taste profile is a snapshot of someone's preferences that I build by reading your conversations with them.
+Gift DNA is a snapshot of someone's preferences that I build by reading your conversations with them.
 
 *What I extract:*
 • Interests & hobbies
@@ -955,12 +955,12 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       const sess = await stripe.checkout.sessions.create({
         mode: 'payment',
         customer: custId,
-        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 Gift DNA analyses' }, unit_amount: 500 }, quantity: 1 }],
         metadata: { type: 'credit_pack', userId },
         success_url: 'https://giftist.ai/settings?credits=success',
         cancel_url: 'https://giftist.ai',
       })
-      return `You've used all your free messages for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 taste profiles):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+      return `You've used all your free messages for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 Gift DNA analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
     } catch {
       return "You've reached your daily message limit. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
     }
@@ -1688,8 +1688,8 @@ export function getHelpMessage(): string {
 - *remove circle <number>* — Remove someone
 - *remind* — Send reminders to your circle about upcoming events
 
-*Taste Profiles (learn friends' preferences):*
-- *taste profile* — What is a taste profile?
+*Gift DNA (learn friends' preferences):*
+- *gift dna* — What is Gift DNA?
 - *Share a WhatsApp chat export* — Build a profile from your conversations
 - *Add me to a group chat* — I'll learn preferences automatically
 - *groups* — See monitored group chats
@@ -1750,7 +1750,7 @@ export async function handleDocumentMessage(
     return "I can analyze WhatsApp chat exports. To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat, then send me the file."
   }
 
-  // Check taste profile limit
+  // Check Gift DNA limit
   const { checkProfileLimit } = await import('@/lib/chat-context')
   const { allowed: profileAllowed } = await checkProfileLimit(userId)
   if (!profileAllowed) {
@@ -1769,14 +1769,14 @@ export async function handleDocumentMessage(
       const sess = await stripe.checkout.sessions.create({
         mode: 'payment',
         customer: custId,
-        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 Gift DNA analyses' }, unit_amount: 500 }, quantity: 1 }],
         metadata: { type: 'credit_pack', userId },
         success_url: 'https://giftist.ai/settings?credits=success',
         cancel_url: 'https://giftist.ai',
       })
-      return `You've used your 2 free taste profile analyses for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 profiles):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+      return `You've used your 2 free Gift DNA analyses.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
     } catch {
-      return "You've used your 2 free taste profile analyses for today. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
+      return "You've used your 2 free Gift DNA analyses. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
     }
   }
 
@@ -1902,7 +1902,7 @@ export async function handlePendingAnalysisReply(
     }
 
     clearPendingAnalysis(userId)
-    return "Saved " + pending.friendName + "'s taste profile to your Gift Circle! Now when you ask me for gift ideas for " + pending.friendName + ", I'll use what I learned.\n\nTry: \"What should I get " + pending.friendName + " for their birthday?\""
+    return "Saved " + pending.friendName + "'s Gift DNA to your Gift Circle! Now when you ask me for gift ideas for " + pending.friendName + ", I'll use what I learned.\n\nTry: \"What should I get " + pending.friendName + " for their birthday?\""
   }
 
   // Redo — re-show sender list

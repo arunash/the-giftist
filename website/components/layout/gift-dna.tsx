@@ -6,7 +6,7 @@ import { User } from 'lucide-react'
 
 const PROFILE_FIELDS = ['birthday', 'gender', 'ageRange', 'interests', 'giftBudget', 'relationship'] as const
 
-export function TasteProfile() {
+export function GiftDNA() {
   const [interests, setInterests] = useState<string[]>([])
   const [completion, setCompletion] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -35,7 +35,7 @@ export function TasteProfile() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <User className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-gray-900">Taste Profile</span>
+            <span className="text-xs font-semibold text-gray-900">Gift DNA</span>
           </div>
           <span className="text-[10px] font-bold text-primary">{completion}%</span>
         </div>
