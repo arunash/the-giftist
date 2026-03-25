@@ -19,6 +19,8 @@ import {
   extractFriendProfile,
   profileSummary,
 } from '@/lib/chat-analysis'
+import { isSupportedChatFile, extractChatText } from '@/lib/extract-chat-file'
+import { listMonitoredGroups, extractGroupProfiles } from '@/lib/group-monitor'
 import Anthropic from '@anthropic-ai/sdk'
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
@@ -459,13 +461,11 @@ export async function handleTextMessage(
 
   // Command: groups — list monitored group chats
   if (trimmed === 'groups') {
-    const { listMonitoredGroups } = await import('@/lib/group-monitor')
     return listMonitoredGroups(userId)
   }
 
   // Command: extract — manually trigger group profile extraction
   if (trimmed === 'extract') {
-    const { extractGroupProfiles } = await import('@/lib/group-monitor')
     await sendTextMessage(phone, 'Analyzing group conversations... This may take a minute.')
     const result = await extractGroupProfiles(userId)
     if (result.extracted === 0) {
@@ -1524,7 +1524,7 @@ export function getHelpMessage(): string {
 *On the web (giftist.ai):*
 - Visual wishlist with trending gifts
 - Event wishlists and group gifting
-- AI-powered gift recommendations
+- AI-powered gift recommendations`
 }
 
 // ── Pending chat analysis state (in-memory, keyed by userId) ──
@@ -1567,8 +1567,6 @@ export async function handleDocumentMessage(
   filename: string | undefined,
   phone: string,
 ): Promise<string> {
-  const { isSupportedChatFile, extractChatText } = await import('@/lib/extract-chat-file')
-
   if (!isSupportedChatFile(mimeType, filename)) {
     return "I can analyze WhatsApp chat exports (.txt or .zip files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
   }
@@ -1609,10 +1607,12 @@ export async function handleDocumentMessage(
     // Store messages and run extraction
     const filtered = filterAndSampleMessages(messages, friendName)
     if (filtered.length < 5) {
-      return `Not enough messages from ${friendName} to analyze (found ${filtered.length}). Try a longer chat.`
+      const count = filtered.length
+      return "Not enough messages from " + friendName + " to analyze (found " + count + "). Try a longer chat."
     }
 
-    await sendTextMessage(phone, `Analyzing ${filtered.length} messages from ${friendName}... This may take a moment.`)
+    const analyzeMsg = "Analyzing " + filtered.length + " messages from " + friendName + "... This may take a moment."
+    await sendTextMessage(phone, analyzeMsg)
 
     try {
       const profile = await extractFriendProfile(filtered, friendName)
@@ -1627,7 +1627,7 @@ export async function handleDocumentMessage(
       })
 
       const summary = profileSummary(profile, friendName)
-      return `${summary}\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person.`
+      return summary + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {
       console.error('[DOC] Analysis failed:', e)
       return "Something went wrong analyzing the chat. Please try again."
@@ -1641,11 +1641,11 @@ export async function handleDocumentMessage(
     expiresAt: Date.now() + 30 * 60 * 1000,
   })
 
-  let reply = `I found ${messages.length} messages from ${senders.length} people:\n`
+  let reply = "I found " + messages.length + " messages from " + senders.length + " people:\n"
   senders.forEach((s, i) => {
-    reply += `\n${i + 1}. ${s.name} (${s.count} messages)`
+    reply += "\n" + (i + 1) + ". " + s.name + " (" + s.count + " messages)"
   })
-  reply += `\n\nReply with the *number* of the person you want me to analyze.`
+  reply += "\n\nReply with the *number* of the person you want me to analyze."
   return reply
 }
 
@@ -1679,7 +1679,7 @@ export async function handlePendingAnalysisReply(
       await prisma.circleMember.create({
         data: {
           userId,
-          phone: `chat-${Date.now()}`,
+          phone: "chat-" + Date.now(),
           name: pending.friendName,
           source: 'WHATSAPP',
           tasteProfile: JSON.stringify(pending.profile),
@@ -1689,7 +1689,7 @@ export async function handlePendingAnalysisReply(
     }
 
     clearPendingAnalysis(userId)
-    return `Saved ${pending.friendName}'s taste profile to your Gift Circle! Now when you ask me for gift ideas for ${pending.friendName}, I'll use what I learned.\n\nTry: "What should I get ${pending.friendName} for their birthday?"`
+    return "Saved " + pending.friendName + "'s taste profile to your Gift Circle! Now when you ask me for gift ideas for " + pending.friendName + ", I'll use what I learned.\n\nTry: \"What should I get " + pending.friendName + " for their birthday?\""
   }
 
   // Redo — re-show sender list
@@ -1697,11 +1697,11 @@ export async function handlePendingAnalysisReply(
     pending.profile = undefined
     pending.friendName = undefined
 
-    let reply = `Pick someone to analyze:\n`
+    let reply = "Pick someone to analyze:\n"
     pending.senders.forEach((s, i) => {
-      reply += `\n${i + 1}. ${s.name} (${s.count} messages)`
+      reply += "\n" + (i + 1) + ". " + s.name + " (" + s.count + " messages)"
     })
-    reply += `\n\nReply with the *number* of the person.`
+    reply += "\n\nReply with the *number* of the person."
     return reply
   }
 
@@ -1712,10 +1712,11 @@ export async function handlePendingAnalysisReply(
     const filtered = filterAndSampleMessages(pending.messages, sender.name)
 
     if (filtered.length < 5) {
-      return `Not enough messages from ${sender.name} to analyze (found ${filtered.length}). Pick someone else or try a longer chat.`
+      return "Not enough messages from " + sender.name + " to analyze (found " + filtered.length + "). Pick someone else or try a longer chat."
     }
 
-    await sendTextMessage(phone, `Analyzing ${filtered.length} messages from ${sender.name}... This may take a moment.`)
+    const progressMsg = "Analyzing " + filtered.length + " messages from " + sender.name + "... This may take a moment."
+    await sendTextMessage(phone, progressMsg)
 
     try {
       const profile = await extractFriendProfile(filtered, sender.name)
@@ -1723,7 +1724,7 @@ export async function handlePendingAnalysisReply(
       pending.friendName = sender.name
 
       const summary = profileSummary(profile, sender.name)
-      return `${summary}\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person.`
+      return summary + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {
       console.error('[DOC] Analysis failed:', e)
       return "Something went wrong analyzing the chat. Please try again."
