@@ -158,7 +158,7 @@ export default function AnalyzeChatPage() {
         >
           <Upload className="h-10 w-10 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-900 font-medium mb-1">Drop a WhatsApp chat export here</p>
-          <p className="text-sm text-gray-500 mb-4">or click to browse (.txt file)</p>
+          <p className="text-sm text-gray-500 mb-4">or click to browse (.txt or .zip file)</p>
           <button
             onClick={() => fileRef.current?.click()}
             className="px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition"
@@ -168,7 +168,7 @@ export default function AnalyzeChatPage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".txt,text/plain"
+            accept=".txt,.zip,text/plain,application/zip"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]

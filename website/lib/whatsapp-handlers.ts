@@ -1567,13 +1567,10 @@ export async function handleDocumentMessage(
   filename: string | undefined,
   phone: string,
 ): Promise<string> {
-  // Only accept text files
-  const isText = mimeType === 'text/plain' ||
-    mimeType === 'application/octet-stream' ||
-    filename?.endsWith('.txt')
+  const { isSupportedChatFile, extractChatText } = await import('@/lib/extract-chat-file')
 
-  if (!isText) {
-    return "I can only analyze WhatsApp chat exports (.txt files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
+  if (!isSupportedChatFile(mimeType, filename)) {
+    return "I can analyze WhatsApp chat exports (.txt or .zip files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
   }
 
   let buffer: Buffer
@@ -1584,7 +1581,11 @@ export async function handleDocumentMessage(
     return "Couldn't download the file. Please try again."
   }
 
-  const text = buffer.toString('utf-8')
+  const text = await extractChatText(buffer, mimeType, filename)
+  if (!text) {
+    return "Couldn't find a chat file inside this zip. Make sure you're uploading a WhatsApp chat export (.txt or .zip)."
+  }
+
   const messages = parseWhatsAppExport(text)
 
   if (messages.length < 10) {

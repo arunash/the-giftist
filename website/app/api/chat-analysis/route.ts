@@ -7,6 +7,7 @@ import {
   filterAndSampleMessages,
   extractFriendProfile,
 } from '@/lib/chat-analysis'
+import { extractChatText, isSupportedChatFile } from '@/lib/extract-chat-file'
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -23,16 +24,30 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate file
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+  if (file.size > 20 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large (max 20MB)' }, { status: 400 })
   }
 
-  const text = await file.text()
+  if (!isSupportedChatFile(file.type, file.name)) {
+    return NextResponse.json({
+      error: 'Unsupported file type. Please upload a .txt or .zip WhatsApp chat export.',
+    }, { status: 400 })
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const text = await extractChatText(buffer, file.type, file.name)
+
+  if (!text) {
+    return NextResponse.json({
+      error: 'Could not find a chat file. If uploading a .zip, make sure it contains the exported .txt file.',
+    }, { status: 400 })
+  }
+
   const messages = parseWhatsAppExport(text)
 
   if (messages.length < 10) {
     return NextResponse.json({
-      error: 'Could not parse as a WhatsApp chat export. Make sure you export the chat from WhatsApp (Settings → Chat → Export Chat) and upload the .txt file.',
+      error: 'Could not parse as a WhatsApp chat export. Make sure you export the chat from WhatsApp (Settings → Chat → Export Chat) and upload the .txt or .zip file.',
     }, { status: 400 })
   }
 
