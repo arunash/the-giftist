@@ -297,6 +297,7 @@ export interface GiftSuggestion {
 export async function suggestGiftsFromProfile(
   profile: FriendProfile,
   friendName: string,
+  opts?: { userId?: string; source?: string },
 ): Promise<GiftSuggestion[]> {
   const profileStr = [
     profile.interests.length ? `Interests: ${profile.interests.join(', ')}` : '',
@@ -311,7 +312,7 @@ export async function suggestGiftsFromProfile(
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,
-    system: `You suggest gifts based on someone's taste profile. Return exactly 3 suggestions as a JSON array. Each item: {"name":"specific product name","price":"$XX","reason":"one sentence why this fits"}. Return ONLY the JSON array, no markdown.`,
+    system: `You suggest gifts based on someone's taste profile. Return exactly 3 suggestions as a JSON array. Each item: {"name":"specific real product name with brand","price":"$XX","reason":"one sentence why this fits"}. Use real, specific product names (e.g. "Yeti Rambler 26oz Bottle" not "insulated water bottle"). Return ONLY the JSON array, no markdown.`,
     messages: [{
       role: 'user',
       content: `Suggest 3 gift ideas for ${friendName} based on this profile:\n\n${profileStr}`,
@@ -328,11 +329,42 @@ export async function suggestGiftsFromProfile(
   }).catch(() => {})
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  let suggestions: GiftSuggestion[] = []
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
+      suggestions = JSON.parse(jsonMatch[0])
     }
   } catch {}
-  return []
+
+  // Create tracked Giftist links for each suggestion
+  if (suggestions.length > 0) {
+    const { createTrackedLink } = await import('@/lib/product-link')
+    const { findProductUrl } = await import('@/lib/enrich-item')
+
+    await Promise.all(suggestions.map(async (s) => {
+      try {
+        // Try to find a real product URL
+        const found = await findProductUrl(s.name).catch(() => null)
+        const targetUrl = found?.url || `https://www.google.com/search?q=${encodeURIComponent(s.name)}`
+
+        let priceValue: number | null = null
+        if (s.price) {
+          const m = s.price.replace(/,/g, '').match(/[\d.]+/)
+          if (m) priceValue = parseFloat(m[0])
+        }
+
+        s.url = await createTrackedLink({
+          productName: s.name,
+          targetUrl,
+          price: s.price,
+          priceValue,
+          userId: opts?.userId,
+          source: opts?.source || 'SUGGESTION',
+        })
+      } catch {}
+    }))
+  }
+
+  return suggestions
 }

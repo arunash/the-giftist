@@ -1820,9 +1820,9 @@ export async function handleDocumentMessage(
       })
 
       const summary = profileSummary(profile, friendName)
-      const suggestions = await suggestGiftsFromProfile(profile, friendName).catch(() => [])
+      const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WHATSAPP' }).catch(() => [])
       const suggestionsText = suggestions.length > 0
-        ? '\n\n🎁 *Gift ideas for ' + friendName + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}`).join('\n')
+        ? '\n\n🎁 *Gift ideas for ' + friendName + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}${s.url ? '\n' + s.url : ''}`).join('\n')
         : ''
       return summary + suggestionsText + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {
@@ -1921,9 +1921,9 @@ export async function handlePendingAnalysisReply(
       pending.friendName = sender.name
 
       const summary = profileSummary(profile, sender.name)
-      const suggestions = await suggestGiftsFromProfile(profile, sender.name).catch(() => [])
+      const suggestions = await suggestGiftsFromProfile(profile, sender.name, { userId, source: 'WHATSAPP' }).catch(() => [])
       const suggestionsText = suggestions.length > 0
-        ? '\n\n🎁 *Gift ideas for ' + sender.name + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}`).join('\n')
+        ? '\n\n🎁 *Gift ideas for ' + sender.name + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}${s.url ? '\n' + s.url : ''}`).join('\n')
         : ''
       return summary + suggestionsText + "\n\nReply *save* to save this profile to your Gift Circle, or *redo* to try a different person."
     } catch (e) {

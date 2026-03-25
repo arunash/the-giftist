@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
   }
 
   const profile = await extractFriendProfile(filtered, friendName)
-  const suggestions = await suggestGiftsFromProfile(profile, friendName).catch(() => [])
+  const userId = (session.user as any).id
+  const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WEB' }).catch(() => [])
 
   return NextResponse.json({
     step: 'review',
