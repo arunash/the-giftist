@@ -29,10 +29,18 @@ export function useChatStream() {
 
       if (res.status === 429) {
         const data = await res.json()
+        // Encode upgrade URLs into the message so the UI can render buttons
+        let limitMsg = data.message || "You've reached your daily message limit."
+        if (data.creditPackUrl) {
+          limitMsg += `\n\n[UPGRADE_CREDIT_PACK:${data.creditPackUrl}]`
+        }
+        if (data.goldUrl) {
+          limitMsg += `\n[UPGRADE_GOLD:${data.goldUrl}]`
+        }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? { ...m, content: data.message || "You've reached your daily message limit. Upgrade to Gold for unlimited conversations!" }
+              ? { ...m, content: limitMsg }
               : m
           )
         )

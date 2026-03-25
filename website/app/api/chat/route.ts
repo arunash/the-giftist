@@ -59,10 +59,44 @@ export async function POST(request: NextRequest) {
     // Check daily message limit for free users
     const { allowed, remaining } = await checkChatLimit(userId)
     if (!allowed) {
+      // Generate Stripe checkout URLs so user can upgrade inline
+      const { stripe } = await import('@/lib/stripe')
+      const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+      let sub = await prisma.subscription.findUnique({ where: { userId } })
+      let stripeCustomerId = sub?.stripeCustomerId
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({ email: session.user.email || undefined, metadata: { userId } })
+        stripeCustomerId = customer.id
+        if (sub) {
+          await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId } })
+        } else {
+          sub = await prisma.subscription.create({ data: { userId, stripeCustomerId, status: 'INACTIVE' } })
+        }
+      }
+      const [creditSession, goldSession] = await Promise.all([
+        stripe.checkout.sessions.create({
+          mode: 'payment',
+          customer: stripeCustomerId,
+          line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+          metadata: { type: 'credit_pack', userId },
+          success_url: `${baseUrl}/chat?credits=success`,
+          cancel_url: `${baseUrl}/chat`,
+        }),
+        process.env.STRIPE_GOLD_PRICE_ID ? stripe.checkout.sessions.create({
+          mode: 'subscription',
+          customer: stripeCustomerId,
+          line_items: [{ price: process.env.STRIPE_GOLD_PRICE_ID, quantity: 1 }],
+          metadata: { type: 'gold_subscription', userId },
+          success_url: `${baseUrl}/chat?subscription=success`,
+          cancel_url: `${baseUrl}/chat`,
+        }) : Promise.resolve(null),
+      ])
       return new Response(
         JSON.stringify({
           error: 'limit_reached',
-          message: "You've reached your daily message limit. Buy a Credit Pack ($5 for 50 messages) or upgrade to Gold for unlimited!",
+          message: "You've reached your daily message limit.",
+          creditPackUrl: creditSession.url,
+          goldUrl: goldSession?.url || null,
         }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )

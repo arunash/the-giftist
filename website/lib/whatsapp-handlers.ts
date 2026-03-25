@@ -901,7 +901,30 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
   // Check daily message limit for free users
   const { allowed, remaining } = await checkChatLimit(userId)
   if (!allowed) {
-    return "You've reached your daily message limit. Buy a Credit Pack ($5 for 50 messages + 5 taste profiles) at giftist.ai/settings, or upgrade to Gold for unlimited!"
+    // Generate inline checkout link
+    try {
+      const { stripe } = await import('@/lib/stripe')
+      let sub = await prisma.subscription.findUnique({ where: { userId } })
+      let custId = sub?.stripeCustomerId
+      if (!custId) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+        const cust = await stripe.customers.create({ email: user?.email || undefined, metadata: { userId } })
+        custId = cust.id
+        if (sub) await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId: custId } })
+        else await prisma.subscription.create({ data: { userId, stripeCustomerId: custId, status: 'INACTIVE' } })
+      }
+      const sess = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer: custId,
+        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+        metadata: { type: 'credit_pack', userId },
+        success_url: 'https://giftist.ai/settings?credits=success',
+        cancel_url: 'https://giftist.ai',
+      })
+      return `You've used all your free messages for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 taste profiles):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+    } catch {
+      return "You've reached your daily message limit. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
+    }
   }
 
   // Save user message
@@ -1667,7 +1690,30 @@ export async function handleDocumentMessage(
   const { checkProfileLimit } = await import('@/lib/chat-context')
   const { allowed: profileAllowed } = await checkProfileLimit(userId)
   if (!profileAllowed) {
-    return "You've used your 2 free taste profile analyses for today. Buy a Credit Pack ($5 for 50 messages + 5 profiles) at giftist.ai/settings, or upgrade to Gold for unlimited!"
+    // Generate inline checkout link for profile limit
+    try {
+      const { stripe } = await import('@/lib/stripe')
+      let sub = await prisma.subscription.findUnique({ where: { userId } })
+      let custId = sub?.stripeCustomerId
+      if (!custId) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+        const cust = await stripe.customers.create({ email: user?.email || undefined, metadata: { userId } })
+        custId = cust.id
+        if (sub) await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId: custId } })
+        else await prisma.subscription.create({ data: { userId, stripeCustomerId: custId, status: 'INACTIVE' } })
+      }
+      const sess = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer: custId,
+        line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 taste profiles' }, unit_amount: 500 }, quantity: 1 }],
+        metadata: { type: 'credit_pack', userId },
+        success_url: 'https://giftist.ai/settings?credits=success',
+        cancel_url: 'https://giftist.ai',
+      })
+      return `You've used your 2 free taste profile analyses for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 profiles):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+    } catch {
+      return "You've used your 2 free taste profile analyses for today. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
+    }
   }
 
   let buffer: Buffer

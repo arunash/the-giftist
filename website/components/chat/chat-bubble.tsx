@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { parseChatContent, type ProductData, type EventData, type AddToEventData, type SendGiftData } from '@/lib/parse-chat-content'
 import { ProductCard } from './product-card'
 import { SendGiftCard } from './send-gift-card'
-import { Check, Calendar, Gift } from 'lucide-react'
+import { Check, Calendar, Gift, Zap, Crown } from 'lucide-react'
 import Link from 'next/link'
 
 interface ChatBubbleProps {
@@ -325,6 +325,46 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
             return <ProductCard key={i} product={products[0]} onAdd={addProductToList} />
           }
           if (segment.type === 'text') {
+            // Check for inline upgrade buttons
+            const creditMatch = segment.content.match(/\[UPGRADE_CREDIT_PACK:(.*?)\]/)
+            const goldMatch = segment.content.match(/\[UPGRADE_GOLD:(.*?)\]/)
+            const cleanText = segment.content
+              .replace(/\[UPGRADE_CREDIT_PACK:.*?\]/g, '')
+              .replace(/\[UPGRADE_GOLD:.*?\]/g, '')
+              .trim()
+
+            if (creditMatch || goldMatch) {
+              return (
+                <div key={i} className="space-y-2">
+                  {cleanText && (
+                    <div className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap bg-surface-raised border border-border text-secondary rounded-bl-md">
+                      {cleanText}
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2 py-1">
+                    {creditMatch && (
+                      <a
+                        href={creditMatch[1]}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary-hover transition"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                        Buy Credit Pack — $5
+                      </a>
+                    )}
+                    {goldMatch && (
+                      <a
+                        href={goldMatch[1]}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 text-black rounded-xl text-xs font-semibold hover:bg-yellow-400 transition"
+                      >
+                        <Crown className="h-3.5 w-3.5" />
+                        Upgrade to Gold — $4.99/mo
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={i}
