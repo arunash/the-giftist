@@ -901,7 +901,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
   // Check daily message limit for free users
   const { allowed, remaining } = await checkChatLimit(userId)
   if (!allowed) {
-    return "You've reached your daily free message limit. Upgrade to Gold for unlimited conversations! Visit giftist.ai/settings to upgrade."
+    return "You've reached your daily message limit. Buy a Credit Pack ($5 for 50 messages + 5 taste profiles) at giftist.ai/settings, or upgrade to Gold for unlimited!"
   }
 
   // Save user message
@@ -1661,6 +1661,13 @@ export async function handleDocumentMessage(
 ): Promise<string> {
   if (!isSupportedChatFile(mimeType, filename)) {
     return "I can analyze WhatsApp chat exports (.txt or .zip files). To export a chat: open a WhatsApp conversation → tap ⋮ (menu) → More → Export Chat → Without Media."
+  }
+
+  // Check taste profile limit
+  const { checkProfileLimit } = await import('@/lib/chat-context')
+  const { allowed: profileAllowed } = await checkProfileLimit(userId)
+  if (!profileAllowed) {
+    return "You've used your 2 free taste profile analyses for today. Buy a Credit Pack ($5 for 50 messages + 5 profiles) at giftist.ai/settings, or upgrade to Gold for unlimited!"
   }
 
   let buffer: Buffer

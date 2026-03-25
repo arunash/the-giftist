@@ -247,7 +247,7 @@ export default async function Home() {
               Free to start. Pay for what you need.
             </h2>
             <p className="text-gray-500 max-w-lg mx-auto">
-              Everything you need to get started is free. Buy an Event Pass or go Gold for the full experience.
+              Everything you need to get started is free. Buy credits when you need more, or go Gold for unlimited.
             </p>
           </div>
 
@@ -257,7 +257,7 @@ export default async function Home() {
               <div className="flex-1">
                 <span className="ai-badge mb-2"><Sparkles className="h-3 w-3 inline -mt-0.5 mr-1" />AI Insight</span>
                 <p className="text-sm text-gray-600 mt-2">
-                  Most gift-givers have 3+ events a year. Gold members never hit the concierge limit when it matters most.
+                  Most gift-givers have 3+ events a year. Credit Packs and Gold members never hit the concierge limit when it matters most.
                 </p>
               </div>
               <a href="#gold" className="chip chip--filled whitespace-nowrap self-start">
@@ -281,8 +281,8 @@ export default async function Home() {
                 <PricingItem included text="Share lists via WhatsApp" />
                 <PricingItem included text="1 free event" />
                 <PricingItem included text="Group gift funding" />
-                <PricingItem included text="3 concierge messages/day" />
-                <PricingItem included={false} text="Unlimited events" />
+                <PricingItem included text="10 concierge messages/day" />
+                <PricingItem included text="2 taste profile analyses/day" />
                 <PricingItem included={false} text="Unlimited concierge" />
               </div>
               <Link
@@ -293,34 +293,34 @@ export default async function Home() {
               </Link>
             </div>
 
-            {/* Event Pass tier */}
+            {/* Credit Pack tier */}
             <div className="bg-white rounded-2xl border border-primary/30 p-8 relative overflow-hidden shadow-sm">
               <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
-                Pay per event
+                Popular
               </div>
               <div className="flex items-center gap-2 mb-1">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-bold text-gray-900">Event Pass</h3>
+                <Zap className="h-5 w-5 text-primary" />
+                <h3 className="text-xl font-bold text-gray-900">Credit Pack</h3>
               </div>
-              <p className="text-gray-500 text-sm mb-6">For special occasions</p>
+              <p className="text-gray-500 text-sm mb-6">Use anytime, no expiration</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-3xl font-bold text-gray-900">$2.99</span>
-                <span className="text-sm text-gray-400">/event</span>
+                <span className="text-3xl font-bold text-gray-900">$5</span>
+                <span className="text-sm text-gray-400">one-time</span>
               </div>
               <div className="space-y-3">
                 <PricingItem included text="Everything in Free" />
-                <PricingItem included text="Create a shareable registry" />
-                <PricingItem included text="Unlimited items per event" />
-                <PricingItem included text="Send reminders to your circle" />
-                <PricingItem included text="Full concierge for that event" />
-                <PricingItem included={false} text="Unlimited events" />
+                <PricingItem included text="50 extra concierge messages" />
+                <PricingItem included text="5 extra taste profile analyses" />
+                <PricingItem included text="Use anytime — credits never expire" />
+                <PricingItem included text="Kicks in after daily free limit" />
+                <PricingItem included={false} text="Unlimited concierge" />
                 <PricingItem included={false} text="Priority recommendations" />
               </div>
               <Link
                 href="/login"
                 className="mt-8 w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm bg-primary text-white hover:bg-primary-hover transition"
               >
-                Buy Event Pass
+                Buy Credit Pack
               </Link>
             </div>
 
@@ -341,10 +341,10 @@ export default async function Home() {
               <div className="space-y-3">
                 <PricingItem included text="Everything in Free" />
                 <PricingItem included text="Unlimited concierge conversations" />
+                <PricingItem included text="Unlimited taste profile analyses" />
                 <PricingItem included text="Unlimited events & registries" />
                 <PricingItem included text="Priority AI recommendations" />
                 <PricingItem included text="Daily WhatsApp gift inspiration" />
-                <PricingItem included text="Early access to new features" />
               </div>
               <Link
                 href="/login"

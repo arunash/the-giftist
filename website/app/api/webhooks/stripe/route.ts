@@ -373,6 +373,19 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        if (type === 'credit_pack') {
+          const { userId } = session.metadata
+          if (userId) {
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                messageCredits: { increment: 50 },
+                profileCredits: { increment: 5 },
+              },
+            })
+          }
+        }
+
         if (type === 'gift_send') {
           const { giftSendId } = session.metadata
           if (giftSendId) {

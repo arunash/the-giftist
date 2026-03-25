@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       return new Response(
         JSON.stringify({
           error: 'limit_reached',
-          message: "You've reached your daily limit of 3 messages. Upgrade to Gold for unlimited conversations with your Gift Concierge!",
+          message: "You've reached your daily message limit. Buy a Credit Pack ($5 for 50 messages) or upgrade to Gold for unlimited!",
         }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )

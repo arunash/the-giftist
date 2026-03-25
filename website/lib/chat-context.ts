@@ -1,12 +1,14 @@
 import { prisma } from './db'
 
-const FREE_DAILY_MESSAGE_LIMIT = 3
+const FREE_DAILY_MESSAGE_LIMIT = 10
+const FREE_DAILY_PROFILE_LIMIT = 2
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
 
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
   if (ADMIN_USER_IDS.has(userId)) {
     return { allowed: true, remaining: Infinity }
   }
+
   const [subscription, user] = await Promise.all([
     prisma.subscription.findUnique({
       where: { userId },
@@ -14,7 +16,7 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { timezone: true },
+      select: { timezone: true, messageCredits: true },
     }),
   ])
 
@@ -36,8 +38,77 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     },
   })
 
-  const remaining = Math.max(0, FREE_DAILY_MESSAGE_LIMIT - todayCount)
-  return { allowed: todayCount < FREE_DAILY_MESSAGE_LIMIT, remaining }
+  const freeRemaining = Math.max(0, FREE_DAILY_MESSAGE_LIMIT - todayCount)
+
+  // If free daily limit not exhausted, allow
+  if (todayCount < FREE_DAILY_MESSAGE_LIMIT) {
+    return { allowed: true, remaining: freeRemaining }
+  }
+
+  // Check purchased credits
+  const credits = user?.messageCredits ?? 0
+  if (credits > 0) {
+    // Deduct one credit
+    await prisma.user.update({
+      where: { id: userId },
+      data: { messageCredits: { decrement: 1 } },
+    })
+    return { allowed: true, remaining: credits - 1 }
+  }
+
+  return { allowed: false, remaining: 0 }
+}
+
+export async function checkProfileLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+  if (ADMIN_USER_IDS.has(userId)) {
+    return { allowed: true, remaining: Infinity }
+  }
+
+  const [subscription, user] = await Promise.all([
+    prisma.subscription.findUnique({
+      where: { userId },
+      select: { status: true, currentPeriodEnd: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true, profileCredits: true },
+    }),
+  ])
+
+  const isGold = subscription?.status === 'ACTIVE' &&
+    (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
+
+  if (isGold) {
+    return { allowed: true, remaining: Infinity }
+  }
+
+  const startOfUserDay = getStartOfDayInUTC(user?.timezone || 'UTC')
+
+  // Count taste profiles created today (CircleMember records with profileUpdatedAt today)
+  const todayProfiles = await prisma.circleMember.count({
+    where: {
+      userId,
+      profileUpdatedAt: { gte: startOfUserDay },
+    },
+  })
+
+  const freeRemaining = Math.max(0, FREE_DAILY_PROFILE_LIMIT - todayProfiles)
+
+  if (todayProfiles < FREE_DAILY_PROFILE_LIMIT) {
+    return { allowed: true, remaining: freeRemaining }
+  }
+
+  // Check purchased credits
+  const credits = user?.profileCredits ?? 0
+  if (credits > 0) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { profileCredits: { decrement: 1 } },
+    })
+    return { allowed: true, remaining: credits - 1 }
+  }
+
+  return { allowed: false, remaining: 0 }
 }
 
 /** Get midnight of the current day in the given timezone, returned as a UTC Date */

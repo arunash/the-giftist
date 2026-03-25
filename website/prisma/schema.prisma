@@ -38,6 +38,8 @@ model User {
   venmoHandle                   String?
   paypalEmail                   String?
   payoutSetupComplete           Boolean         @default(false)
+  messageCredits                Int             @default(0)
+  profileCredits                Int             @default(0)
   isActive                      Boolean         @default(true)
   suspendedAt                   DateTime?
   suspendedReason               String?

@@ -63,6 +63,15 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Check taste profile limit
+  const { checkProfileLimit } = await import('@/lib/chat-context')
+  const { allowed: profileAllowed } = await checkProfileLimit((session.user as any).id)
+  if (!profileAllowed) {
+    return NextResponse.json({
+      error: "You've used your 2 free taste profile analyses for today. Buy a Credit Pack or upgrade to Gold for more!",
+    }, { status: 429 })
+  }
+
   // Step 2: Extract profile for the selected sender
   const filtered = filterAndSampleMessages(messages, friendName)
 
