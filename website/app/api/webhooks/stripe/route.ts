@@ -386,6 +386,54 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        if (type === 'product_purchase') {
+          const { giftSendId } = session.metadata
+          if (giftSendId) {
+            const gift = await prisma.giftSend.findUnique({
+              where: { id: giftSendId },
+              include: { sender: { select: { name: true, phone: true } } },
+            })
+
+            if (gift && gift.status === 'PENDING') {
+              await prisma.giftSend.update({
+                where: { id: giftSendId },
+                data: {
+                  status: 'PAID',
+                  stripePaymentId: session.payment_intent as string,
+                },
+              })
+
+              // Notify recipient via WhatsApp if phone exists
+              if (gift.recipientPhone) {
+                const senderName = gift.sender.name || 'Someone'
+                const giftUrl = `${process.env.NEXTAUTH_URL || 'https://giftist.ai'}/gift/${gift.redeemCode}`
+                const msgParts = [
+                  `🎁 You received a gift from ${senderName}!`,
+                  ``,
+                  `"${gift.itemName}" — $${gift.amount.toFixed(2)}`,
+                ]
+                if (gift.senderMessage) {
+                  msgParts.push(`"${gift.senderMessage}"`)
+                }
+                msgParts.push(``, `Redeem your gift: ${giftUrl}`)
+
+                smartWhatsAppSend(
+                  gift.recipientPhone,
+                  msgParts.join('\n'),
+                  'gift_received',
+                  [senderName, gift.itemName, gift.amount.toFixed(2)],
+                  { skipTimeCheck: true }
+                ).catch(() => {})
+
+                await prisma.giftSend.update({
+                  where: { id: giftSendId },
+                  data: { status: 'NOTIFIED' },
+                })
+              }
+            }
+          }
+        }
+
         if (type === 'gift_send') {
           const { giftSendId } = session.metadata
           if (giftSendId) {

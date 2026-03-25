@@ -10,10 +10,10 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = (session.user as any).id
-  const { slug } = await request.json()
+  const { slug, recipientName, recipientPhone, senderMessage } = await request.json()
 
-  if (!slug) {
-    return NextResponse.json({ error: 'slug required' }, { status: 400 })
+  if (!slug || !recipientName) {
+    return NextResponse.json({ error: 'slug and recipientName required' }, { status: 400 })
   }
 
   const product = await prisma.productClick.findUnique({ where: { slug } })
@@ -44,6 +44,24 @@ export async function POST(request: NextRequest) {
         await prisma.subscription.create({ data: { userId, stripeCustomerId, status: 'INACTIVE' } })
       }
     }
+
+    // Create GiftSend record
+    const cleanPhone = recipientPhone ? recipientPhone.replace(/\D/g, '') : null
+    const giftSend = await prisma.giftSend.create({
+      data: {
+        senderId: userId,
+        recipientName,
+        recipientPhone: cleanPhone || '',
+        itemName: product.productName,
+        itemPrice: amount,
+        itemUrl: product.targetUrl,
+        itemImage: product.image,
+        senderMessage: senderMessage || null,
+        amount,
+        platformFee,
+        totalCharged,
+      },
+    })
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -76,9 +94,16 @@ export async function POST(request: NextRequest) {
         productName: product.productName,
         amount: String(amount),
         platformFee: String(platformFee),
+        giftSendId: giftSend.id,
       },
-      success_url: `${baseUrl}/p/${slug}?purchased=1`,
+      success_url: `${baseUrl}/p/${slug}?purchased=1&giftId=${giftSend.id}`,
       cancel_url: `${baseUrl}/p/${slug}`,
+    })
+
+    // Store stripeSessionId on the GiftSend
+    await prisma.giftSend.update({
+      where: { id: giftSend.id },
+      data: { stripeSessionId: checkoutSession.id },
     })
 
     return NextResponse.json({ url: checkoutSession.url })

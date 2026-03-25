@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X } from 'lucide-react'
+import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface ProductData {
@@ -15,18 +15,36 @@ interface ProductData {
   domain: string
 }
 
+interface GiftData {
+  id: string
+  redeemCode: string
+  recipientName: string | null
+  itemName: string
+  amount: number
+}
+
 function ProductPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const slug = params.slug as string
   const purchased = searchParams.get('purchased') === '1'
+  const giftIdParam = searchParams.get('giftId')
 
   const [product, setProduct] = useState<ProductData | null>(null)
   const [loading, setLoading] = useState(true)
   const [buyingLoading, setBuyingLoading] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(purchased)
-  const [copied, setCopied] = useState(false)
+
+  // Pre-checkout: recipient info
+  const [showRecipientModal, setShowRecipientModal] = useState(false)
+  const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
+  const [senderMessage, setSenderMessage] = useState('')
+
+  // Post-checkout: gift sharing
+  const [giftData, setGiftData] = useState<GiftData | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [loadingGift, setLoadingGift] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -39,24 +57,48 @@ function ProductPage() {
       .catch(() => setLoading(false))
   }, [slug])
 
-  const giftUrl = `https://giftist.ai/p/${slug}`
+  // After purchase, fetch gift data
+  useEffect(() => {
+    if (!purchased || !giftIdParam) return
+    setLoadingGift(true)
+    fetch(`/api/gift-send/${giftIdParam}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && !data.error) {
+          setGiftData(data)
+          setShowShareModal(true)
+        }
+        setLoadingGift(false)
+      })
+      .catch(() => setLoadingGift(false))
+  }, [purchased, giftIdParam])
 
-  const handleBuy = async () => {
-    if (!product || buyingLoading) return
+  const giftUrl = giftData ? `https://giftist.ai/gift/${giftData.redeemCode}` : ''
+
+  const handleBuyClick = () => {
+    setShowRecipientModal(true)
+  }
+
+  const handleCheckout = async () => {
+    if (!product || buyingLoading || !recipientName.trim()) return
     setBuyingLoading(true)
     try {
       const res = await fetch('/api/purchase/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: product.slug }),
+        body: JSON.stringify({
+          slug: product.slug,
+          recipientName: recipientName.trim(),
+          recipientPhone: recipientPhone.trim() || undefined,
+          senderMessage: senderMessage.trim() || undefined,
+        }),
       })
       const data = await res.json()
       if (res.ok && data.url) {
         window.location.href = data.url
+      } else if (res.status === 401) {
+        window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
       } else {
-        if (res.status === 401) {
-          window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
-        }
         setBuyingLoading(false)
       }
     } catch {
@@ -71,9 +113,9 @@ function ProductPage() {
   }
 
   const shareViaWhatsApp = () => {
-    if (!product) return
+    if (!giftData) return
     const phone = recipientPhone.replace(/\D/g, '')
-    const text = `I got you something! 🎁\n\n${product.productName}${product.price ? ` (${product.price})` : ''}\n\nOpen your gift: ${giftUrl}`
+    const text = `I got you something! 🎁\n\n${giftData.itemName}\n\nOpen your gift: ${giftUrl}`
     if (phone) {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
     } else {
@@ -82,11 +124,11 @@ function ProductPage() {
   }
 
   const shareNative = async () => {
-    if (!product) return
+    if (!giftData) return
     try {
       await navigator.share({
-        title: `Gift: ${product.productName}`,
-        text: `I got you something! ${product.productName}`,
+        title: `Gift for ${giftData.recipientName || 'you'}`,
+        text: `I got you something! ${giftData.itemName}`,
         url: giftUrl,
       })
     } catch {
@@ -139,24 +181,20 @@ function ProductPage() {
         {/* Product card */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
           {/* Image */}
-          <div className="aspect-square bg-gray-100 relative overflow-hidden">
-            {product.image ? (
+          {product.image && (
+            <div className="aspect-square bg-gray-100 relative overflow-hidden">
               <img
                 src={product.image}
                 alt={product.productName}
                 className="w-full h-full object-cover"
               />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <Gift className="h-20 w-20 text-gray-300" />
-              </div>
-            )}
-            {purchased && (
-              <div className="absolute top-4 left-4 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg">
-                Purchased
-              </div>
-            )}
-          </div>
+              {purchased && (
+                <div className="absolute top-4 left-4 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg">
+                  Purchased
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Info */}
           <div className="p-5">
@@ -170,30 +208,29 @@ function ProductPage() {
             )}
 
             <div className="mt-5 space-y-3">
-              {purchased ? (
-                /* After purchase: show send gift button */
+              {purchased && giftData ? (
                 <button
                   onClick={() => setShowShareModal(true)}
                   className="w-full flex items-center justify-center gap-2 py-3.5 bg-green-500 text-white rounded-xl font-semibold text-sm hover:bg-green-600 transition"
                 >
                   <Gift className="h-4 w-4" />
-                  Send this gift
+                  Send to {giftData.recipientName || 'recipient'}
                 </button>
-              ) : (
-                /* Before purchase: buy button */
+              ) : purchased && loadingGift ? (
+                <button disabled className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-200 text-gray-500 rounded-xl font-semibold text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading gift...
+                </button>
+              ) : !purchased ? (
                 <button
-                  onClick={handleBuy}
+                  onClick={handleBuyClick}
                   disabled={buyingLoading || !product.priceValue}
                   className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4" />
-                  {buyingLoading
-                    ? 'Redirecting...'
-                    : total
-                      ? `Buy Now — $${total.toFixed(2)}`
-                      : 'Buy Now'}
+                  {total ? `Buy as Gift — $${total.toFixed(2)}` : 'Buy as Gift'}
                 </button>
-              )}
+              ) : null}
 
               {!purchased && total && fee && (
                 <div className="text-center">
@@ -273,24 +310,21 @@ function ProductPage() {
         )}
       </div>
 
-      {/* Share / Send Gift Modal */}
-      {showShareModal && product && (
+      {/* Recipient info modal (pre-checkout) */}
+      {showRecipientModal && product && (
         <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 relative sm:mx-4">
             <button
-              onClick={() => setShowShareModal(false)}
+              onClick={() => { setShowRecipientModal(false); setBuyingLoading(false) }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Gift className="h-8 w-8 text-green-600" />
-              </div>
-              <h2 className="text-lg font-bold text-gray-900">Send this gift</h2>
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Who is this gift for?</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Share the link with the lucky recipient
+                We&apos;ll create a gift link for them to redeem.
               </p>
             </div>
 
@@ -309,21 +343,108 @@ function ProductPage() {
               </div>
             </div>
 
-            {/* Recipient phone (optional) */}
-            <div className="mb-5">
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                Recipient&apos;s phone number (optional)
-              </label>
-              <input
-                type="tel"
-                value={recipientPhone}
-                onChange={(e) => setRecipientPhone(e.target.value)}
-                placeholder="e.g. (555) 123-4567"
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Enter their number to send directly via WhatsApp
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Recipient&apos;s name *
+                </label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="e.g. Sarah"
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Their phone number (optional)
+                </label>
+                <input
+                  type="tel"
+                  value={recipientPhone}
+                  onChange={(e) => setRecipientPhone(e.target.value)}
+                  placeholder="e.g. (555) 123-4567"
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  We&apos;ll notify them via WhatsApp when payment completes
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Personal message (optional)
+                </label>
+                <textarea
+                  value={senderMessage}
+                  onChange={(e) => setSenderMessage(e.target.value)}
+                  placeholder="Happy birthday! Hope you love it"
+                  rows={2}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleCheckout}
+                disabled={buyingLoading || !recipientName.trim()}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {buyingLoading ? 'Redirecting to payment...' : total ? `Pay $${total.toFixed(2)}` : 'Continue to payment'}
+              </button>
+
+              {total && fee && (
+                <div className="text-center">
+                  <p className="text-xs text-gray-400">
+                    {product.price} + ${fee.toFixed(2)} service fee
+                  </p>
+                  <p className="text-[10px] text-gray-300">
+                    Charges will appear as North Beach Technologies LLC
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share / Send Gift Modal (post-checkout) */}
+      {showShareModal && giftData && (
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 relative sm:mx-4">
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Gift className="h-8 w-8 text-green-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">Gift purchased!</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Send the gift link to {giftData.recipientName || 'the recipient'}
               </p>
+            </div>
+
+            {/* Product summary */}
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 mb-5">
+              {product.image ? (
+                <img src={product.image} alt="" className="w-12 h-12 rounded-lg object-cover" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                  <Gift className="h-5 w-5 text-gray-400" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{giftData.itemName}</p>
+                <p className="text-xs text-green-600 font-medium">${giftData.amount.toFixed(2)}</p>
+              </div>
             </div>
 
             {/* Share options */}
@@ -354,6 +475,10 @@ function ProductPage() {
                 {copied ? 'Copied!' : 'Copy gift link'}
               </button>
             </div>
+
+            <p className="text-[10px] text-gray-300 text-center mt-4">
+              Recipient will open giftist.ai/gift/... to view and redeem
+            </p>
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { smartWhatsAppSend } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
 
   const gift = await prisma.giftSend.findUnique({
     where: { redeemCode },
+    include: { sender: { select: { name: true, phone: true } } },
   })
 
   if (!gift) {
@@ -94,6 +96,16 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Notify sender
+    if (gift.sender.phone) {
+      smartWhatsAppSend(
+        gift.sender.phone,
+        `🎉 ${gift.recipientName} just redeemed your gift "${gift.itemName}"!`,
+        'gift_redeemed_sender',
+        [gift.recipientName || 'Your recipient', gift.itemName]
+      ).catch(() => {})
+    }
+
     return NextResponse.json({ success: true, method: 'WALLET', walletBalance: wallet.balance })
   }
 
@@ -106,6 +118,16 @@ export async function POST(request: NextRequest) {
         redemptionMethod: 'ITEM_CLICK',
       },
     })
+
+    // Notify sender
+    if (gift.sender.phone) {
+      smartWhatsAppSend(
+        gift.sender.phone,
+        `🎉 ${gift.recipientName} just redeemed your gift "${gift.itemName}"!`,
+        'gift_redeemed_sender',
+        [gift.recipientName || 'Your recipient', gift.itemName]
+      ).catch(() => {})
+    }
 
     return NextResponse.json({ success: true, method: 'ITEM_CLICK', itemUrl: gift.itemUrl })
   }

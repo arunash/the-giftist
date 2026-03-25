@@ -9,9 +9,19 @@ const client = twilio(
 
 const FROM = process.env.TWILIO_PHONE_NUMBER || '+15014438478'
 
+// Phone numbers that must never receive SMS
+const SMS_BLOCKLIST = new Set([
+  '15550000000',
+])
+
 export async function sendSms(to: string, body: string): Promise<void> {
   const toFormatted = to.startsWith('+') ? to : `+${to}`
   const phone = to.replace(/^\+/, '')
+
+  if (SMS_BLOCKLIST.has(phone)) {
+    console.log(`[SMS] Blocked: ${phone} is on the blocklist`)
+    return
+  }
 
   const msg = await client.messages.create({
     to: toFormatted,
