@@ -70,6 +70,11 @@ export async function GET() {
     totalLinks,
     topClicked,
     allUsersForReengagement,
+    groupsActive,
+    groupsTotal,
+    groupMessagesTotal,
+    groupMessagesToday,
+    groupProfilesCreated,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -226,6 +231,12 @@ export async function GET() {
       },
       orderBy: { createdAt: 'asc' },
     }),
+    // Group monitoring
+    prisma.groupChat.count({ where: { isActive: true } }),
+    prisma.groupChat.count(),
+    prisma.groupChatMessage.count(),
+    prisma.groupChatMessage.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.circleMember.count({ where: { source: 'GROUP_CHAT' } }),
   ])
 
   // Build costs map
@@ -417,5 +428,12 @@ export async function GET() {
       topClicked,
     },
     reengagement: reengagementStats,
+    groupMonitoring: {
+      activeGroups: groupsActive,
+      totalGroups: groupsTotal,
+      bufferedMessages: groupMessagesTotal,
+      messagesToday: groupMessagesToday,
+      profilesCreated: groupProfilesCreated,
+    },
   })
 }

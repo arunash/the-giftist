@@ -464,18 +464,36 @@ export default function AdminUserDetailPage() {
                   <th className="text-left p-2 font-medium">Name</th>
                   <th className="text-left p-2 font-medium">Phone</th>
                   <th className="text-left p-2 font-medium">Relationship</th>
+                  <th className="text-left p-2 font-medium">Source</th>
+                  <th className="text-left p-2 font-medium">Taste Profile</th>
                 </tr>
               </thead>
               <tbody>
-                {circleMembers.map((m: any) => (
-                  <tr key={m.id} className="border-b border-border/50">
-                    <td className="p-2 font-medium">{m.name || '—'}</td>
-                    <td className="p-2 text-muted">{m.phone}</td>
-                    <td className="p-2 text-muted">
-                      {m.relationship || '—'}
-                    </td>
-                  </tr>
-                ))}
+                {circleMembers.map((m: any) => {
+                  let profile: any = null
+                  try { if (m.tasteProfile) profile = JSON.parse(m.tasteProfile) } catch {}
+                  const sourceColor = m.source === 'GROUP_CHAT' ? 'bg-teal-500/10 text-teal-600'
+                    : m.source === 'WHATSAPP' ? 'bg-green-500/10 text-green-600'
+                    : 'bg-gray-500/10 text-gray-500'
+                  return (
+                    <tr key={m.id} className="border-b border-border/50">
+                      <td className="p-2 font-medium">{m.name || '—'}</td>
+                      <td className="p-2 text-muted">{m.phone}</td>
+                      <td className="p-2 text-muted">{m.relationship || '—'}</td>
+                      <td className="p-2">
+                        <span className={"px-2 py-0.5 rounded text-xs font-medium " + sourceColor}>{m.source}</span>
+                      </td>
+                      <td className="p-2 text-muted text-xs max-w-xs">
+                        {profile ? (
+                          <span title={JSON.stringify(profile, null, 2)}>
+                            {profile.interests?.slice(0, 3).join(', ') || '—'}
+                            {profile.interests?.length > 3 ? '...' : ''}
+                          </span>
+                        ) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}

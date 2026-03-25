@@ -10,6 +10,7 @@ const tabs = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/errors', label: 'Errors' },
   { href: '/admin/whatsapp', label: 'Messages' },
+  { href: '/admin/groups', label: 'Groups' },
 ]
 
 export function AdminNav() {

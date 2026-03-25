@@ -70,6 +70,13 @@ interface Stats {
       createdAt: string
     }>
   }
+  groupMonitoring: {
+    activeGroups: number
+    totalGroups: number
+    bufferedMessages: number
+    messagesToday: number
+    profilesCreated: number
+  }
 }
 
 function KpiCard({ icon: Icon, label, value, sub, children }: { icon: any; label: string; value: string | number; sub?: string; children?: React.ReactNode }) {
@@ -251,6 +258,19 @@ export default function AdminDashboard() {
           <KpiCard icon={Globe} label="Items by Source (All)" value={stats.items.total}>
             <SourceBar breakdown={stats.items.sourceBreakdownAll} total={stats.items.total} />
           </KpiCard>
+        </div>
+      </div>
+
+      {/* Group Monitoring */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Group Chat Monitoring</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard icon={Users} label="Active Groups" value={stats.groupMonitoring.activeGroups} sub={stats.groupMonitoring.totalGroups + ' total'} />
+          <KpiCard icon={MessageCircle} label="Buffered Messages" value={stats.groupMonitoring.bufferedMessages} sub={'+' + stats.groupMonitoring.messagesToday + ' today'} />
+          <KpiCard icon={Activity} label="Profiles Created" value={stats.groupMonitoring.profilesCreated} sub="from group chats" />
+          <div className="bg-surface rounded-xl p-5 border border-border flex items-center justify-center">
+            <a href="/admin/groups" className="text-sm text-primary font-medium hover:underline">View all groups &rarr;</a>
+          </div>
         </div>
       </div>
 
