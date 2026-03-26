@@ -597,6 +597,22 @@ I'll analyze the conversation and build a profile in ~30 seconds. Then whenever 
     return response
   }
 
+  // Command: Mother's Day gift
+  if (trimmed === "i need a mother's day gift" || trimmed === "mothers day gift" || trimmed === "mother's day" || trimmed === 'mothers day' || trimmed === "mother's day gift" || trimmed === "i need a mothers day gift") {
+    return `*Mother's Day Gift Ideas* 💐
+
+Tell me about your mom and I'll find the perfect gift!
+
+For example:
+- "My mom loves cooking and gardening"
+- "Gift for my mom, she's into yoga and reading"
+- "Mom gift under $50, she likes skincare"
+
+Or send me a WhatsApp chat export with your mom and I'll build her Gift DNA for ultra-personalized suggestions.
+
+Mother's Day is May 11 — let's find something she'll love!`
+  }
+
   // Command: share
   if (trimmed === 'share') {
     const sharer = await prisma.user.findUnique({ where: { id: userId }, select: { shareId: true, name: true } })
