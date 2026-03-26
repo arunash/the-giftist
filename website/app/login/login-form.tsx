@@ -10,7 +10,12 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const q = searchParams.get('q')
-  const postAuthUrl = q ? `/chat?q=${encodeURIComponent(q)}` : '/feed'
+  const giftCode = searchParams.get('gift')
+  const postAuthUrl = giftCode
+    ? `/gift/${giftCode}`
+    : q
+      ? `/chat?q=${encodeURIComponent(q)}`
+      : '/feed'
 
   useEffect(() => {
     if (status === 'authenticated') {
