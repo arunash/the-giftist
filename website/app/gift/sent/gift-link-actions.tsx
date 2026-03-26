@@ -75,7 +75,6 @@ export function GiftLinkActions({ claimUrl, recipientName, itemName, amount }: G
 
       <p className="text-[11px] text-gray-400 text-center mt-2.5 leading-relaxed">
         Send this link to {recipientName} via WhatsApp, iMessage, email, or any channel you prefer.
-        We&rsquo;ll also send them a notification.
       </p>
     </div>
   )

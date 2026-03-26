@@ -404,10 +404,7 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient (WhatsApp + SMS fallback + sets status to NOTIFIED)
-              await notifyGiftReceived(giftSendId)
-              // Queue Day 1 and Day 3 unclaimed reminders
-              await scheduleGiftReminders(giftSendId)
+              // No auto-notification — sender shares the gift link themselves
             }
           }
         }
@@ -436,10 +433,7 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient (WhatsApp + SMS fallback + sets status to NOTIFIED)
-              await notifyGiftReceived(giftSendId)
-              // Queue Day 1 and Day 3 unclaimed reminders
-              await scheduleGiftReminders(giftSendId)
+              // No auto-notification — sender shares the gift link themselves
             }
           }
         }
