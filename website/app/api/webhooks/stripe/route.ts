@@ -7,6 +7,7 @@ import { logApiCall, logError } from '@/lib/api-logger'
 import { attemptAutoPayout } from '@/lib/auto-payout'
 import { sendContributionReceipts } from '@/lib/receipts'
 import { notifyContributionCompleted, notifyContributionReceived, smartWhatsAppSend } from '@/lib/notifications'
+import { notifyGiftReceived, scheduleGiftReminders } from '@/lib/gift-notifications'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -403,29 +404,10 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient via WhatsApp if phone exists — don't reveal what the gift is
-              if (gift.recipientPhone) {
-                const senderName = gift.sender.name || 'Someone'
-                const giftUrl = `${process.env.NEXTAUTH_URL || 'https://giftist.ai'}/gift/${gift.redeemCode}`
-                const msgParts = [
-                  `🎁 ${senderName} sent you a gift!`,
-                  ``,
-                  `Open it here: ${giftUrl}`,
-                ]
-
-                smartWhatsAppSend(
-                  gift.recipientPhone,
-                  msgParts.join('\n'),
-                  'gift_received',
-                  [senderName],
-                  { skipTimeCheck: true }
-                ).catch(() => {})
-
-                await prisma.giftSend.update({
-                  where: { id: giftSendId },
-                  data: { status: 'NOTIFIED' },
-                })
-              }
+              // Notify recipient (WhatsApp + SMS fallback + sets status to NOTIFIED)
+              await notifyGiftReceived(giftSendId)
+              // Queue Day 1 and Day 3 unclaimed reminders
+              await scheduleGiftReminders(giftSendId)
             }
           }
         }
@@ -454,27 +436,10 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Notify recipient via WhatsApp — don't reveal what the gift is
-              const senderName = gift.sender.name || 'Someone'
-              const giftUrl = `${process.env.NEXTAUTH_URL || 'https://giftist.ai'}/gift/${gift.redeemCode}`
-              const msgParts = [
-                `🎁 ${senderName} sent you a gift!`,
-                ``,
-                `Open it here: ${giftUrl}`,
-              ]
-
-              smartWhatsAppSend(
-                recipientPhone,
-                msgParts.join('\n'),
-                'gift_received',
-                [senderName],
-                { skipTimeCheck: true }
-              ).catch(() => {})
-
-              await prisma.giftSend.update({
-                where: { id: giftSendId },
-                data: { status: 'NOTIFIED' },
-              })
+              // Notify recipient (WhatsApp + SMS fallback + sets status to NOTIFIED)
+              await notifyGiftReceived(giftSendId)
+              // Queue Day 1 and Day 3 unclaimed reminders
+              await scheduleGiftReminders(giftSendId)
             }
           }
         }

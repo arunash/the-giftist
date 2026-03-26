@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runDailyEngagement, runGoldDailyEngagement, runCircleEventReminders, runPostEventFollowUp, runSeasonalReminders, runLifecycleNudges } from '@/lib/whatsapp-funnel'
+import { runDailyEngagement, runGoldDailyEngagement, runCircleEventReminders, runPostEventFollowUp, runSeasonalReminders, runLifecycleNudges, processMessageQueue } from '@/lib/whatsapp-funnel'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel cron or manual trigger)
@@ -10,12 +10,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Phase 1: Queue all messages
     const results = await runDailyEngagement()
     const goldResults = await runGoldDailyEngagement()
     const circleResults = await runCircleEventReminders()
     const postEventResults = await runPostEventFollowUp()
     const seasonalResults = await runSeasonalReminders()
     const lifecycleResults = await runLifecycleNudges()
+
+    // Phase 2: Process the queue (send messages respecting rate limits)
+    const queueResults = await processMessageQueue()
+
     return NextResponse.json({
       success: true,
       ...results,
@@ -24,6 +29,7 @@ export async function GET(request: NextRequest) {
       postEvent: postEventResults,
       seasonal: seasonalResults,
       lifecycle: lifecycleResults,
+      queue: queueResults,
     })
   } catch (error) {
     console.error('[Cron] WhatsApp engagement failed:', error)

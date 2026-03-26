@@ -66,6 +66,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
   }
 
+  if (method === 'ITEM_CLICK') {
+    // No auth required — recipient is clicking through to the retailer
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: 'ITEM_CLICK',
+      },
+    })
+
+    // Notify sender
+    if (gift.sender.phone) {
+      smartWhatsAppSend(
+        gift.sender.phone,
+        `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}"!`,
+        'gift_redeemed_sender',
+        [gift.recipientName || 'Your recipient', gift.itemName]
+      ).catch(() => {})
+    }
+
+    return NextResponse.json({ success: true, method: 'ITEM_CLICK' })
+  }
+
   if (method === 'WALLET') {
     const session = await getServerSession(authOptions)
     if (!session?.user) {

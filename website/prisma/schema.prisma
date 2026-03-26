@@ -62,6 +62,7 @@ model User {
   eventPurchases                EventPurchase[]
   giftsSent                     GiftSend[]      @relation("GiftsSent")
   giftsReceived                 GiftSend[]      @relation("GiftsReceived")
+  messageQueue                  MessageQueue[]
 }
 
 model Account {
@@ -499,4 +500,28 @@ model GiftSend {
 
   @@index([senderId])
   @@index([redeemCode])
+}
+
+model MessageQueue {
+  id          String   @id @default(cuid())
+  userId      String
+  phone       String?
+  email       String?
+  subject     String
+  text        String
+  template    String
+  vars        String   @default("[]") // JSON array
+  emailHtml   String?  // custom email HTML (optional)
+  priority    Int      @default(0)    // higher = send first (1d holiday > 2w holiday > funnel)
+  scheduledAt DateTime                // when to send (5pm local)
+  expiresAt   DateTime?               // holiday messages expire on the holiday date
+  sentAt      DateTime?
+  status      String   @default("QUEUED") // QUEUED, SENT, SKIPPED
+  dedupKey    String?                 // prevents duplicate queueing
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([scheduledAt, status])
+  @@unique([userId, dedupKey])
 }
