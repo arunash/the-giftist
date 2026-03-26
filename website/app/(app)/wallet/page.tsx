@@ -495,6 +495,61 @@ export default function WalletPage() {
             </div>
           )}
 
+          {/* Withdraw Wallet Balance */}
+          {balance > 0 && (
+            <div className="ig-card !transform-none p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <ArrowDownToLine className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-gray-900">Withdraw Balance</h3>
+              </div>
+              {!bankOnboarded ? (
+                <div>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Connect your bank account to withdraw your wallet balance.
+                  </p>
+                  <button
+                    onClick={handleConnectBank}
+                    className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition"
+                  >
+                    Connect Bank Account
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">Withdraw wallet funds to your bank account.</p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                      <input
+                        type="number"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        placeholder="0.00"
+                        max={balance}
+                        step="0.01"
+                        className="w-full pl-7 pr-3 py-2.5 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setWithdrawAmount(balance.toFixed(2))}
+                      className="px-3 py-2.5 text-xs font-medium text-primary border border-primary/20 rounded-xl hover:bg-primary/10 transition"
+                    >
+                      Max
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleWithdraw}
+                    disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > balance}
+                    className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                  >
+                    {withdrawing ? 'Processing...' : `Withdraw ${withdrawAmount ? formatPrice(parseFloat(withdrawAmount)) : ''} to Bank`}
+                  </button>
+                  {withdrawError && <p className="text-sm text-red-500">{withdrawError}</p>}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Wallet Insights */}
           {allUnfundedItems.length > 0 && (
             <div className="ig-card !transform-none p-5 bg-blue-500/5 border-blue-200">
