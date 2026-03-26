@@ -4,7 +4,6 @@ import { useState } from 'react'
 import {
   ExternalLink,
   Gift,
-  Wallet,
   Loader2,
   Check,
   Heart,
@@ -41,7 +40,7 @@ export function RedeemActions({
   const [sendingThankYou, setSendingThankYou] = useState(false)
   const [thankYouSent, setThankYouSent] = useState(false)
 
-  const handleRedeem = async (method: 'TREMENDOUS' | 'WALLET') => {
+  const handleRedeem = async (method: 'TREMENDOUS') => {
     setRedeeming(true)
     setRedeemMethod(method)
     setError(null)
@@ -119,16 +118,6 @@ export function RedeemActions({
               <CreditCard className="h-4 w-4" />
               Choose your reward
             </a>
-          </div>
-        )}
-
-        {redeemMethod === 'WALLET' && (
-          <div className="bg-violet-50/70 border border-violet-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-violet-700 leading-relaxed">
-              <strong>${amount.toFixed(2)}</strong> has been added to your Giftist Wallet.
-              Withdraw to Venmo, PayPal, or your bank account
-              from your <a href="/settings" className="underline font-medium">wallet settings</a>.
-            </p>
           </div>
         )}
 
@@ -225,26 +214,6 @@ export function RedeemActions({
       <p className="text-xs text-gray-400 text-center -mt-1">
         Pick an Amazon gift card, Visa prepaid card, Venmo, PayPal, or 800+ options
       </p>
-
-      {/* Secondary: Wallet */}
-      <div className="flex items-center gap-3 my-1">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
-      <button
-        onClick={() => handleRedeem('WALLET')}
-        disabled={redeeming}
-        className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-600 px-5 py-3 rounded-2xl font-medium text-sm hover:bg-gray-50 transition-all disabled:opacity-50"
-      >
-        {redeeming && redeemMethod === 'WALLET' ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Wallet className="h-4 w-4" />
-        )}
-        Add to Giftist Wallet instead
-      </button>
     </div>
   )
 }

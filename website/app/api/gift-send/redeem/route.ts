@@ -95,63 +95,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, method: 'ITEM_CLICK' })
   }
 
-  if (method === 'WALLET') {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Login required to redeem to wallet' }, { status: 401 })
-    }
-
-    const userId = (session.user as any).id
-
-    // Atomic update — claim the gift before doing wallet operations
-    const updated = await prisma.giftSend.updateMany({
-      where: { id: gift.id, redeemedAt: null },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: 'WALLET',
-      },
-    })
-    if (updated.count === 0) {
-      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
-    }
-
-    // Set recipientUserId separately (updateMany doesn't support relational fields)
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: { recipientUserId: userId },
-    })
-
-    // Upsert wallet and add funds
-    const wallet = await prisma.wallet.upsert({
-      where: { userId },
-      create: { userId, balance: gift.amount },
-      update: { balance: { increment: gift.amount } },
-    })
-
-    await prisma.walletTransaction.create({
-      data: {
-        walletId: wallet.id,
-        type: 'GIFT_RECEIVED',
-        amount: gift.amount,
-        status: 'COMPLETED',
-        description: `Gift from ${gift.recipientName ? 'sender' : 'a friend'}: "${gift.itemName}"`,
-      },
-    })
-
-    // Notify sender
-    if (gift.sender.phone) {
-      smartWhatsAppSend(
-        gift.sender.phone,
-        `🎉 ${gift.recipientName} just redeemed your gift "${gift.itemName}"!`,
-        'gift_redeemed_sender',
-        [gift.recipientName || 'Your recipient', gift.itemName]
-      ).catch(() => {})
-    }
-
-    return NextResponse.json({ success: true, method: 'WALLET', walletBalance: wallet.balance })
-  }
-
   if (method === 'TREMENDOUS') {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -215,63 +158,6 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ error: 'Failed to create reward. Please try again.' }, { status: 500 })
     }
-  }
-
-  if (method === 'CASH_OUT') {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
-    }
-
-    const userId = (session.user as any).id
-
-    // Atomic update — claim the gift before doing wallet operations
-    const updated = await prisma.giftSend.updateMany({
-      where: { id: gift.id, redeemedAt: null },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: 'CASH_OUT',
-      },
-    })
-    if (updated.count === 0) {
-      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
-    }
-
-    // Set recipientUserId separately (updateMany doesn't support relational fields)
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: { recipientUserId: userId },
-    })
-
-    // Add to wallet, then user can withdraw from wallet page
-    const wallet = await prisma.wallet.upsert({
-      where: { userId },
-      create: { userId, balance: gift.amount },
-      update: { balance: { increment: gift.amount } },
-    })
-
-    await prisma.walletTransaction.create({
-      data: {
-        walletId: wallet.id,
-        type: 'GIFT_RECEIVED',
-        amount: gift.amount,
-        status: 'COMPLETED',
-        description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}" (pending withdrawal)`,
-      },
-    })
-
-    // Notify sender
-    if (gift.sender.phone) {
-      smartWhatsAppSend(
-        gift.sender.phone,
-        `🎉 ${gift.recipientName} just redeemed your gift "${gift.itemName}"!`,
-        'gift_redeemed_sender',
-        [gift.recipientName || 'Your recipient', gift.itemName]
-      ).catch(() => {})
-    }
-
-    return NextResponse.json({ success: true, method: 'CASH_OUT', walletBalance: wallet.balance })
   }
 
   return NextResponse.json({ error: 'Invalid method' }, { status: 400 })
