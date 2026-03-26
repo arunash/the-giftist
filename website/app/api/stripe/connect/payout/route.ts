@@ -35,14 +35,15 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { name: true, email: true, phone: true, stripeConnectAccountId: true, stripeConnectOnboarded: true, lifetimeContributionsReceived: true },
+        select: { name: true, email: true, phone: true, stripeConnectAccountId: true, stripeConnectOnboarded: true },
       })
 
       if (!user?.stripeConnectAccountId || !user.stripeConnectOnboarded) {
         throw new Error('NOT_ONBOARDED')
       }
 
-      const availableBalance = user.lifetimeContributionsReceived || 0
+      const wallet = await tx.wallet.findUnique({ where: { userId } })
+      const availableBalance = wallet?.balance || 0
       if (availableBalance < amount) throw new Error('INSUFFICIENT_BALANCE')
 
       // Check platform's actual Stripe available balance
@@ -71,17 +72,10 @@ export async function POST(request: NextRequest) {
         { stripeAccount: user.stripeConnectAccountId }
       )
 
-      // Decrement contributions received balance (full amount including fee)
-      await tx.user.update({
-        where: { id: userId },
-        data: { lifetimeContributionsReceived: { decrement: amount } },
-      })
-
-      // Record transaction in wallet
-      const wallet = await tx.wallet.upsert({
+      // Decrement wallet balance
+      await tx.wallet.update({
         where: { userId },
-        create: { userId, balance: 0 },
-        update: {},
+        data: { balance: { decrement: amount } },
       })
 
       const description = isInstant
@@ -90,7 +84,7 @@ export async function POST(request: NextRequest) {
 
       await tx.walletTransaction.create({
         data: {
-          walletId: wallet.id,
+          walletId: wallet!.id,
           type: 'PAYOUT',
           amount: -amount,
           status: 'COMPLETED',

@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
         select: {
           name: true,
           email: true,
-          lifetimeContributionsReceived: true,
           venmoHandle: true,
           paypalEmail: true,
           preferredPayoutMethod: true,
@@ -38,7 +37,8 @@ export async function POST(request: NextRequest) {
 
       if (!user) throw new Error('USER_NOT_FOUND')
 
-      const availableBalance = user.lifetimeContributionsReceived || 0
+      const wallet = await tx.wallet.findUnique({ where: { userId } })
+      const availableBalance = wallet?.balance || 0
       if (availableBalance < amount) throw new Error('INSUFFICIENT_BALANCE')
 
       let receiver: string
@@ -71,22 +71,15 @@ export async function POST(request: NextRequest) {
         senderBatchId,
       })
 
-      // Decrement balance
-      await tx.user.update({
-        where: { id: userId },
-        data: { lifetimeContributionsReceived: { decrement: amount } },
-      })
-
-      // Record wallet transaction
-      const wallet = await tx.wallet.upsert({
+      // Decrement wallet balance
+      await tx.wallet.update({
         where: { userId },
-        create: { userId, balance: 0 },
-        update: {},
+        data: { balance: { decrement: amount } },
       })
 
       await tx.walletTransaction.create({
         data: {
-          walletId: wallet.id,
+          walletId: wallet!.id,
           type: 'PAYOUT',
           amount: -amount,
           status: 'COMPLETED',
