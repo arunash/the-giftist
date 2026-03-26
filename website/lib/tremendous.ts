@@ -1,5 +1,5 @@
-const API_KEY = process.env.TREMENDOUS_API_KEY || ''
-const BASE_URL = process.env.TREMENDOUS_SANDBOX === 'true'
+const API_KEY = (process.env.TREMENDOUS_API_KEY || '').trim()
+const BASE_URL = (process.env.TREMENDOUS_SANDBOX || '').trim() === 'true'
   ? 'https://testflight.tremendous.com/api/v2'
   : 'https://api.tremendous.com/api/v2'
 
@@ -43,7 +43,7 @@ export async function createTremendousReward(opts: {
     body: JSON.stringify({
       external_id: opts.externalId,
       payment: {
-        funding_source_id: process.env.TREMENDOUS_FUNDING_SOURCE_ID || 'balance',
+        funding_source_id: (process.env.TREMENDOUS_FUNDING_SOURCE_ID || 'balance').trim(),
       },
       reward: {
         recipient: {
