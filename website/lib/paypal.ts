@@ -1,8 +1,8 @@
 import { logApiCall } from './api-logger'
 
-const PAYPAL_API_BASE = process.env.PAYPAL_API_BASE || 'https://api-m.sandbox.paypal.com'
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || ''
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || ''
+const PAYPAL_API_BASE = (process.env.PAYPAL_API_BASE || 'https://api-m.sandbox.paypal.com').trim()
+const PAYPAL_CLIENT_ID = (process.env.PAYPAL_CLIENT_ID || '').trim()
+const PAYPAL_CLIENT_SECRET = (process.env.PAYPAL_CLIENT_SECRET || '').trim()
 
 let cachedToken: { token: string; expiresAt: number } | null = null
 

@@ -10,6 +10,7 @@ import {
   Send,
   Zap,
   CreditCard,
+  DollarSign,
 } from 'lucide-react'
 
 interface RedeemActionsProps {
@@ -35,12 +36,18 @@ export function RedeemActions({
   const [claimLink, setClaimLink] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // PayPal/Venmo input
+  const [showPaypal, setShowPaypal] = useState(false)
+  const [paypalTab, setPaypalTab] = useState<'PAYPAL' | 'VENMO'>('PAYPAL')
+  const [paypalEmail, setPaypalEmail] = useState('')
+  const [venmoHandle, setVenmoHandle] = useState('')
+
   // Thank you
   const [thankYouMessage, setThankYouMessage] = useState('')
   const [sendingThankYou, setSendingThankYou] = useState(false)
   const [thankYouSent, setThankYouSent] = useState(false)
 
-  const handleRedeem = async (method: 'TREMENDOUS') => {
+  const handleRedeem = async (method: string, extra?: Record<string, string>) => {
     setRedeeming(true)
     setRedeemMethod(method)
     setError(null)
@@ -49,7 +56,7 @@ export function RedeemActions({
       const res = await fetch('/api/gift-send/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redeemCode, method }),
+        body: JSON.stringify({ redeemCode, method, ...extra }),
       })
       const data = await res.json()
 
@@ -62,7 +69,6 @@ export function RedeemActions({
         setRedeemed(true)
         if (data.claimLink) {
           setClaimLink(data.claimLink)
-          // Auto-redirect to Tremendous claim page
           window.open(data.claimLink, '_blank')
         }
       } else {
@@ -72,6 +78,16 @@ export function RedeemActions({
       setError('Something went wrong. Please try again.')
     } finally {
       setRedeeming(false)
+    }
+  }
+
+  const handlePaypalRedeem = () => {
+    if (paypalTab === 'VENMO') {
+      if (!venmoHandle.trim()) return
+      handleRedeem('VENMO', { venmoHandle: venmoHandle.trim() })
+    } else {
+      if (!paypalEmail.trim()) return
+      handleRedeem('PAYPAL', { paypalEmail: paypalEmail.trim() })
     }
   }
 
@@ -118,6 +134,14 @@ export function RedeemActions({
               <CreditCard className="h-4 w-4" />
               Choose your reward
             </a>
+          </div>
+        )}
+
+        {(redeemMethod === 'PAYPAL' || redeemMethod === 'VENMO') && (
+          <div className="bg-blue-50/70 border border-blue-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-blue-700 leading-relaxed">
+              <strong>${amount.toFixed(2)}</strong> is on its way to your {redeemMethod === 'VENMO' ? 'Venmo' : 'PayPal'} account. It typically arrives within minutes.
+            </p>
           </div>
         )}
 
@@ -184,7 +208,7 @@ export function RedeemActions({
           Sign up to claim ${amount.toFixed(2)}
         </a>
         <p className="text-xs text-gray-400 text-center">
-          Create a free account to redeem your gift instantly via Amazon, Visa, Venmo, PayPal, or 800+ options
+          Create a free account to redeem your gift via PayPal, Venmo, or 800+ options
         </p>
       </div>
     )
@@ -198,7 +222,7 @@ export function RedeemActions({
         </div>
       )}
 
-      {/* Primary: Instant redemption via Tremendous */}
+      {/* Primary: Tremendous (gift cards + more) */}
       <button
         onClick={() => handleRedeem('TREMENDOUS')}
         disabled={redeeming}
@@ -214,6 +238,82 @@ export function RedeemActions({
       <p className="text-xs text-gray-400 text-center -mt-1">
         Pick an Amazon gift card, Visa prepaid card, Venmo, PayPal, or 800+ options
       </p>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 my-1">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">or send directly to</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      {/* PayPal / Venmo */}
+      {!showPaypal ? (
+        <button
+          onClick={() => setShowPaypal(true)}
+          disabled={redeeming}
+          className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-600 px-5 py-3 rounded-2xl font-medium text-sm hover:bg-gray-50 transition-all disabled:opacity-50"
+        >
+          <DollarSign className="h-4 w-4" />
+          PayPal or Venmo
+        </button>
+      ) : (
+        <div className="border-2 border-blue-200 rounded-2xl p-4 space-y-3">
+          {/* Tabs */}
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+            <button
+              onClick={() => setPaypalTab('PAYPAL')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                paypalTab === 'PAYPAL'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              PayPal
+            </button>
+            <button
+              onClick={() => setPaypalTab('VENMO')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                paypalTab === 'VENMO'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Venmo
+            </button>
+          </div>
+
+          {paypalTab === 'PAYPAL' ? (
+            <input
+              type="email"
+              value={paypalEmail}
+              onChange={(e) => setPaypalEmail(e.target.value)}
+              placeholder="Your PayPal email"
+              className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300 text-sm"
+            />
+          ) : (
+            <input
+              type="text"
+              value={venmoHandle}
+              onChange={(e) => setVenmoHandle(e.target.value)}
+              placeholder="Your Venmo handle (e.g. @john-doe)"
+              className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300 text-sm"
+            />
+          )}
+
+          <button
+            onClick={handlePaypalRedeem}
+            disabled={redeeming || (paypalTab === 'PAYPAL' ? !paypalEmail.trim() : !venmoHandle.trim())}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {redeeming && (redeemMethod === 'PAYPAL' || redeemMethod === 'VENMO') ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <DollarSign className="h-4 w-4" />
+            )}
+            Send ${amount.toFixed(2)} to {paypalTab === 'VENMO' ? 'Venmo' : 'PayPal'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

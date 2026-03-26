@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { smartWhatsAppSend } from '@/lib/notifications'
 import { createTremendousReward } from '@/lib/tremendous'
+import { sendPayout } from '@/lib/paypal'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { redeemCode, method } = await request.json()
+  const { redeemCode, method, paypalEmail, venmoHandle } = await request.json()
 
   if (!redeemCode || !method) {
     return NextResponse.json({ error: 'Missing redeemCode or method' }, { status: 400 })
@@ -163,6 +164,71 @@ export async function POST(request: NextRequest) {
         data: { status: 'REDEEMED_PENDING_REWARD' },
       })
       return NextResponse.json({ error: 'Failed to create reward. Please try again.' }, { status: 500 })
+    }
+  }
+
+  if (method === 'PAYPAL' || method === 'VENMO') {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
+    }
+    const userId = (session.user as any).id
+
+    const receiver = method === 'VENMO' ? venmoHandle : paypalEmail
+    if (!receiver) {
+      return NextResponse.json({ error: `Missing ${method === 'VENMO' ? 'Venmo handle' : 'PayPal email'}` }, { status: 400 })
+    }
+
+    // Atomic claim
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: method,
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    })
+
+    try {
+      const result = await sendPayout({
+        recipientType: method === 'VENMO' ? 'PHONE' : 'EMAIL',
+        receiver: method === 'VENMO' ? receiver.replace('@', '') : receiver,
+        amount: gift.amount,
+        recipientWallet: method === 'VENMO' ? 'VENMO' : 'PAYPAL',
+        note: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}"`,
+        senderBatchId: `giftist_gift_${gift.id}_${Date.now()}`,
+      })
+
+      // Notify sender
+      if (gift.sender.phone) {
+        smartWhatsAppSend(
+          gift.sender.phone,
+          `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}"!`,
+          'gift_redeemed_sender',
+          [gift.recipientName || 'Your recipient', gift.itemName]
+        ).catch(() => {})
+      }
+
+      return NextResponse.json({
+        success: true,
+        method,
+        payoutBatchId: result.payoutBatchId,
+      })
+    } catch (err) {
+      console.error(`[Redeem] ${method} payout error:`, err)
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: { status: 'REDEEMED_PENDING_REWARD' },
+      })
+      return NextResponse.json({ error: 'Failed to send payout. Please try again.' }, { status: 500 })
     }
   }
 
