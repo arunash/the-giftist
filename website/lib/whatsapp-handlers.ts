@@ -559,7 +559,7 @@ export async function handleTextMessage(
   }
 
   // Command: gift dna / profiles — explain what Gift DNA is
-  if (trimmed === 'gift dna' || trimmed === 'taste profile' || trimmed === 'taste profiles' || trimmed === 'profiles' || trimmed === 'what is gift dna' || trimmed === 'what is a taste profile') {
+  if (trimmed === 'gift dna' || trimmed === 'taste profile' || trimmed === 'taste profiles' || trimmed === 'profiles' || trimmed === 'what is gift dna' || trimmed === 'what is a taste profile' || trimmed === 'i want to create a gift dna' || trimmed === 'create a gift dna' || trimmed === 'create gift dna') {
     const members = await prisma.circleMember.findMany({
       where: { userId, tasteProfile: { not: null } },
       select: { name: true },
@@ -593,7 +593,7 @@ I'll analyze the conversation and build a profile in ~30 seconds. Then whenever 
       response += `\n\n*People with profiles:* ${profiledNames.join(', ')}`
     }
 
-    response += `\n\nFree: 2 profiles/day | Credit Pack: 5 more for $5 | Gold: unlimited`
+    response += `\n\nFree: 2 Gift DNA profiles | Credit Pack: 5 more for $5 | Gold: unlimited`
     return response
   }
 
