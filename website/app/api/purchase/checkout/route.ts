@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         amount,
         platformFee,
         totalCharged,
+        redeemCode: crypto.randomBytes(16).toString('base64url'),
       },
     })
 

@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
       platformFee,
       totalCharged,
       status: 'PENDING',
+      redeemCode: crypto.randomBytes(16).toString('base64url'),
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     },
   })

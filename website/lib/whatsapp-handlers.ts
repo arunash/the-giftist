@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { extractProductFromImage } from '@/lib/extract-image'
@@ -1379,6 +1380,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
                 platformFee,
                 totalCharged,
                 status: 'PENDING',
+                redeemCode: crypto.randomBytes(16).toString('base64url'),
                 expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
               },
             })

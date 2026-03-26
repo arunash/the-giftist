@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -443,6 +444,7 @@ async function processStructuredBlocks(userId: string, content: string) {
               platformFee,
               totalCharged,
               status: 'PENDING',
+              redeemCode: crypto.randomBytes(16).toString('base64url'),
               expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             },
           })

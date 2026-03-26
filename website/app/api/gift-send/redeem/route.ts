@@ -69,14 +69,18 @@ export async function POST(request: NextRequest) {
 
   if (method === 'ITEM_CLICK') {
     // No auth required — recipient is clicking through to the retailer
-    await prisma.giftSend.update({
-      where: { id: gift.id },
+    // Atomic update — only succeeds if redeemedAt is still null (prevents race condition)
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
       data: {
         status: 'REDEEMED',
         redeemedAt: new Date(),
         redemptionMethod: 'ITEM_CLICK',
       },
     })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
 
     // Notify sender
     if (gift.sender.phone) {
@@ -99,6 +103,25 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id
 
+    // Atomic update — claim the gift before doing wallet operations
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: 'WALLET',
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    // Set recipientUserId separately (updateMany doesn't support relational fields)
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    })
+
     // Upsert wallet and add funds
     const wallet = await prisma.wallet.upsert({
       where: { userId },
@@ -113,16 +136,6 @@ export async function POST(request: NextRequest) {
         amount: gift.amount,
         status: 'COMPLETED',
         description: `Gift from ${gift.recipientName ? 'sender' : 'a friend'}: "${gift.itemName}"`,
-      },
-    })
-
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: 'WALLET',
-        recipientUserId: userId,
       },
     })
 
@@ -146,6 +159,26 @@ export async function POST(request: NextRequest) {
     }
     const userId = (session.user as any).id
 
+    // Atomic update — claim the gift BEFORE creating the Tremendous reward
+    // This prevents creating rewards for already-redeemed gifts
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: 'TREMENDOUS',
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    // Set recipientUserId separately (updateMany doesn't support relational fields)
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    })
+
     try {
       const reward = await createTremendousReward({
         amount: gift.amount,
@@ -153,13 +186,10 @@ export async function POST(request: NextRequest) {
         externalId: gift.id,
       })
 
+      // Store Tremendous reward details
       await prisma.giftSend.update({
         where: { id: gift.id },
         data: {
-          status: 'REDEEMED',
-          redeemedAt: new Date(),
-          redemptionMethod: 'TREMENDOUS',
-          recipientUserId: userId,
           tremendousRewardId: reward.rewardId,
           tremendousLink: reward.claimLink,
         },
@@ -178,6 +208,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, method: 'TREMENDOUS', claimLink: reward.claimLink })
     } catch (err) {
       console.error('[Redeem] Tremendous error:', err)
+      // Gift is already claimed as REDEEMED but Tremendous failed — mark for retry
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: { status: 'REDEEMED_PENDING_REWARD' },
+      })
       return NextResponse.json({ error: 'Failed to create reward. Please try again.' }, { status: 500 })
     }
   }
@@ -190,7 +225,26 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id
 
-    // Add to wallet first, then user can withdraw from wallet page
+    // Atomic update — claim the gift before doing wallet operations
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: 'CASH_OUT',
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    // Set recipientUserId separately (updateMany doesn't support relational fields)
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    })
+
+    // Add to wallet, then user can withdraw from wallet page
     const wallet = await prisma.wallet.upsert({
       where: { userId },
       create: { userId, balance: gift.amount },
@@ -204,16 +258,6 @@ export async function POST(request: NextRequest) {
         amount: gift.amount,
         status: 'COMPLETED',
         description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}" (pending withdrawal)`,
-      },
-    })
-
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: 'CASH_OUT',
-        recipientUserId: userId,
       },
     })
 

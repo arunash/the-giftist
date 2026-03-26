@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
+  // Verify the logged-in user is the gift recipient
+  const userId = (session.user as any).id
+  if (!gift.recipientUserId || gift.recipientUserId !== userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   if (!gift.redeemedAt) {
     return NextResponse.json({ error: 'Gift has not been redeemed yet' }, { status: 400 })
   }

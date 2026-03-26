@@ -490,7 +490,7 @@ model GiftSend {
   stripeSessionId  String?   @unique
   stripePaymentId  String?
   status           String    @default("PENDING")
-  redeemCode       String    @unique @default(cuid())
+  redeemCode       String    @unique
   redeemedAt       DateTime?
   redemptionMethod   String?
   tremendousRewardId String?
