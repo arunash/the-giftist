@@ -59,12 +59,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
-  if (gift.status !== 'PAID' && gift.status !== 'NOTIFIED') {
-    return NextResponse.json({ error: 'Gift is not redeemable', status: gift.status }, { status: 400 })
-  }
+  // Allow retry for REDEEMED_PENDING_REWARD (Tremendous failed after claim)
+  const isRetry = gift.status === 'REDEEMED_PENDING_REWARD' && method === 'TREMENDOUS'
 
-  if (gift.redeemedAt) {
-    return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+  if (!isRetry) {
+    if (gift.status !== 'PAID' && gift.status !== 'NOTIFIED') {
+      return NextResponse.json({ error: 'Gift is not redeemable', status: gift.status }, { status: 400 })
+    }
+
+    if (gift.redeemedAt) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
   }
 
   if (method === 'ITEM_CLICK') {
@@ -102,25 +107,25 @@ export async function POST(request: NextRequest) {
     }
     const userId = (session.user as any).id
 
-    // Atomic update — claim the gift BEFORE creating the Tremendous reward
-    // This prevents creating rewards for already-redeemed gifts
-    const updated = await prisma.giftSend.updateMany({
-      where: { id: gift.id, redeemedAt: null },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: 'TREMENDOUS',
-      },
-    })
-    if (updated.count === 0) {
-      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
-    }
+    // On retry, gift is already claimed — skip atomic update
+    if (!isRetry) {
+      const updated = await prisma.giftSend.updateMany({
+        where: { id: gift.id, redeemedAt: null },
+        data: {
+          status: 'REDEEMED',
+          redeemedAt: new Date(),
+          redemptionMethod: 'TREMENDOUS',
+        },
+      })
+      if (updated.count === 0) {
+        return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+      }
 
-    // Set recipientUserId separately (updateMany doesn't support relational fields)
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: { recipientUserId: userId },
-    })
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: { recipientUserId: userId },
+      })
+    }
 
     try {
       const reward = await createTremendousReward({
@@ -129,10 +134,11 @@ export async function POST(request: NextRequest) {
         externalId: gift.id,
       })
 
-      // Store Tremendous reward details
+      // Store Tremendous reward details + mark as REDEEMED on retry
       await prisma.giftSend.update({
         where: { id: gift.id },
         data: {
+          status: 'REDEEMED',
           tremendousRewardId: reward.rewardId,
           tremendousLink: reward.claimLink,
         },
