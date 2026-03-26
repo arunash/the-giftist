@@ -26,6 +26,14 @@ export async function createTremendousReward(opts: {
   recipientName?: string
   externalId: string       // for idempotency (e.g. giftSendId)
 }): Promise<TremendousReward> {
+  console.log('[Tremendous] Config:', {
+    hasApiKey: !!API_KEY,
+    apiKeyPrefix: API_KEY.slice(0, 8),
+    baseUrl: BASE_URL,
+    fundingSource: process.env.TREMENDOUS_FUNDING_SOURCE_ID || 'balance',
+    sandbox: process.env.TREMENDOUS_SANDBOX,
+  })
+
   const res = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
     headers: {
@@ -56,7 +64,7 @@ export async function createTremendousReward(opts: {
   if (!res.ok) {
     const err = await res.text()
     console.error('[Tremendous] Create reward failed:', res.status, err)
-    throw new Error(`Tremendous API error: ${res.status}`)
+    throw new Error(`Tremendous API error: ${res.status} — ${err}`)
   }
 
   const data = await res.json()
