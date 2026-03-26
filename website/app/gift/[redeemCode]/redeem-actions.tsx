@@ -19,6 +19,7 @@ interface RedeemActionsProps {
   itemName: string
   amount: number
   senderName: string
+  isLoggedIn: boolean
 }
 
 export function RedeemActions({
@@ -27,6 +28,7 @@ export function RedeemActions({
   itemName,
   amount,
   senderName,
+  isLoggedIn,
 }: RedeemActionsProps) {
   const [redeeming, setRedeeming] = useState(false)
   const [redeemMethod, setRedeemMethod] = useState<string | null>(null)
@@ -178,6 +180,23 @@ export function RedeemActions({
             </p>
           </div>
         )}
+      </div>
+    )
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="space-y-3">
+        <a
+          href={`/login?gift=${redeemCode}`}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
+        >
+          <Gift className="h-5 w-5" />
+          Sign up to claim ${amount.toFixed(2)}
+        </a>
+        <p className="text-xs text-gray-400 text-center">
+          Create a free account to redeem your gift instantly via Amazon, Visa, Venmo, PayPal, or 800+ options
+        </p>
       </div>
     )
   }

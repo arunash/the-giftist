@@ -1,3 +1,5 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Gift, Check, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
@@ -72,6 +74,8 @@ export default async function GiftRedeemPage({
     )
   }
 
+  const session = await getServerSession(authOptions)
+  const isLoggedIn = !!session?.user
   const senderName = gift.sender.name || 'A friend'
 
   return (
@@ -112,6 +116,7 @@ export default async function GiftRedeemPage({
               itemName={gift.itemName}
               amount={gift.amount}
               senderName={senderName}
+              isLoggedIn={isLoggedIn}
             />
           </div>
 

@@ -140,7 +140,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (method === 'TREMENDOUS') {
-    // No auth required — create a Tremendous reward link for instant redemption
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
+    }
+    const userId = (session.user as any).id
+
     try {
       const reward = await createTremendousReward({
         amount: gift.amount,
@@ -154,6 +159,7 @@ export async function POST(request: NextRequest) {
           status: 'REDEEMED',
           redeemedAt: new Date(),
           redemptionMethod: 'TREMENDOUS',
+          recipientUserId: userId,
           tremendousRewardId: reward.rewardId,
           tremendousLink: reward.claimLink,
         },
