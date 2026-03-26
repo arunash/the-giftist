@@ -1,7 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { Gift, ExternalLink, Wallet, Heart, Check, AlertCircle } from 'lucide-react'
+import { Gift, Check, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { RedeemActions } from './redeem-actions'
@@ -74,8 +72,6 @@ export default async function GiftRedeemPage({
     )
   }
 
-  const session = await getServerSession(authOptions)
-  const isLoggedIn = !!session?.user
   const senderName = gift.sender.name || 'A friend'
 
   return (
@@ -110,28 +106,13 @@ export default async function GiftRedeemPage({
               </div>
             )}
 
-            {isLoggedIn ? (
-              <RedeemActions
-                redeemCode={redeemCode}
-                itemUrl={gift.itemUrl}
-                itemName={gift.itemName}
-                amount={gift.amount}
-                senderName={senderName}
-              />
-            ) : (
-              <div>
-                <Link
-                  href={`/login?gift=${redeemCode}`}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
-                >
-                  <Gift className="h-5 w-5" />
-                  Sign up to claim your gift
-                </Link>
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  Create a free account to redeem this gift
-                </p>
-              </div>
-            )}
+            <RedeemActions
+              redeemCode={redeemCode}
+              itemUrl={gift.itemUrl}
+              itemName={gift.itemName}
+              amount={gift.amount}
+              senderName={senderName}
+            />
           </div>
 
           <GiftCardFooter />

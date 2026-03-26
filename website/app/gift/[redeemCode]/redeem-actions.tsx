@@ -9,6 +9,8 @@ import {
   Check,
   Heart,
   Send,
+  Zap,
+  CreditCard,
 } from 'lucide-react'
 
 interface RedeemActionsProps {
@@ -29,6 +31,7 @@ export function RedeemActions({
   const [redeeming, setRedeeming] = useState(false)
   const [redeemMethod, setRedeemMethod] = useState<string | null>(null)
   const [redeemed, setRedeemed] = useState(false)
+  const [claimLink, setClaimLink] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Thank you
@@ -36,7 +39,7 @@ export function RedeemActions({
   const [sendingThankYou, setSendingThankYou] = useState(false)
   const [thankYouSent, setThankYouSent] = useState(false)
 
-  const handleRedeem = async (method: 'WALLET' | 'ITEM') => {
+  const handleRedeem = async (method: 'TREMENDOUS' | 'WALLET') => {
     setRedeeming(true)
     setRedeemMethod(method)
     setError(null)
@@ -45,20 +48,21 @@ export function RedeemActions({
       const res = await fetch('/api/gift-send/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redeemCode, method: 'WALLET' }),
+        body: JSON.stringify({ redeemCode, method }),
       })
       const data = await res.json()
 
       if (res.status === 401) {
-        window.location.href = `/login?callbackUrl=${encodeURIComponent(`/gift/${redeemCode}`)}`
+        window.location.href = `/login?gift=${redeemCode}`
         return
       }
 
       if (data.success) {
         setRedeemed(true)
-        // If they chose to buy the item, open the URL
-        if (method === 'ITEM' && itemUrl) {
-          window.open(itemUrl, '_blank')
+        if (data.claimLink) {
+          setClaimLink(data.claimLink)
+          // Auto-redirect to Tremendous claim page
+          window.open(data.claimLink, '_blank')
         }
       } else {
         setError(data.error || 'Failed to redeem gift')
@@ -98,14 +102,35 @@ export function RedeemActions({
             Gift redeemed successfully!
           </p>
         </div>
-        <div className="bg-violet-50/70 border border-violet-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-violet-700 leading-relaxed">
-            <strong>${amount.toFixed(2)}</strong> has been added to your Giftist Wallet.
-            To make your purchase, withdraw funds to Venmo, PayPal, or your bank account
-            from your <a href="/settings" className="underline font-medium">wallet settings</a>.
-          </p>
-        </div>
-        {redeemMethod === 'ITEM' && itemUrl && (
+
+        {redeemMethod === 'TREMENDOUS' && claimLink && (
+          <div className="bg-violet-50/70 border border-violet-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-violet-700 leading-relaxed mb-2">
+              Choose how you&apos;d like to receive your <strong>${amount.toFixed(2)}</strong> — Amazon gift card, Visa prepaid card, Venmo, PayPal, and more.
+            </p>
+            <a
+              href={claimLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:from-violet-600 hover:to-purple-700 transition"
+            >
+              <CreditCard className="h-4 w-4" />
+              Choose your reward
+            </a>
+          </div>
+        )}
+
+        {redeemMethod === 'WALLET' && (
+          <div className="bg-violet-50/70 border border-violet-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-violet-700 leading-relaxed">
+              <strong>${amount.toFixed(2)}</strong> has been added to your Giftist Wallet.
+              Withdraw to Venmo, PayPal, or your bank account
+              from your <a href="/settings" className="underline font-medium">wallet settings</a>.
+            </p>
+          </div>
+        )}
+
+        {itemUrl && (
           <a
             href={itemUrl}
             target="_blank"
@@ -113,7 +138,7 @@ export function RedeemActions({
             className="w-full flex items-center justify-center gap-2 bg-white border-2 border-violet-200 text-violet-700 px-4 py-3 rounded-xl font-semibold text-sm hover:bg-violet-50 transition"
           >
             <ExternalLink className="h-4 w-4" />
-            View item to purchase
+            View the suggested item
           </a>
         )}
 
@@ -158,48 +183,49 @@ export function RedeemActions({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
 
-      {/* How it works */}
-      <div className="bg-violet-50/70 border border-violet-100 rounded-2xl px-4 py-4">
-        <div className="flex items-center gap-2 mb-2.5">
-          <Wallet className="h-4 w-4 text-violet-600" />
-          <p className="text-sm font-semibold text-violet-800">How it works</p>
-        </div>
-        <ol className="text-xs text-violet-700 space-y-1.5 list-decimal list-inside leading-relaxed">
-          <li><strong>Claim your gift</strong> &mdash; ${amount.toFixed(2)} is added to your Giftist Wallet</li>
-          <li><strong>Withdraw funds</strong> &mdash; transfer to Venmo, PayPal, or bank (5-7 days)</li>
-          <li><strong>Buy what you love</strong> &mdash; use the funds to purchase this item or anything else</li>
-        </ol>
-      </div>
-
+      {/* Primary: Instant redemption via Tremendous */}
       <button
-        onClick={() => handleRedeem('ITEM')}
+        onClick={() => handleRedeem('TREMENDOUS')}
         disabled={redeeming}
         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50 disabled:opacity-50"
       >
-        {redeeming && redeemMethod === 'ITEM' ? (
+        {redeeming && redeemMethod === 'TREMENDOUS' ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
-          <Gift className="h-5 w-5" />
+          <Zap className="h-5 w-5" />
         )}
-        Claim ${amount.toFixed(2)} to my wallet
+        Redeem ${amount.toFixed(2)} instantly
       </button>
-
-      {itemUrl && !redeemed && (
-        <p className="text-xs text-gray-400 text-center -mt-1">
-          We&apos;ll also open the item link so you can purchase it after withdrawal
-        </p>
-      )}
-
-      <p className="text-[11px] text-gray-400 text-center leading-relaxed">
-        Funds are deposited to your Giftist Wallet. Withdraw via Venmo, PayPal, or bank transfer to make your purchase.
+      <p className="text-xs text-gray-400 text-center -mt-1">
+        Pick an Amazon gift card, Visa prepaid card, Venmo, PayPal, or 800+ options
       </p>
+
+      {/* Secondary: Wallet */}
+      <div className="flex items-center gap-3 my-1">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">or</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      <button
+        onClick={() => handleRedeem('WALLET')}
+        disabled={redeeming}
+        className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-600 px-5 py-3 rounded-2xl font-medium text-sm hover:bg-gray-50 transition-all disabled:opacity-50"
+      >
+        {redeeming && redeemMethod === 'WALLET' ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Wallet className="h-4 w-4" />
+        )}
+        Add to Giftist Wallet instead
+      </button>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { smartWhatsAppSend } from '@/lib/notifications'
+import { createTremendousReward } from '@/lib/tremendous'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -136,6 +137,43 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, method: 'WALLET', walletBalance: wallet.balance })
+  }
+
+  if (method === 'TREMENDOUS') {
+    // No auth required — create a Tremendous reward link for instant redemption
+    try {
+      const reward = await createTremendousReward({
+        amount: gift.amount,
+        recipientName: gift.recipientName || undefined,
+        externalId: gift.id,
+      })
+
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: {
+          status: 'REDEEMED',
+          redeemedAt: new Date(),
+          redemptionMethod: 'TREMENDOUS',
+          tremendousRewardId: reward.rewardId,
+          tremendousLink: reward.claimLink,
+        },
+      })
+
+      // Notify sender
+      if (gift.sender.phone) {
+        smartWhatsAppSend(
+          gift.sender.phone,
+          `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}"!`,
+          'gift_redeemed_sender',
+          [gift.recipientName || 'Your recipient', gift.itemName]
+        ).catch(() => {})
+      }
+
+      return NextResponse.json({ success: true, method: 'TREMENDOUS', claimLink: reward.claimLink })
+    } catch (err) {
+      console.error('[Redeem] Tremendous error:', err)
+      return NextResponse.json({ error: 'Failed to create reward. Please try again.' }, { status: 500 })
+    }
   }
 
   if (method === 'CASH_OUT') {
