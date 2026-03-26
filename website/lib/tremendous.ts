@@ -3,6 +3,14 @@ const BASE_URL = process.env.TREMENDOUS_SANDBOX === 'true'
   ? 'https://testflight.tremendous.com/api/v2'
   : 'https://api.tremendous.com/api/v2'
 
+// Multi-product reward — recipient picks their preferred option
+const REWARD_PRODUCTS = [
+  'OKMHM2X2OHYV', // Amazon.com
+  'Q24BD9EZ332JT', // Virtual Visa
+  'KV934TZ93NQM',  // PayPal
+  'TKIHHHAJU20C',  // Venmo
+]
+
 interface TremendousReward {
   orderId: string
   rewardId: string
@@ -27,7 +35,7 @@ export async function createTremendousReward(opts: {
     body: JSON.stringify({
       external_id: opts.externalId,
       payment: {
-        funding_source_id: 'balance',
+        funding_source_id: process.env.TREMENDOUS_FUNDING_SOURCE_ID || 'balance',
       },
       reward: {
         recipient: {
@@ -40,6 +48,7 @@ export async function createTremendousReward(opts: {
         delivery: {
           method: 'LINK',
         },
+        products: REWARD_PRODUCTS,
       },
     }),
   })
