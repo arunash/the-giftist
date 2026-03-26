@@ -1403,7 +1403,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
                 giftSendId: giftSend.id,
                 userId,
               },
-              success_url: `https://giftist.ai/gift/sent?id=${giftSend.id}`,
+              success_url: `https://giftist.ai/gift/sent?id={CHECKOUT_SESSION_ID}`,
               cancel_url: 'https://giftist.ai',
             })
 
@@ -1412,8 +1412,13 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               data: { stripeSessionId: stripeSession.id },
             })
 
-            // Store checkout link to append to reply
-            giftCheckoutLinks.push(`\n\n💳 Pay here to send the gift: ${stripeSession.url}`)
+            const claimLink = `https://giftist.ai/gift/${giftSend.redeemCode}`
+
+            // Store checkout link + claim link to append to reply
+            giftCheckoutLinks.push(
+              `\n\n💳 Pay here to send the gift: ${stripeSession.url}` +
+              `\n\n🎁 After payment, share this link with ${giftData.recipientName || 'your friend'}: ${claimLink}`
+            )
           }
         } catch (err) {
           console.error('WhatsApp SEND_GIFT error:', err)
