@@ -516,7 +516,7 @@ export default function WalletPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-500">Withdraw wallet funds to your bank account.</p>
+                  <p className="text-sm text-gray-500">Available to withdraw: <span className="font-semibold text-gray-900">{formatPrice(balance)}</span></p>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
