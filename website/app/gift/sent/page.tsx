@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/db'
-import { Gift, Check, ArrowLeft, Clock } from 'lucide-react'
+import { Gift, Check, ArrowLeft, Clock, Copy, Share2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { GiftLinkActions } from './gift-link-actions'
 
 export default async function GiftSentPage({
   searchParams,
@@ -92,17 +93,19 @@ export default async function GiftSentPage({
               </div>
             </div>
 
-            <div className="bg-violet-50 border-l-4 border-violet-300 rounded-r-xl px-4 py-3 mb-6">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                We&rsquo;ll notify {recipientDisplay} shortly with a link to claim their gift.
-              </p>
-            </div>
+            {/* Gift claim link — share it yourself */}
+            <GiftLinkActions
+              claimUrl={`https://giftist.ai/gift/${gift.redeemCode}`}
+              recipientName={recipientDisplay}
+              itemName={gift.itemName}
+              amount={gift.amount}
+            />
 
             <Link
               href="/chat"
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
+              className="w-full flex items-center justify-center gap-2 bg-white border-2 border-violet-200 text-violet-700 px-5 py-3.5 rounded-2xl font-semibold text-sm hover:bg-violet-50 transition-all"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
               Back to chat
             </Link>
           </div>
