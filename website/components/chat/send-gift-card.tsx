@@ -26,6 +26,16 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
   const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
   const total = Math.round((amount + platformFee) * 100) / 100
 
+  const giftPayload = {
+    recipientPhone: data.recipientPhone,
+    recipientName: data.recipientName,
+    itemName: data.itemName,
+    itemPrice: data.itemPrice,
+    itemUrl: data.itemUrl,
+    itemImage: data.itemImage,
+    senderMessage: data.senderMessage,
+  }
+
   const handleSend = async () => {
     setSending(true)
     setError(null)
@@ -34,15 +44,7 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
       const res = await fetch('/api/gift-send/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientPhone: data.recipientPhone,
-          recipientName: data.recipientName,
-          itemName: data.itemName,
-          itemPrice: data.itemPrice,
-          itemUrl: data.itemUrl,
-          itemImage: data.itemImage,
-          senderMessage: data.senderMessage,
-        }),
+        body: JSON.stringify(giftPayload),
       })
       const result = await res.json()
       if (result.checkoutUrl) {
@@ -50,6 +52,30 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
         window.location.href = result.checkoutUrl
       } else {
         setError(result.error || 'Failed to start checkout')
+        setSending(false)
+      }
+    } catch {
+      setError('Something went wrong')
+      setSending(false)
+    }
+  }
+
+  const handlePayPalSend = async () => {
+    setSending(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/gift-send/paypal-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(giftPayload),
+      })
+      const result = await res.json()
+      if (result.approvalUrl) {
+        setSent(true)
+        window.location.href = result.approvalUrl
+      } else {
+        setError(result.error || 'Failed to start PayPal checkout')
         setSending(false)
       }
     } catch {
@@ -100,20 +126,30 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
         <p className="text-xs text-red-500 mb-2">{error}</p>
       )}
 
-      <button
-        onClick={handleSend}
-        disabled={sending || !data.recipientPhone}
-        className="w-full flex items-center justify-center gap-2 bg-pink-500 text-white px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-pink-600 transition disabled:opacity-50"
-      >
-        {sending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <>
-            <span>Send Gift — ${total.toFixed(2)}</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </>
-        )}
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={handlePayPalSend}
+          disabled={sending || !data.recipientPhone}
+          className="w-full flex items-center justify-center gap-2 bg-[#0070ba] text-white px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-[#005ea6] transition disabled:opacity-50"
+        >
+          {sending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <span>Pay with PayPal / Venmo — ${total.toFixed(2)}</span>
+          )}
+        </button>
+        <button
+          onClick={handleSend}
+          disabled={sending || !data.recipientPhone}
+          className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-gray-200 transition disabled:opacity-50"
+        >
+          {sending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <span>Pay with Card — ${total.toFixed(2)}</span>
+          )}
+        </button>
+      </div>
 
       {!data.recipientPhone && (
         <p className="text-xs text-gray-400 mt-2 text-center">

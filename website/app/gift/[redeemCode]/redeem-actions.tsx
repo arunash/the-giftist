@@ -9,8 +9,6 @@ import {
   Heart,
   Send,
   Zap,
-  CreditCard,
-  DollarSign,
 } from 'lucide-react'
 
 interface RedeemActionsProps {
@@ -33,7 +31,6 @@ export function RedeemActions({
   const [redeeming, setRedeeming] = useState(false)
   const [redeemMethod, setRedeemMethod] = useState<string | null>(null)
   const [redeemed, setRedeemed] = useState(false)
-  const [claimLink, setClaimLink] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // PayPal/Venmo input
@@ -66,10 +63,6 @@ export function RedeemActions({
 
       if (data.success) {
         setRedeemed(true)
-        if (data.claimLink) {
-          setClaimLink(data.claimLink)
-          window.open(data.claimLink, '_blank')
-        }
       } else {
         setError(data.error || 'Failed to redeem gift')
       }
@@ -118,23 +111,6 @@ export function RedeemActions({
             Gift redeemed successfully!
           </p>
         </div>
-
-        {redeemMethod === 'TREMENDOUS' && claimLink && (
-          <div className="bg-violet-50/70 border border-violet-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-violet-700 leading-relaxed mb-2">
-              Choose how you&apos;d like to receive your <strong>${amount.toFixed(2)}</strong> — Amazon gift card, Visa prepaid card, Venmo, PayPal, and more.
-            </p>
-            <a
-              href={claimLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:from-violet-600 hover:to-purple-700 transition"
-            >
-              <CreditCard className="h-4 w-4" />
-              Choose your reward
-            </a>
-          </div>
-        )}
 
         {(redeemMethod === 'PAYPAL' || redeemMethod === 'VENMO') && (
           <div className="bg-blue-50/70 border border-blue-100 rounded-xl px-4 py-3">
@@ -207,7 +183,7 @@ export function RedeemActions({
           Sign up to claim ${amount.toFixed(2)}
         </a>
         <p className="text-xs text-gray-400 text-center">
-          Create a free account to redeem your gift via PayPal, Venmo, or 800+ options
+          Create a free account to redeem your gift via Venmo or PayPal
         </p>
       </div>
     )
@@ -260,7 +236,7 @@ export function RedeemActions({
           <input
             type="text"
             value={venmoPhone}
-            onChange={(e) => setVenmoHandle(e.target.value)}
+            onChange={(e) => setVenmoPhone(e.target.value)}
             placeholder="Phone number linked to Venmo"
             className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300 text-sm"
           />
@@ -280,29 +256,6 @@ export function RedeemActions({
         </button>
       </div>
 
-      {/* Divider */}
-      <div className="flex items-center gap-3 my-1">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
-      {/* Secondary: Tremendous (gift cards) */}
-      <button
-        onClick={() => handleRedeem('TREMENDOUS')}
-        disabled={redeeming}
-        className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-600 px-5 py-3 rounded-2xl font-medium text-sm hover:bg-gray-50 transition-all disabled:opacity-50"
-      >
-        {redeeming && redeemMethod === 'TREMENDOUS' ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <CreditCard className="h-4 w-4" />
-        )}
-        Redeem as gift card instead
-      </button>
-      <p className="text-xs text-gray-400 text-center -mt-1">
-        Amazon, Visa prepaid, and 800+ options
-      </p>
     </div>
   )
 }

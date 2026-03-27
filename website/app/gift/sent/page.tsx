@@ -7,15 +7,17 @@ import { GiftLinkActions } from './gift-link-actions'
 export default async function GiftSentPage({
   searchParams,
 }: {
-  searchParams: { id?: string }
+  searchParams: { id?: string; giftId?: string }
 }) {
+  // Support both Stripe (lookup by stripeSessionId) and PayPal (lookup by giftSendId)
   const sessionId = searchParams.id
+  const giftId = searchParams.giftId
 
-  const gift = sessionId
-    ? await prisma.giftSend.findUnique({
-        where: { stripeSessionId: sessionId },
-      })
-    : null
+  const gift = giftId
+    ? await prisma.giftSend.findUnique({ where: { id: giftId } })
+    : sessionId
+      ? await prisma.giftSend.findUnique({ where: { stripeSessionId: sessionId } })
+      : null
 
   // Payment processing / webhook hasn't fired yet
   if (!gift) {

@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { smartWhatsAppSend } from '@/lib/notifications'
-import { createTremendousReward } from '@/lib/tremendous'
 import { sendPayout } from '@/lib/paypal'
 
 export async function GET(request: NextRequest) {
@@ -60,8 +59,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
-  // Allow retry for REDEEMED_PENDING_REWARD (Tremendous failed after claim)
-  const isRetry = gift.status === 'REDEEMED_PENDING_REWARD' && (method === 'TREMENDOUS' || method === 'PAYPAL' || method === 'VENMO')
+  // Allow retry for REDEEMED_PENDING_REWARD (payout failed after claim)
+  const isRetry = gift.status === 'REDEEMED_PENDING_REWARD' && (method === 'PAYPAL' || method === 'VENMO')
 
   if (!isRetry) {
     if (gift.status !== 'PAID' && gift.status !== 'NOTIFIED') {
@@ -99,72 +98,6 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, method: 'ITEM_CLICK' })
-  }
-
-  if (method === 'TREMENDOUS') {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
-    }
-    const userId = (session.user as any).id
-
-    // On retry, gift is already claimed — skip atomic update
-    if (!isRetry) {
-      const updated = await prisma.giftSend.updateMany({
-        where: { id: gift.id, redeemedAt: null },
-        data: {
-          status: 'REDEEMED',
-          redeemedAt: new Date(),
-          redemptionMethod: 'TREMENDOUS',
-        },
-      })
-      if (updated.count === 0) {
-        return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
-      }
-
-      await prisma.giftSend.update({
-        where: { id: gift.id },
-        data: { recipientUserId: userId },
-      })
-    }
-
-    try {
-      const reward = await createTremendousReward({
-        amount: gift.amount,
-        recipientName: gift.recipientName || undefined,
-        externalId: gift.id,
-      })
-
-      // Store Tremendous reward details + mark as REDEEMED on retry
-      await prisma.giftSend.update({
-        where: { id: gift.id },
-        data: {
-          status: 'REDEEMED',
-          tremendousRewardId: reward.rewardId,
-          tremendousLink: reward.claimLink,
-        },
-      })
-
-      // Notify sender
-      if (gift.sender.phone) {
-        smartWhatsAppSend(
-          gift.sender.phone,
-          `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}"!`,
-          'gift_redeemed_sender',
-          [gift.recipientName || 'Your recipient', gift.itemName]
-        ).catch(() => {})
-      }
-
-      return NextResponse.json({ success: true, method: 'TREMENDOUS', claimLink: reward.claimLink })
-    } catch (err) {
-      console.error('[Redeem] Tremendous error:', err)
-      // Gift is already claimed as REDEEMED but Tremendous failed — mark for retry
-      await prisma.giftSend.update({
-        where: { id: gift.id },
-        data: { status: 'REDEEMED_PENDING_REWARD' },
-      })
-      return NextResponse.json({ error: 'Failed to create reward. Please try again.' }, { status: 500 })
-    }
   }
 
   if (method === 'PAYPAL' || method === 'VENMO') {

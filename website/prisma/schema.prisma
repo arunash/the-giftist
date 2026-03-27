@@ -489,6 +489,8 @@ model GiftSend {
   totalCharged     Float
   stripeSessionId  String?   @unique
   stripePaymentId  String?
+  paypalOrderId    String?   @unique
+  paypalCaptureId  String?
   status           String    @default("PENDING")
   redeemCode       String    @unique
   redeemedAt       DateTime?
