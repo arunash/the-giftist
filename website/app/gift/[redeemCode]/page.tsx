@@ -43,8 +43,8 @@ export default async function GiftRedeemPage({
     )
   }
 
-  // Already redeemed
-  if (gift.redeemedAt) {
+  // Already redeemed (but allow retry if payout failed)
+  if (gift.redeemedAt && gift.status !== 'REDEEMED_PENDING_REWARD') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
@@ -117,6 +117,7 @@ export default async function GiftRedeemPage({
               amount={gift.amount}
               senderName={senderName}
               isLoggedIn={isLoggedIn}
+              isPendingRetry={gift.status === 'REDEEMED_PENDING_REWARD'}
             />
           </div>
 

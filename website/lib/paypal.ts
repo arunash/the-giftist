@@ -139,6 +139,41 @@ export async function capturePayPalOrder(orderId: string): Promise<{
   }
 }
 
+// --- PayPal Webhook Verification ---
+
+export async function verifyPayPalWebhook(params: {
+  webhookId: string;
+  transmissionId: string;
+  transmissionTime: string;
+  certUrl: string;
+  authAlgo: string;
+  transmissionSig: string;
+  body: string;
+}): Promise<boolean> {
+  const token = await getAccessToken()
+
+  const res = await fetch(`${PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      auth_algo: params.authAlgo,
+      cert_url: params.certUrl,
+      transmission_id: params.transmissionId,
+      transmission_sig: params.transmissionSig,
+      transmission_time: params.transmissionTime,
+      webhook_id: params.webhookId,
+      webhook_event: JSON.parse(params.body),
+    }),
+  })
+
+  if (!res.ok) return false
+  const data = await res.json()
+  return data.verification_status === 'SUCCESS'
+}
+
 // --- PayPal Payouts API (recipient disbursement) ---
 
 export async function sendPayout(params: {

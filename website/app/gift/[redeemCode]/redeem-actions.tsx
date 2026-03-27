@@ -18,6 +18,7 @@ interface RedeemActionsProps {
   amount: number
   senderName: string
   isLoggedIn: boolean
+  isPendingRetry?: boolean
 }
 
 export function RedeemActions({
@@ -27,6 +28,7 @@ export function RedeemActions({
   amount,
   senderName,
   isLoggedIn,
+  isPendingRetry,
 }: RedeemActionsProps) {
   const [redeeming, setRedeeming] = useState(false)
   const [redeemMethod, setRedeemMethod] = useState<string | null>(null)
@@ -191,6 +193,13 @@ export function RedeemActions({
 
   return (
     <div className="space-y-3">
+      {isPendingRetry && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-medium text-amber-800">Your payout couldn&apos;t be completed</p>
+          <p className="text-xs text-amber-600 mt-1">Please try again with your payment details below.</p>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>

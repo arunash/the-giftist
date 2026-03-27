@@ -142,6 +142,12 @@ export async function POST(request: NextRequest) {
         senderBatchId: `giftist_gift_${gift.id}_${Date.now()}`,
       })
 
+      // Store payout batch ID for webhook tracking
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: { paypalPayoutBatchId: result.payoutBatchId },
+      })
+
       // Notify sender
       if (gift.sender.phone) {
         smartWhatsAppSend(
