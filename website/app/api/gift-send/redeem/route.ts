@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { smartWhatsAppSend } from '@/lib/notifications'
 import { sendPayout } from '@/lib/paypal'
+import { sendGiftRedemptionReceipt, cancelGiftReminders } from '@/lib/gift-notifications'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
     }
 
-    // Notify sender
+    // Notify sender + send receipts
     if (gift.sender.phone) {
       smartWhatsAppSend(
         gift.sender.phone,
@@ -96,6 +97,8 @@ export async function POST(request: NextRequest) {
         [gift.recipientName || 'Your recipient', gift.itemName]
       ).catch(() => {})
     }
+    sendGiftRedemptionReceipt(gift.id, 'ITEM_CLICK').catch(() => {})
+    cancelGiftReminders(gift.id).catch(() => {})
 
     return NextResponse.json({ success: true, method: 'ITEM_CLICK' })
   }
@@ -152,7 +155,7 @@ export async function POST(request: NextRequest) {
         data: { paypalPayoutBatchId: result.payoutBatchId, status: 'REDEEMED' },
       })
 
-      // Notify sender
+      // Notify sender + send receipts
       if (gift.sender.phone) {
         smartWhatsAppSend(
           gift.sender.phone,
@@ -161,6 +164,8 @@ export async function POST(request: NextRequest) {
           [gift.recipientName || 'Your recipient', gift.itemName]
         ).catch(() => {})
       }
+      sendGiftRedemptionReceipt(gift.id, method, payoutAmount).catch(() => {})
+      cancelGiftReminders(gift.id).catch(() => {})
 
       return NextResponse.json({
         success: true,
@@ -218,7 +223,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Notify sender
+    // Notify sender + send receipts
     if (gift.sender.phone) {
       smartWhatsAppSend(
         gift.sender.phone,
@@ -227,6 +232,8 @@ export async function POST(request: NextRequest) {
         [gift.recipientName || 'Your recipient', gift.itemName]
       ).catch(() => {})
     }
+    sendGiftRedemptionReceipt(gift.id, 'WALLET').catch(() => {})
+    cancelGiftReminders(gift.id).catch(() => {})
 
     return NextResponse.json({ success: true, method: 'WALLET' })
   }

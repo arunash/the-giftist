@@ -404,7 +404,11 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // No auto-notification — sender shares the gift link themselves
+              // Send receipts + notify recipient
+              const giftNotify = await import('@/lib/gift-notifications')
+              giftNotify.sendGiftSendReceipt(giftSendId).catch(() => {})
+              giftNotify.notifyGiftReceived(giftSendId).catch(() => {})
+              giftNotify.scheduleGiftReminders(giftSendId).catch(() => {})
             }
           }
         }
@@ -433,7 +437,11 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // No auto-notification — sender shares the gift link themselves
+              // Send receipts + notify recipient
+              const { sendGiftSendReceipt, notifyGiftReceived, scheduleGiftReminders } = await import('@/lib/gift-notifications')
+              sendGiftSendReceipt(giftSendId).catch(() => {})
+              notifyGiftReceived(giftSendId).catch(() => {})
+              scheduleGiftReminders(giftSendId).catch(() => {})
             }
           }
         }
