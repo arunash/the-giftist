@@ -292,7 +292,7 @@ export default function AdminDashboard() {
           </span>
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard icon={DollarSign} label="Gift Send Fees (5%)" value={`$${stats.revenue.giftSendFees.toFixed(2)}`} sub={`${stats.revenue.giftSendCount} gifts sent`}>
+          <KpiCard icon={DollarSign} label="Gift Send Fees (8%)" value={`$${stats.revenue.giftSendFees.toFixed(2)}`} sub={`${stats.revenue.giftSendCount} gifts sent`}>
             <Breakdown items={[
               { label: 'Today', value: `$${stats.revenue.giftSendFeesToday.toFixed(2)}`, color: 'text-green-500' },
               { label: 'Gifts today', value: stats.revenue.giftSendCountToday },

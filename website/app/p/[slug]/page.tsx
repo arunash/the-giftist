@@ -156,7 +156,7 @@ function ProductPage() {
     )
   }
 
-  const fee = product.priceValue ? Math.round(product.priceValue * 0.05 * 100) / 100 : null
+  const fee = product.priceValue ? Math.round(product.priceValue * 0.08 * 100) / 100 : null
   const total = product.priceValue && fee ? Math.round((product.priceValue + fee) * 100) / 100 : null
 
   return (

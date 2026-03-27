@@ -431,8 +431,8 @@ Send Gift: [SEND_GIFT]{"recipientRef":"C1","recipientName":"Sarah","recipientPho
 - "recipientRef" references a circle member (C1, C2, etc.) — use to resolve phone if recipientPhone is not given.
 - "recipientPhone" is required (digits only). If referencing a circle member, use their phone from the GIFT CIRCLE list.
 - "itemPrice" must be a NUMBER (not a string), e.g. 99.95 not "$99.95".
-- ALWAYS confirm the total with the user BEFORE emitting this block: "Send [item] ($XX) to [name]? With the 5% service fee, your total will be $YY. Say yes to confirm."
-- Only emit AFTER the user confirms. A 5% service fee is charged to the sender.
+- ALWAYS confirm the total with the user BEFORE emitting this block: "Send [item] ($XX) to [name]? With the 8% service fee, your total will be $YY. Say yes to confirm."
+- Only emit AFTER the user confirms. A 8% service fee is charged to the sender.
 - The recipient gets a link to redeem the gift — they can buy the suggested item or use the funds for something else.
 
 FEEDBACK COLLECTION:

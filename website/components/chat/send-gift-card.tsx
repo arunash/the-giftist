@@ -23,7 +23,7 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
   const [error, setError] = useState<string | null>(null)
 
   const amount = data.itemPrice
-  const platformFee = Math.round(amount * 0.05 * 100) / 100
+  const platformFee = Math.round(amount * 0.08 * 100) / 100
   const total = Math.round((amount + platformFee) * 100) / 100
 
   const handleSend = async () => {
@@ -87,7 +87,7 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
           <span className="text-gray-900">${amount.toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Service fee (5%)</span>
+          <span className="text-gray-500">Service fee (8%)</span>
           <span className="text-gray-500">${platformFee.toFixed(2)}</span>
         </div>
         <div className="flex justify-between pt-1 border-t border-pink-200">

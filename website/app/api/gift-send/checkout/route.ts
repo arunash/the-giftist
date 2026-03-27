@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   }
 
   const amount = Math.round(itemPrice * 100) / 100
-  const platformFee = Math.round(amount * 0.05 * 100) / 100
+  const platformFee = Math.round(amount * 0.08 * 100) / 100
   const totalCharged = Math.round((amount + platformFee) * 100) / 100
 
   const giftSend = await prisma.giftSend.create({

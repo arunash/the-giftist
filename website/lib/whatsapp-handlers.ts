@@ -1363,7 +1363,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
 
           if (recipientPhone) {
             const amount = giftData.itemPrice
-            const platformFee = Math.round(amount * 0.05 * 100) / 100
+            const platformFee = Math.round(amount * 0.08 * 100) / 100
             const totalCharged = Math.round((amount + platformFee) * 100) / 100
 
             const giftSend = await prisma.giftSend.create({
