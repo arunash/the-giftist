@@ -142,10 +142,10 @@ export async function POST(request: NextRequest) {
         senderBatchId: `giftist_gift_${gift.id}_${Date.now()}`,
       })
 
-      // Store payout batch ID for webhook tracking
+      // Store payout batch ID + mark REDEEMED (handles retry from REDEEMED_PENDING_REWARD)
       await prisma.giftSend.update({
         where: { id: gift.id },
-        data: { paypalPayoutBatchId: result.payoutBatchId },
+        data: { paypalPayoutBatchId: result.payoutBatchId, status: 'REDEEMED' },
       })
 
       // Notify sender
