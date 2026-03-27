@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   const amount = product.priceValue
-  const platformFee = Math.round(amount * 0.08 * 100) / 100
+  const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
   const totalCharged = Math.round((amount + platformFee) * 100) / 100
 
   try {

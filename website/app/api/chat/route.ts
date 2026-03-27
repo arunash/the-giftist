@@ -427,7 +427,7 @@ async function processStructuredBlocks(userId: string, content: string) {
 
         if (recipientPhone) {
           const amount = data.itemPrice
-          const platformFee = Math.round(amount * 0.08 * 100) / 100
+          const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
           const totalCharged = Math.round((amount + platformFee) * 100) / 100
 
           await prisma.giftSend.create({
