@@ -39,11 +39,9 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      // Send receipts + notify recipient
-      const { sendGiftSendReceipt, notifyGiftReceived, scheduleGiftReminders } = await import('@/lib/gift-notifications')
+      // Send email receipt to sender
+      const { sendGiftSendReceipt } = await import('@/lib/gift-notifications')
       sendGiftSendReceipt(gift.id).catch(() => {})
-      notifyGiftReceived(gift.id).catch(() => {})
-      scheduleGiftReminders(gift.id).catch(() => {})
 
       return NextResponse.redirect(new URL(`/gift/sent?giftId=${gift.id}`, request.url))
     }

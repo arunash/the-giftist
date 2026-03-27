@@ -88,20 +88,7 @@ export async function sendGiftSendReceipt(giftSendId: string): Promise<void> {
     }).catch((err) => console.error('[GiftReceipt] Sender email failed:', err))
   }
 
-  // WhatsApp / SMS to sender
-  if (gift.sender.phone) {
-    const text = `🎁 Gift sent! You sent "${gift.itemName}" ($${gift.amount.toFixed(2)}) to ${recipientDisplay}. Total charged: $${gift.totalCharged.toFixed(2)}. Share the claim link: ${claimUrl}`
-    smartWhatsAppSend(
-      gift.sender.phone,
-      text,
-      'gift_send_receipt',
-      [gift.itemName, gift.amount.toFixed(2), recipientDisplay, claimUrl],
-      { skipTimeCheck: true }
-    ).catch((err) => {
-      console.error('[GiftReceipt] Sender WhatsApp failed, trying SMS:', err)
-      sendSms(gift.sender.phone!, text).catch(() => {})
-    })
-  }
+  // Sender gets email receipt only — no WhatsApp/SMS (they already have the claim link on the success page)
 }
 
 // ── 1c. Send receipt to recipient after redemption ──
