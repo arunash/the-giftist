@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { redeemCode, method, paypalEmail, venmoHandle } = await request.json()
+  const { redeemCode, method, paypalEmail, venmoPhone } = await request.json()
 
   if (!redeemCode || !method) {
     return NextResponse.json({ error: 'Missing redeemCode or method' }, { status: 400 })
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Allow retry for REDEEMED_PENDING_REWARD (Tremendous failed after claim)
-  const isRetry = gift.status === 'REDEEMED_PENDING_REWARD' && method === 'TREMENDOUS'
+  const isRetry = gift.status === 'REDEEMED_PENDING_REWARD' && (method === 'TREMENDOUS' || method === 'PAYPAL' || method === 'VENMO')
 
   if (!isRetry) {
     if (gift.status !== 'PAID' && gift.status !== 'NOTIFIED') {
@@ -174,33 +174,35 @@ export async function POST(request: NextRequest) {
     }
     const userId = (session.user as any).id
 
-    const receiver = method === 'VENMO' ? venmoHandle : paypalEmail
+    const receiver = method === 'VENMO' ? venmoPhone : paypalEmail
     if (!receiver) {
-      return NextResponse.json({ error: `Missing ${method === 'VENMO' ? 'Venmo handle' : 'PayPal email'}` }, { status: 400 })
+      return NextResponse.json({ error: `Missing ${method === 'VENMO' ? 'Venmo phone number' : 'PayPal email'}` }, { status: 400 })
     }
 
-    // Atomic claim
-    const updated = await prisma.giftSend.updateMany({
-      where: { id: gift.id, redeemedAt: null },
-      data: {
-        status: 'REDEEMED',
-        redeemedAt: new Date(),
-        redemptionMethod: method,
-      },
-    })
-    if (updated.count === 0) {
-      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
-    }
+    // On retry, gift is already claimed — skip atomic update
+    if (!isRetry) {
+      const updated = await prisma.giftSend.updateMany({
+        where: { id: gift.id, redeemedAt: null },
+        data: {
+          status: 'REDEEMED',
+          redeemedAt: new Date(),
+          redemptionMethod: method,
+        },
+      })
+      if (updated.count === 0) {
+        return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+      }
 
-    await prisma.giftSend.update({
-      where: { id: gift.id },
-      data: { recipientUserId: userId },
-    })
+      await prisma.giftSend.update({
+        where: { id: gift.id },
+        data: { recipientUserId: userId },
+      })
+    }
 
     try {
       const result = await sendPayout({
         recipientType: method === 'VENMO' ? 'PHONE' : 'EMAIL',
-        receiver: method === 'VENMO' ? receiver.replace('@', '') : receiver,
+        receiver: method === 'VENMO' ? receiver.replace(/\D/g, '') : receiver,
         amount: gift.amount,
         recipientWallet: method === 'VENMO' ? 'VENMO' : 'PAYPAL',
         note: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}"`,

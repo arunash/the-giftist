@@ -39,7 +39,7 @@ export function RedeemActions({
   // PayPal/Venmo input
   const [paypalTab, setPaypalTab] = useState<'PAYPAL' | 'VENMO'>('VENMO')
   const [paypalEmail, setPaypalEmail] = useState('')
-  const [venmoHandle, setVenmoHandle] = useState('')
+  const [venmoPhone, setVenmoPhone] = useState('')
 
   // Thank you
   const [thankYouMessage, setThankYouMessage] = useState('')
@@ -82,8 +82,8 @@ export function RedeemActions({
 
   const handlePaypalRedeem = () => {
     if (paypalTab === 'VENMO') {
-      if (!venmoHandle.trim()) return
-      handleRedeem('VENMO', { venmoHandle: venmoHandle.trim() })
+      if (!venmoPhone.trim()) return
+      handleRedeem('VENMO', { venmoPhone: venmoPhone.trim() })
     } else {
       if (!paypalEmail.trim()) return
       handleRedeem('PAYPAL', { paypalEmail: paypalEmail.trim() })
@@ -259,16 +259,16 @@ export function RedeemActions({
         ) : (
           <input
             type="text"
-            value={venmoHandle}
+            value={venmoPhone}
             onChange={(e) => setVenmoHandle(e.target.value)}
-            placeholder="Your Venmo handle (e.g. @john-doe)"
+            placeholder="Phone number linked to Venmo"
             className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300 text-sm"
           />
         )}
 
         <button
           onClick={handlePaypalRedeem}
-          disabled={redeeming || (paypalTab === 'PAYPAL' ? !paypalEmail.trim() : !venmoHandle.trim())}
+          disabled={redeeming || (paypalTab === 'PAYPAL' ? !paypalEmail.trim() : !venmoPhone.trim())}
           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50 disabled:opacity-50"
         >
           {redeeming && (redeemMethod === 'PAYPAL' || redeemMethod === 'VENMO') ? (
