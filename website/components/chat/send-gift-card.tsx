@@ -128,25 +128,28 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
 
       <div className="space-y-2">
         <button
-          onClick={handlePayPalSend}
+          onClick={handleSend}
           disabled={sending || !data.recipientPhone}
-          className="w-full flex items-center justify-center gap-2 bg-[#0070ba] text-white px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-[#005ea6] transition disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 bg-pink-500 text-white px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-pink-600 transition disabled:opacity-50"
         >
           {sending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <span>Pay with PayPal / Venmo — ${total.toFixed(2)}</span>
+            <>
+              <span>Send Gift — ${total.toFixed(2)}</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </>
           )}
         </button>
         <button
-          onClick={handleSend}
+          onClick={handlePayPalSend}
           disabled={sending || !data.recipientPhone}
           className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-xs hover:bg-gray-200 transition disabled:opacity-50"
         >
           {sending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <span>Pay with Card — ${total.toFixed(2)}</span>
+            <span>Pay with PayPal / Venmo</span>
           )}
         </button>
       </div>

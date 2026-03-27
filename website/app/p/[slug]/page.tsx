@@ -418,19 +418,19 @@ function ProductPage() {
               </div>
 
               <button
-                onClick={handlePayPalCheckout}
+                onClick={handleCheckout}
                 disabled={buyingLoading || !recipientName.trim() || !recipientPhone.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#0070ba] text-white rounded-xl font-semibold text-sm hover:bg-[#005ea6] transition disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
               >
-                {buyingLoading ? 'Redirecting...' : total ? `Pay with PayPal / Venmo — $${total.toFixed(2)}` : 'Pay with PayPal / Venmo'}
+                <ShoppingCart className="h-4 w-4" />
+                {buyingLoading ? 'Redirecting to payment...' : total ? `Pay $${total.toFixed(2)}` : 'Continue to payment'}
               </button>
               <button
-                onClick={handleCheckout}
+                onClick={handlePayPalCheckout}
                 disabled={buyingLoading || !recipientName.trim() || !recipientPhone.trim()}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200 transition disabled:opacity-50"
               >
-                <ShoppingCart className="h-4 w-4" />
-                {buyingLoading ? 'Redirecting...' : total ? `Pay with Card — $${total.toFixed(2)}` : 'Pay with Card'}
+                {buyingLoading ? 'Redirecting...' : 'Pay with PayPal / Venmo'}
               </button>
 
               {total && fee && (
