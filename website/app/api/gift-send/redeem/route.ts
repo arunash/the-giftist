@@ -133,10 +133,14 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Deduct $0.25 PayPal payout fee from recipient amount
+      const PAYOUT_FEE = 0.25
+      const payoutAmount = Math.round((gift.amount - PAYOUT_FEE) * 100) / 100
+
       const result = await sendPayout({
         recipientType: method === 'VENMO' ? 'PHONE' : 'EMAIL',
         receiver: method === 'VENMO' ? receiver.replace(/\D/g, '') : receiver,
-        amount: gift.amount,
+        amount: payoutAmount,
         recipientWallet: method === 'VENMO' ? 'VENMO' : 'PAYPAL',
         note: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}"`,
         senderBatchId: `giftist_gift_${gift.id}_${Date.now()}`,
@@ -171,6 +175,60 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ error: 'Failed to send payout. Please try again.' }, { status: 500 })
     }
+  }
+
+  if (method === 'WALLET') {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
+    }
+    const userId = (session.user as any).id
+
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED',
+        redeemedAt: new Date(),
+        redemptionMethod: 'WALLET',
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    // Deposit full amount to recipient's wallet (no payout fee)
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    })
+
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: gift.amount },
+      update: { balance: { increment: gift.amount } },
+    })
+
+    await prisma.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        type: 'GIFT_RECEIVED',
+        amount: gift.amount,
+        status: 'COMPLETED',
+        description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}"`,
+      },
+    })
+
+    // Notify sender
+    if (gift.sender.phone) {
+      smartWhatsAppSend(
+        gift.sender.phone,
+        `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}"!`,
+        'gift_redeemed_sender',
+        [gift.recipientName || 'Your recipient', gift.itemName]
+      ).catch(() => {})
+    }
+
+    return NextResponse.json({ success: true, method: 'WALLET' })
   }
 
   return NextResponse.json({ error: 'Invalid method' }, { status: 400 })

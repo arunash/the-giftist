@@ -117,7 +117,16 @@ export function RedeemActions({
         {(redeemMethod === 'PAYPAL' || redeemMethod === 'VENMO') && (
           <div className="bg-blue-50/70 border border-blue-100 rounded-xl px-4 py-3">
             <p className="text-xs text-blue-700 leading-relaxed">
-              <strong>${amount.toFixed(2)}</strong> is on its way to your {redeemMethod === 'VENMO' ? 'Venmo' : 'PayPal'} account. It typically arrives within minutes.
+              <strong>${(amount - 0.25).toFixed(2)}</strong> is on its way to your {redeemMethod === 'VENMO' ? 'Venmo' : 'PayPal'} account. It typically arrives within minutes.
+            </p>
+          </div>
+        )}
+
+        {redeemMethod === 'WALLET' && (
+          <div className="bg-blue-50/70 border border-blue-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-blue-700 leading-relaxed">
+              <strong>${amount.toFixed(2)}</strong> has been added to your Giftist wallet. You can withdraw to your bank account for free from your{' '}
+              <a href="/wallet" className="underline font-medium">wallet page</a>.
             </p>
           </div>
         )}
@@ -208,7 +217,8 @@ export function RedeemActions({
 
       {/* Primary: PayPal / Venmo */}
       <div className="border-2 border-blue-200 rounded-2xl p-4 space-y-3">
-        <p className="text-sm font-semibold text-gray-800 text-center">Get ${amount.toFixed(2)} sent to you instantly</p>
+        <p className="text-sm font-semibold text-gray-800 text-center">Get ${(amount - 0.25).toFixed(2)} sent to you instantly</p>
+        <p className="text-[10px] text-gray-400 text-center -mt-2">$0.25 processing fee applies</p>
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
           <button
@@ -261,10 +271,24 @@ export function RedeemActions({
           ) : (
             <Zap className="h-5 w-5" />
           )}
-          Send ${amount.toFixed(2)} to {paypalTab === 'VENMO' ? 'Venmo' : 'PayPal'}
+          Send ${(amount - 0.25).toFixed(2)} to {paypalTab === 'VENMO' ? 'Venmo' : 'PayPal'}
         </button>
       </div>
 
+      {/* Free bank withdrawal option */}
+      <div className="text-center">
+        <p className="text-xs text-gray-400">
+          or{' '}
+          <button
+            onClick={() => handleRedeem('WALLET')}
+            disabled={redeeming}
+            className="text-violet-600 hover:text-violet-700 font-medium underline underline-offset-2"
+          >
+            claim to your account
+          </button>
+          {' '}and withdraw to bank for free
+        </p>
+      </div>
     </div>
   )
 }
