@@ -159,9 +159,14 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
 
   // Use GPT-4o with web search to find real product URLs + current prices
   try {
-    const { results } = await searchRetailers(productName, null, null)
+    const { results, bestResult } = await searchRetailers(productName, null, null)
 
-    for (const result of results.slice(0, 3)) {
+    // Prefer bestResult (has price + lowest price) — then fall back to other results
+    const candidates = bestResult
+      ? [bestResult, ...results.filter(r => r !== bestResult)]
+      : results
+
+    for (const result of candidates.slice(0, 5)) {
       if (isSearchOrCategoryUrl(result.url)) {
         console.log(`[ProductSearch] Skipping search URL: ${result.url}`)
         continue
