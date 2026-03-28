@@ -1551,7 +1551,7 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
 
     // Auto-save confirmation
     const autoSaveNote = autoSavedCount > 0
-      ? `\n\nI've added ${autoSavedCount} item${autoSavedCount > 1 ? 's' : ''} to your wishlist! View at *giftist.ai*`
+      ? `\n\nView more gifts at *giftist.ai*`
       : ''
 
     // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection or autoSaveNote
