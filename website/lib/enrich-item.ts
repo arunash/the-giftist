@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
+import { searchRetailers } from '@/lib/search-retailers'
 import crypto from 'crypto'
 
 const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -108,7 +109,7 @@ export async function verifyProductUrl(url: string): Promise<string | null> {
   }
 }
 
-// Search Google Shopping + Amazon for a real product URL (with local cache)
+// Find a verified product URL using GPT-4o web search (with local cache)
 export async function findProductUrl(productName: string): Promise<{ url: string; domain: string } | null> {
   // Check cache first
   const cached = await getCachedProductUrl(productName)
@@ -117,91 +118,35 @@ export async function findProductUrl(productName: string): Promise<{ url: string
     return { url: cached.url, domain: cached.domain }
   }
 
-  const query = encodeURIComponent(productName)
+  console.log(`[ProductSearch] Searching for: "${productName}"`)
 
-  // Try Google Shopping first
-  const searchUrls = [
-    `https://www.google.com/search?q=${query}&tbm=shop`,
-    `https://www.google.com/search?q=${query}+buy`,
-  ]
-
-  for (const searchUrl of searchUrls) {
-    try {
-      const res = await fetch(searchUrl, {
-        headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
-        signal: AbortSignal.timeout(10000),
-      })
-      if (!res.ok) continue
-
-      const html = await res.text()
-      const cheerio = await import('cheerio')
-      const $ = cheerio.load(html)
-
-      const productUrls: string[] = []
-      // Blocked domains — not retailers
-      const blockedDomains = ['google.com', 'youtube.com', 'wikipedia.org', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'reddit.com', 'pinterest.com', 'tiktok.com']
-      $('a[href]').each((_, el) => {
-        const href = $(el).attr('href') || ''
-        const match = href.match(/\/url\?q=(https?:\/\/[^&]+)/)
-        if (match) {
-          const decoded = decodeURIComponent(match[1])
-          // Accept any retailer/shop URL from Google Shopping — only block social/info sites
-          const isBlocked = blockedDomains.some(d => decoded.includes(d))
-          if (!isBlocked && decoded.startsWith('http')) {
-            productUrls.push(decoded)
-          }
-        }
-      })
-
-      // Verify each URL actually loads before returning
-      for (const candidateUrl of productUrls.slice(0, 3)) {
-        if (isSearchOrCategoryUrl(candidateUrl)) continue
-        const verified = await verifyProductUrl(candidateUrl)
-        if (verified) {
-          let domain = ''
-          try { domain = new URL(verified).hostname } catch {}
-          cacheProductUrl(productName, verified, domain).catch(() => {})
-          return { url: verified, domain }
-        }
-      }
-    } catch {
-      continue
-    }
-  }
-
-  // Fallback: try direct Amazon search
+  // Use GPT-4o with web search to find real product URLs
   try {
-    const amazonUrl = `https://www.amazon.com/s?k=${query}`
-    const res = await fetch(amazonUrl, {
-      headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
-      signal: AbortSignal.timeout(10000),
-    })
-    if (res.ok) {
-      const html = await res.text()
-      const cheerio = await import('cheerio')
-      const $ = cheerio.load(html)
+    const { results } = await searchRetailers(productName, null, null)
 
-      let firstProductUrl: string | null = null
-      $('a[href*="/dp/"]').each((_, el) => {
-        if (firstProductUrl) return
-        const href = $(el).attr('href') || ''
-        if (href.includes('/dp/')) {
-          const dpMatch = href.match(/\/dp\/([A-Z0-9]{10})/)
-          if (dpMatch) {
-            firstProductUrl = `https://www.amazon.com/dp/${dpMatch[1]}`
-          }
-        }
-      })
+    for (const result of results.slice(0, 3)) {
+      if (isSearchOrCategoryUrl(result.url)) {
+        console.log(`[ProductSearch] Skipping search URL: ${result.url}`)
+        continue
+      }
 
-      if (firstProductUrl) {
-        const verified = await verifyProductUrl(firstProductUrl)
-        if (verified) {
-          cacheProductUrl(productName, verified, 'www.amazon.com').catch(() => {})
-          return { url: verified, domain: 'www.amazon.com' }
-        }
+      const verified = await verifyProductUrl(result.url)
+      if (verified) {
+        let domain = ''
+        try { domain = new URL(verified).hostname } catch {}
+        console.log(`[ProductSearch] Verified: "${productName}" → ${verified}`)
+        cacheProductUrl(productName, verified, domain, {
+          price: result.price,
+          priceValue: result.priceValue,
+        }).catch(() => {})
+        return { url: verified, domain }
+      } else {
+        console.log(`[ProductSearch] Failed verification: ${result.url}`)
       }
     }
-  } catch {}
+  } catch (err) {
+    console.error(`[ProductSearch] GPT-4o search failed:`, err)
+  }
 
   return null
 }
