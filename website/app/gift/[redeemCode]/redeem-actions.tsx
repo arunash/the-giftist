@@ -211,6 +211,15 @@ export function RedeemActions({
             </p>
           </div>
         )}
+
+        {/* Send a gift back CTA */}
+        <a
+          href={`/chat?q=${encodeURIComponent(`I want to send a thank-you gift to ${senderName}`)}`}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-rose-600 transition shadow-md shadow-pink-200/50"
+        >
+          <Gift className="h-4 w-4" />
+          Send a gift back to {senderName}
+        </a>
       </div>
     )
   }
