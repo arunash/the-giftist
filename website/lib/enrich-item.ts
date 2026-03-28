@@ -2,8 +2,62 @@ import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
+import crypto from 'crypto'
 
 const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+// Cache entries older than 7 days get re-verified
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function hashProductName(name: string): string {
+  return crypto.createHash('sha256').update(name.toLowerCase().trim()).digest('hex').slice(0, 32)
+}
+
+/** Check local cache for a verified product URL */
+async function getCachedProductUrl(productName: string): Promise<{ url: string; domain: string; price?: string | null; image?: string | null } | null> {
+  try {
+    const nameHash = hashProductName(productName)
+    const cached = await prisma.productUrlCache.findUnique({ where: { nameHash } })
+    if (!cached) return null
+
+    // Check if cache is still fresh
+    const age = Date.now() - cached.verifiedAt.getTime()
+    if (age > CACHE_TTL_MS) return null
+
+    return { url: cached.url, domain: cached.domain, price: cached.price, image: cached.image }
+  } catch {
+    return null
+  }
+}
+
+/** Store a verified product URL in the cache */
+async function cacheProductUrl(productName: string, url: string, domain: string, extra?: { price?: string | null; priceValue?: number | null; image?: string | null }): Promise<void> {
+  try {
+    const nameHash = hashProductName(productName)
+    await prisma.productUrlCache.upsert({
+      where: { nameHash },
+      create: {
+        productName: productName.toLowerCase().trim(),
+        nameHash,
+        url,
+        domain,
+        price: extra?.price || null,
+        priceValue: extra?.priceValue || null,
+        image: extra?.image || null,
+      },
+      update: {
+        url,
+        domain,
+        price: extra?.price || null,
+        priceValue: extra?.priceValue || null,
+        image: extra?.image || null,
+        verifiedAt: new Date(),
+      },
+    })
+  } catch (err) {
+    console.error('[ProductCache] Failed to cache:', err)
+  }
+}
 
 /**
  * Verify a product URL actually loads a valid page (not 404, not redirect to homepage/search).
@@ -54,8 +108,15 @@ export async function verifyProductUrl(url: string): Promise<string | null> {
   }
 }
 
-// Search Google Shopping + Amazon for a real product URL
+// Search Google Shopping + Amazon for a real product URL (with local cache)
 export async function findProductUrl(productName: string): Promise<{ url: string; domain: string } | null> {
+  // Check cache first
+  const cached = await getCachedProductUrl(productName)
+  if (cached) {
+    console.log(`[ProductCache] HIT: "${productName}" → ${cached.url}`)
+    return { url: cached.url, domain: cached.domain }
+  }
+
   const query = encodeURIComponent(productName)
 
   // Try Google Shopping first
@@ -99,6 +160,7 @@ export async function findProductUrl(productName: string): Promise<{ url: string
         if (verified) {
           let domain = ''
           try { domain = new URL(verified).hostname } catch {}
+          cacheProductUrl(productName, verified, domain).catch(() => {})
           return { url: verified, domain }
         }
       }
@@ -134,6 +196,7 @@ export async function findProductUrl(productName: string): Promise<{ url: string
       if (firstProductUrl) {
         const verified = await verifyProductUrl(firstProductUrl)
         if (verified) {
+          cacheProductUrl(productName, verified, 'www.amazon.com').catch(() => {})
           return { url: verified, domain: 'www.amazon.com' }
         }
       }

@@ -405,6 +405,22 @@ model ProductClick {
   @@index([createdAt])
 }
 
+model ProductUrlCache {
+  id          String   @id @default(cuid())
+  productName String   // normalized lowercase name used as lookup key
+  nameHash    String   @unique // hash of normalized name for fast lookups
+  url         String   // verified direct product page URL
+  domain      String
+  price       String?
+  priceValue  Float?
+  image       String?
+  verifiedAt  DateTime @default(now()) // when the URL was last verified
+  createdAt   DateTime @default(now())
+
+  @@index([nameHash])
+  @@index([verifiedAt])
+}
+
 model Feedback {
   id        String   @id @default(cuid())
   userId    String
