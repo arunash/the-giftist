@@ -187,7 +187,8 @@ function ProductPage() {
   }
 
   const fee = product.priceValue ? Math.round(product.priceValue * (product.priceValue >= 100 ? 0.10 : 0.15) * 100) / 100 : null
-  const total = product.priceValue && fee ? Math.round((product.priceValue + fee) * 100) / 100 : null
+  const shippingFee = 5.99
+  const total = product.priceValue && fee ? Math.round((product.priceValue + fee + shippingFee) * 100) / 100 : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -265,7 +266,7 @@ function ProductPage() {
               {!purchased && total && fee && (
                 <div className="text-center">
                   <p className="text-xs text-gray-400">
-                    {product.price} + ${fee.toFixed(2)} service fee
+                    {product.price} + ${fee.toFixed(2)} service fee + ${shippingFee.toFixed(2)} shipping
                   </p>
                   <p className="text-[10px] text-gray-300 mt-0.5">
                     Charges will appear as North Beach Technologies LLC
@@ -436,7 +437,7 @@ function ProductPage() {
               {total && fee && (
                 <div className="text-center">
                   <p className="text-xs text-gray-400">
-                    {product.price} + ${fee.toFixed(2)} service fee
+                    {product.price} + ${fee.toFixed(2)} service fee + ${shippingFee.toFixed(2)} shipping
                   </p>
                   <p className="text-[10px] text-gray-300">
                     Charges will appear as North Beach Technologies LLC

@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
 
   const amount = product.priceValue
   const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
-  const totalCharged = Math.round((amount + platformFee) * 100) / 100
+  const shippingFee = 5.99
+  const totalCharged = Math.round((amount + platformFee + shippingFee) * 100) / 100
 
   try {
     const { stripe } = await import('@/lib/stripe')
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         senderMessage: senderMessage || null,
         amount,
         platformFee,
+        shippingFee,
         totalCharged,
         redeemCode: crypto.randomBytes(16).toString('base64url'),
       },
@@ -85,6 +87,14 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: { name: 'Service fee' },
             unit_amount: Math.round(platformFee * 100),
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: 'Shipping' },
+            unit_amount: Math.round(shippingFee * 100),
           },
           quantity: 1,
         },

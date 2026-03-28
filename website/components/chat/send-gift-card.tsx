@@ -24,7 +24,8 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
 
   const amount = data.itemPrice
   const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
-  const total = Math.round((amount + platformFee) * 100) / 100
+  const shippingFee = 5.99
+  const total = Math.round((amount + platformFee + shippingFee) * 100) / 100
 
   const giftPayload = {
     recipientPhone: data.recipientPhone,
@@ -115,6 +116,10 @@ export function SendGiftCard({ data, autoExecute }: SendGiftCardProps) {
         <div className="flex justify-between">
           <span className="text-gray-500">Service fee</span>
           <span className="text-gray-500">${platformFee.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Shipping</span>
+          <span className="text-gray-500">${shippingFee.toFixed(2)}</span>
         </div>
         <div className="flex justify-between pt-1 border-t border-pink-200">
           <span className="font-semibold text-gray-900">Total</span>

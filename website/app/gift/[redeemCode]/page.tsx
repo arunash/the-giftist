@@ -43,6 +43,49 @@ export default async function GiftRedeemPage({
     )
   }
 
+  // Pending shipment — show status
+  if (gift.status === 'REDEEMED_PENDING_SHIPMENT' || gift.status === 'SHIPPED') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <GiftCardShell>
+            <GiftCardHeader redeemed />
+            <div className="px-6 py-8 text-center">
+              <div className="w-14 h-14 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Gift className="h-7 w-7 text-violet-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-2">
+                {gift.status === 'SHIPPED' ? 'Your gift has shipped!' : 'Your gift is being prepared!'}
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">
+                &ldquo;{gift.itemName}&rdquo; from {gift.sender.name || 'a friend'}
+                {gift.status === 'SHIPPED'
+                  ? ' is on its way to you.'
+                  : ' — we\'re ordering it now. You\'ll get tracking info by email.'}
+              </p>
+              {gift.trackingUrl && (
+                <a
+                  href={gift.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-violet-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-violet-600 transition"
+                >
+                  Track your package
+                </a>
+              )}
+              {gift.trackingNumber && !gift.trackingUrl && (
+                <p className="text-sm text-gray-600 font-mono bg-gray-50 rounded-lg px-4 py-2 inline-block">
+                  Tracking: {gift.trackingNumber}
+                </p>
+              )}
+            </div>
+            <GiftCardFooter />
+          </GiftCardShell>
+        </div>
+      </div>
+    )
+  }
+
   // Already redeemed (but allow retry if payout failed)
   if (gift.redeemedAt && gift.status !== 'REDEEMED_PENDING_REWARD') {
     return (

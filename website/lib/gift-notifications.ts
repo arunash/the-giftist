@@ -77,6 +77,7 @@ export async function sendGiftSendReceipt(giftSendId: string): Promise<void> {
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">To</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${recipientDisplay}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Amount</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${gift.amount.toFixed(2)}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Service fee</td><td style="padding: 4px 0; font-size: 13px; color: #666;">$${gift.platformFee.toFixed(2)}</td></tr>
+            ${gift.shippingFee > 0 ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Shipping</td><td style="padding: 4px 0; font-size: 13px; color: #666;">$${gift.shippingFee.toFixed(2)}</td></tr>` : ''}
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Total charged</td><td style="padding: 4px 0; font-size: 15px; font-weight: 700; color: #111;">$${gift.totalCharged.toFixed(2)}</td></tr>
             <tr><td style="padding: 4px 0; font-size: 13px; color: #666;">Date</td><td style="padding: 4px 0; font-size: 13px; color: #444;">${date}</td></tr>
           </table>
@@ -118,6 +119,9 @@ export async function sendGiftRedemptionReceipt(giftSendId: string, method: stri
   } else if (method === 'WALLET') {
     methodDesc = 'Giftist wallet'
     amountLine = `$${gift.amount.toFixed(2)} added to your Giftist wallet — withdraw to bank for free`
+  } else if (method === 'SHIP') {
+    methodDesc = 'Shipping'
+    amountLine = `"${gift.itemName}" will be shipped to your address`
   } else if (method === 'ITEM_CLICK') {
     amountLine = `You chose to buy "${gift.itemName}" directly`
   }

@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
 
   const amount = Math.round(itemPrice * 100) / 100
   const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
-  const totalCharged = Math.round((amount + platformFee) * 100) / 100
+  const shippingFee = 5.99
+  const totalCharged = Math.round((amount + platformFee + shippingFee) * 100) / 100
 
   const giftSend = await prisma.giftSend.create({
     data: {
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       senderMessage: senderMessage || null,
       amount,
       platformFee,
+      shippingFee,
       totalCharged,
       status: 'PENDING',
       redeemCode: crypto.randomBytes(16).toString('base64url'),

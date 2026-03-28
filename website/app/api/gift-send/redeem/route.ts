@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { redeemCode, method, paypalEmail, venmoPhone } = await request.json()
+  const { redeemCode, method, paypalEmail, venmoPhone, shippingName, shippingAddress, shippingCity, shippingState, shippingZip } = await request.json()
 
   if (!redeemCode || !method) {
     return NextResponse.json({ error: 'Missing redeemCode or method' }, { status: 400 })
@@ -236,6 +236,56 @@ export async function POST(request: NextRequest) {
     cancelGiftReminders(gift.id).catch(() => {})
 
     return NextResponse.json({ success: true, method: 'WALLET' })
+  }
+
+  if (method === 'SHIP') {
+    if (!shippingName || !shippingAddress || !shippingCity || !shippingState || !shippingZip) {
+      return NextResponse.json({ error: 'Missing shipping address' }, { status: 400 })
+    }
+
+    const updated = await prisma.giftSend.updateMany({
+      where: { id: gift.id, redeemedAt: null },
+      data: {
+        status: 'REDEEMED_PENDING_SHIPMENT',
+        redeemedAt: new Date(),
+        redemptionMethod: 'SHIP',
+        shippingName,
+        shippingAddress,
+        shippingCity,
+        shippingState,
+        shippingZip,
+      },
+    })
+    if (updated.count === 0) {
+      return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
+    }
+
+    // Notify sender
+    if (gift.sender.phone) {
+      smartWhatsAppSend(
+        gift.sender.phone,
+        `🎉 ${gift.recipientName || 'Your recipient'} just redeemed your gift "${gift.itemName}" and chose to have it shipped!`,
+        'gift_redeemed_sender',
+        [gift.recipientName || 'Your recipient', gift.itemName]
+      ).catch(() => {})
+    }
+    sendGiftRedemptionReceipt(gift.id, 'SHIP').catch(() => {})
+    cancelGiftReminders(gift.id).catch(() => {})
+
+    // Notify admin (you) to fulfill
+    const { sendEmail } = await import('@/lib/email')
+    sendEmail({
+      to: 'arunash@gmail.com',
+      subject: `🚚 Gift needs shipping: ${gift.itemName}`,
+      html: `<h2>New shipping request</h2>
+        <p><b>Item:</b> ${gift.itemName}</p>
+        <p><b>Item URL:</b> <a href="${gift.itemUrl}">${gift.itemUrl}</a></p>
+        <p><b>Amount available:</b> $${gift.amount.toFixed(2)}</p>
+        <p><b>Ship to:</b><br>${shippingName}<br>${shippingAddress}<br>${shippingCity}, ${shippingState} ${shippingZip}</p>
+        <p><b>Gift ID:</b> ${gift.id}</p>`,
+    }).catch(() => {})
+
+    return NextResponse.json({ success: true, method: 'SHIP' })
   }
 
   return NextResponse.json({ error: 'Invalid method' }, { status: 400 })

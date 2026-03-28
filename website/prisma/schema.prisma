@@ -492,12 +492,23 @@ model GiftSend {
   paypalOrderId       String?   @unique
   paypalCaptureId     String?
   paypalPayoutBatchId String?
+  shippingFee        Float     @default(0)
   status           String    @default("PENDING")
   redeemCode       String    @unique
   redeemedAt       DateTime?
   redemptionMethod   String?
   tremendousRewardId String?
   tremendousLink     String?
+  shippingName       String?
+  shippingAddress    String?
+  shippingCity       String?
+  shippingState      String?
+  shippingZip        String?
+  shippingCountry    String?   @default("US")
+  trackingNumber     String?
+  trackingUrl        String?
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
   createdAt          DateTime  @default(now())
   expiresAt        DateTime?
   sender           User      @relation("GiftsSent", fields: [senderId], references: [id])
