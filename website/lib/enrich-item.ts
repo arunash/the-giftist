@@ -60,11 +60,38 @@ async function cacheProductUrl(productName: string, url: string, domain: string,
   }
 }
 
+// Retailers that block server-side requests but work for real users.
+// Trust URLs from these domains if they have a valid product path pattern.
+const TRUSTED_RETAILERS: Record<string, RegExp> = {
+  'bestbuy.com': /\/(site|product)\/.+/,
+  'nordstrom.com': /\/s\/.+/,  // Nordstrom uses /s/ for product pages
+  'target.com': /\/p\/.+/,
+  'macys.com': /\/shop\/product\/.+/,
+  'walmart.com': /\/ip\/\d+/,  // Walmart product pages are /ip/{id}
+  'amazon.com': /\/dp\/[A-Z0-9]{10}/,
+}
+
+function isTrustedRetailerUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace('www.', '')
+    for (const [domain, pattern] of Object.entries(TRUSTED_RETAILERS)) {
+      if (host.includes(domain) && pattern.test(u.pathname)) return true
+    }
+    return false
+  } catch { return false }
+}
+
 /**
  * Verify a product URL actually loads a valid page (not 404, not redirect to homepage/search).
  * Returns the verified (possibly redirected) URL, or null if invalid.
  */
 export async function verifyProductUrl(url: string): Promise<string | null> {
+  // Some retailers block all server requests — trust them if URL pattern looks right
+  if (isTrustedRetailerUrl(url) && !isSearchOrCategoryUrl(url)) {
+    return url
+  }
+
   try {
     const res = await fetch(url, {
       method: 'HEAD',
@@ -84,10 +111,10 @@ export async function verifyProductUrl(url: string): Promise<string | null> {
       if (!getRes.ok) return null
       const finalUrl = getRes.url
       if (isSearchOrCategoryUrl(finalUrl)) return null
-      // Check if redirected to homepage
       try {
         const u = new URL(finalUrl)
         if (u.pathname === '/' || u.pathname === '') return null
+        if (u.pathname.includes('/blocked') || u.pathname.includes('/captcha') || u.pathname.includes('/robot')) return null
       } catch {}
       return finalUrl
     }
@@ -97,14 +124,17 @@ export async function verifyProductUrl(url: string): Promise<string | null> {
     const finalUrl = res.url
     if (isSearchOrCategoryUrl(finalUrl)) return null
 
-    // Check if redirected to homepage
     try {
       const u = new URL(finalUrl)
       if (u.pathname === '/' || u.pathname === '') return null
+      // Catch bot-block redirect pages (e.g. walmart.com/blocked)
+      if (u.pathname.includes('/blocked') || u.pathname.includes('/captcha') || u.pathname.includes('/robot')) return null
     } catch {}
 
     return finalUrl
   } catch {
+    // Connection refused / timeout — check if it's a known retailer with valid URL pattern
+    if (isTrustedRetailerUrl(url)) return url
     return null
   }
 }
