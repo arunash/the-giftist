@@ -1,3 +1,32 @@
+/** Returns true if a URL is a search results or category page rather than a direct product link */
+export function isSearchOrCategoryUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace('www.', '')
+
+    // Amazon search/category pages
+    if (host.includes('amazon.')) {
+      if (u.pathname.startsWith('/s') || u.searchParams.has('k') || u.pathname.includes('/b/') || u.pathname.includes('/b?')) return true
+      // Only allow /dp/ or /gp/product/ paths
+      if (!u.pathname.includes('/dp/') && !u.pathname.includes('/gp/product/')) return true
+    }
+
+    // Generic search page patterns
+    if (u.pathname.includes('/search') || u.pathname.includes('/s?') || u.searchParams.has('q') || u.searchParams.has('query') || u.searchParams.has('search')) {
+      return true
+    }
+
+    // Category pages (common patterns)
+    if (u.pathname.match(/\/category\//i) || u.pathname.match(/\/collections?\//i) || u.pathname.match(/\/shop\/?$/i)) {
+      return true
+    }
+
+    return false
+  } catch {
+    return false
+  }
+}
+
 export interface EventData {
   name: string
   type: string
@@ -225,7 +254,12 @@ export function parseChatContent(content: string): ChatSegment[] {
     try {
       const parsed = JSON.parse(block.raw)
       if (block.type === 'product') {
-        segments.push({ type: 'product', data: parsed as ProductData })
+        const product = parsed as ProductData
+        // Strip search/category URLs — only allow direct product page links
+        if (product.url && isSearchOrCategoryUrl(product.url)) {
+          product.url = undefined
+        }
+        segments.push({ type: 'product', data: product })
       } else if (block.type === 'event') {
         segments.push({ type: 'event', data: parsed as EventData })
       } else if (block.type === 'add_to_event') {

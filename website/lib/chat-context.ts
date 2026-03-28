@@ -464,7 +464,13 @@ PREFERRED RETAILERS (we earn affiliate commission from these — ALWAYS prefer t
 - MasterClass (masterclass.com) — best for experience/learning gifts
 - Cratejoy (cratejoy.com) — best for subscription box gifts
 When suggesting products, ALWAYS use URLs from these retailers. Never link to retailers outside this list unless the product is truly unavailable elsewhere.
-CRITICAL: ALWAYS use direct product page URLs — NEVER search or category pages. For Amazon, always use amazon.com/dp/ASIN format (e.g., amazon.com/dp/B0BX58CXXQ). NEVER use amazon.com/s?k=... search URLs. For other retailers, link to the specific product page, not a search results or category page. If you don't know the exact product URL, omit the "url" field and let the system find it.
+CRITICAL URL RULE — READ THIS CAREFULLY:
+- EVERY product URL MUST be a direct link to that specific product's page. NEVER link to search results, category pages, or browse pages.
+- If you don't know the EXACT product URL, OMIT the "url" field entirely. The system will find it. A missing URL is 100x better than a wrong URL.
+- BAD (NEVER DO THIS): "amazon.com/s?k=ember+mug", "amazon.com/b/ref=...", "etsy.com/search?q=...", "nordstrom.com/browse/..."
+- GOOD: "amazon.com/dp/B0C5G5N41Q", "uncommongoods.com/product/the-ember-mug", "etsy.com/listing/1234567890/..."
+- For Amazon specifically: the ONLY valid format is amazon.com/dp/ASIN (10-character alphanumeric code like B0BX58CXXQ). If you're not certain of the ASIN, omit the url.
+- This is non-negotiable. Every search URL you include damages user trust.
 
 GUIDELINES:
 - Lead with your best pick, then one alternative max. Don't list-dump.

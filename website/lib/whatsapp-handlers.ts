@@ -5,7 +5,7 @@ import { extractProductFromImage } from '@/lib/extract-image'
 import { searchRetailers } from '@/lib/search-retailers'
 import { downloadMedia, downloadDocument, sendTextMessage, sendImageMessage, normalizePhone } from '@/lib/whatsapp'
 import { buildChatContext, checkChatLimit } from '@/lib/chat-context'
-import { stripSpecialBlocks, parseChatContent, type EventData, type AddToEventData, type FeedbackData } from '@/lib/parse-chat-content'
+import { stripSpecialBlocks, parseChatContent, isSearchOrCategoryUrl, type EventData, type AddToEventData, type FeedbackData } from '@/lib/parse-chat-content'
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
@@ -1443,7 +1443,8 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
         let linkLine = ''
 
         // Resolve a real product URL if Claude didn't provide one
-        let targetUrl = p.url && !p.url.includes('google.com/search') ? p.url : null
+        // Strip search/category URLs — only allow direct product page links
+        let targetUrl = p.url && !isSearchOrCategoryUrl(p.url) ? p.url : null
         if (!targetUrl) {
           try {
             const found = await findProductUrl(p.name)
