@@ -6,7 +6,7 @@ import { smartWhatsAppSend, emailWrapper } from '@/lib/notifications'
 import { sendSms } from '@/lib/sms'
 import { sendEmail } from '@/lib/email'
 
-const ADMIN_EMAILS = ['arunash@gmail.com']
+const ADMIN_EMAILS = ['arunash@norbea.ch']
 
 // GET: list all gift orders that need fulfillment
 export async function GET() {

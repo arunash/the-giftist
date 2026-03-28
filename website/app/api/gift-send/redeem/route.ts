@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
     // Notify admin (you) to fulfill
     const { sendEmail } = await import('@/lib/email')
     sendEmail({
-      to: 'arunash@gmail.com',
+      to: 'arunash@norbea.ch',
       subject: `🚚 Gift needs shipping: ${gift.itemName}`,
       html: `<h2>New shipping request</h2>
         <p><b>Item:</b> ${gift.itemName}</p>

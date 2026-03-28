@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 
-const ADMIN_EMAIL = 'arunash@gmail.com'
+const ADMIN_EMAIL = 'arunash@norbea.ch'
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')

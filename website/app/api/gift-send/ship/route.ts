@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { emailWrapper } from '@/lib/notifications'
 
-const ADMIN_EMAILS = ['arunash@gmail.com']
+const ADMIN_EMAILS = ['arunash@norbea.ch']
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
