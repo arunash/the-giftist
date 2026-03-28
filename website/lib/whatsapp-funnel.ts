@@ -919,58 +919,58 @@ interface Holiday {
 function getHolidays(year: number): Holiday[] {
   return [
     // January
-    { name: "New Year's Day", month: 0, day: 1, message: "New Year's is coming up — I have some recommendations for gifts to kick off the year right: https://giftist.ai/c/new-year" },
-    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "MLK Day weekend is coming up — I have some recommendations for gifts for a teacher, mentor, or community leader: https://giftist.ai/c/mlk-day" },
+    { name: "New Year's Day", month: 0, day: 1, message: "Here are my top picks for New Year's gifts:\n\nRifle Paper Co. 2027 planner ($20), Theragun Mini massage gun ($50), Ember Temperature Control Mug ($100)\n\nWant something different? Tell me: https://giftist.ai/c/new-year" },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "Here are my top picks to honor a teacher, mentor, or community leader:\n\n\"The World According to MLK\" illustrated book ($20), Donation in their name + framed certificate ($50), MasterClass annual membership ($100)\n\nWant something different? Tell me: https://giftist.ai/c/mlk-day" },
 
     // February
-    { name: "Galentine's Day", month: 1, day: 13, message: "Galentine's Day is coming up — I have some recommendations for your best friend: https://giftist.ai/c/galentines" },
-    { name: "Valentine's Day", month: 1, day: 14, message: "Valentine's Day is 2 weeks away — I have some recommendations for your special someone: https://giftist.ai/c/valentines" },
-    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Lunar New Year is coming up — I have some recommendations for family gifts: https://giftist.ai/c/lunar-new-year" },
+    { name: "Galentine's Day", month: 1, day: 13, message: "Here are my top picks for your best friend:\n\nVoluspa mini candle trio ($20), Uncommon Goods friendship bracelet set ($50), Spa day gift card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/galentines" },
+    { name: "Valentine's Day", month: 1, day: 14, message: "Here are my top picks for your Valentine:\n\nCompartes chocolate truffle box ($20), Fleur & Bee skincare set ($50), Date night experience \u2014 cooking class for 2 ($100)\n\nWant something different? Tell me: https://giftist.ai/c/valentines" },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Here are my top picks for Lunar New Year:\n\nLucky red envelope set with gold foil ($20), Premium tea gift set ($50), Le Creuset mini cocotte in red ($100)\n\nWant something different? Tell me: https://giftist.ai/c/lunar-new-year" },
 
     // March
-    { name: "International Women's Day", month: 2, day: 8, message: "International Women's Day is coming up — I have some recommendations for the important women in your life: https://giftist.ai/c/womens-day" },
-    { name: "St. Patrick's Day", month: 2, day: 17, message: "St. Patrick's Day is coming up — I have some recommendations for host gifts: https://giftist.ai/c/st-patricks" },
+    { name: "International Women's Day", month: 2, day: 8, message: "Here are my top picks for the women in your life:\n\n\"Untamed\" by Glennon Doyle + bookmark set ($20), Anthropologie monogram mug + candle set ($50), Away packing cubes set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/womens-day" },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "Here are my top picks for St. Patrick's Day:\n\nJameson Irish Whiskey miniatures set ($20), Waterford crystal shamrock paperweight ($50), Redbreast 12-year Irish whiskey ($100)\n\nWant something different? Tell me: https://giftist.ai/c/st-patricks" },
 
     // April
-    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Easter is coming up — I have some recommendations for baskets, host gifts, and family: https://giftist.ai/c/easter" },
-    { name: 'Earth Day', month: 3, day: 22, message: "Earth Day is coming up — I have some recommendations for eco-friendly gifts: https://giftist.ai/c/earth-day" },
-    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Admin Professionals Day is coming up — I have some recommendations for a thoughtful thank-you: https://giftist.ai/c/admin-day" },
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Here are my top picks for Easter:\n\nGodiva chocolate Easter basket ($20), Williams Sonoma brunch board kit ($50), Le Creuset egg cup set + serving platter ($100)\n\nWant something different? Tell me: https://giftist.ai/c/easter" },
+    { name: 'Earth Day', month: 3, day: 22, message: "Here are my top picks for Earth Day:\n\nBee's Wrap reusable food wraps ($20), Hydro Flask insulated water bottle ($50), Patagonia recycled fleece jacket ($100)\n\nWant something different? Tell me: https://giftist.ai/c/earth-day" },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Here are my top picks for Admin Professionals Day:\n\nStarbucks gift card + handwritten note ($20), Moleskine leather notebook + pen set ($50), Apple AirTag + leather keychain set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/admin-day" },
 
     // May
-    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Mother's Day is 2 weeks away — I have some recommendations she'll actually love (not another candle): https://giftist.ai/c/mothers-day" },
-    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Cinco de Mayo is coming up — I have some recommendations for host gifts and celebration ideas: https://giftist.ai/c/cinco-de-mayo" },
-    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Teacher Appreciation Week is coming up — I have some recommendations your kid's teacher will love: https://giftist.ai/c/teacher" },
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Here are my top picks for Mom:\n\nFresh sugar lip treatment set ($20), Kendra Scott pendant necklace ($50), Dyson Airwrap attachment set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/mothers-day" },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Here are my top picks for Cinco de Mayo:\n\nTaj\u00edn margarita kit ($20), Hand-blown Mexican glass tumbler set ($50), Casamigos tequila + margarita mixer set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/cinco-de-mayo" },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Here are my top picks for your kid's teacher:\n\nAmazon gift card + handmade card ($20), Yeti tumbler + gourmet coffee set ($50), Apple Gift Card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/teacher" },
 
     // June
-    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Father's Day is 2 weeks away — I have some recommendations. Tell me about him and I'll personalize: https://giftist.ai/c/fathers-day" },
-    { name: 'Juneteenth', month: 5, day: 19, message: "Juneteenth is coming up — I have some recommendations for meaningful gifts and Black-owned businesses: https://giftist.ai/c/juneteenth" },
-    { name: 'Graduation Season', month: 5, day: 1, message: "It's graduation season — I have some recommendations for congratulations gifts: https://giftist.ai/c/graduation" },
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Here are my top picks for Dad:\n\nHanes comfort crew socks 6-pack ($20), Yeti Rambler 20oz tumbler ($50), Weber portable charcoal grill ($100)\n\nWant something different? Tell me: https://giftist.ai/c/fathers-day" },
+    { name: 'Juneteenth', month: 5, day: 19, message: "Here are my top picks for Juneteenth:\n\n\"The 1619 Project\" book ($20), McBride Sisters wine duo \u2014 Black-owned ($50), Harlem Candle Company luxury set \u2014 Black-owned ($100)\n\nWant something different? Tell me: https://giftist.ai/c/juneteenth" },
+    { name: 'Graduation Season', month: 5, day: 1, message: "Here are my top picks for a graduate:\n\n\"Oh, the Places You'll Go!\" + bookmark ($20), AirPods case + engraved keychain ($50), Away carry-on luggage tag set + gift card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/graduation" },
 
     // July
-    { name: 'Independence Day', month: 6, day: 4, message: "4th of July is coming up — I have some recommendations for host gifts and party essentials: https://giftist.ai/c/july-4th" },
+    { name: 'Independence Day', month: 6, day: 4, message: "Here are my top picks for 4th of July:\n\nStars & Stripes charcuterie board ($20), Igloo retro cooler ($50), Solo Stove Mesa tabletop fire pit ($100)\n\nWant something different? Tell me: https://giftist.ai/c/july-4th" },
 
     // August
-    { name: 'Back to School', month: 7, day: 15, message: "Back to school season is here — I have some recommendations for students and teachers: https://giftist.ai/c/back-to-school" },
-    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Friendship Day is this weekend — I have some recommendations to surprise your bestie: https://giftist.ai/c/friendship-day" },
+    { name: 'Back to School', month: 7, day: 15, message: "Here are my top picks for back to school:\n\nFjallraven Kanken pencil case ($20), JBL wireless earbuds ($50), Apple Pencil ($100)\n\nWant something different? Tell me: https://giftist.ai/c/back-to-school" },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Here are my top picks for your bestie:\n\nPolaroid film pack + mini photo album ($20), Uncommon Goods \"best friends\" print ($50), Aesop hand care duo set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/friendship-day" },
 
     // September
-    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Labor Day weekend is coming up — I have some recommendations to thank a hardworking person in your life: https://giftist.ai/c/labor-day" },
-    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Grandparents' Day is this Sunday — I have some recommendations they'll treasure: https://giftist.ai/c/grandparents-day" },
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Here are my top picks for Labor Day:\n\nBurt's Bees relaxation set ($20), Brooklinen luxe pillowcases ($50), Theragun Mini massage gun ($100)\n\nWant something different? Tell me: https://giftist.ai/c/labor-day" },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Here are my top picks for Grandma or Grandpa:\n\nPhoto calendar with family pictures ($20), Kindle Paperwhite case + ebook gift card ($50), Digital picture frame \u2014 Aura Carver ($100)\n\nWant something different? Tell me: https://giftist.ai/c/grandparents-day" },
 
     // October
-    { name: "Boss's Day", month: 9, day: 16, message: "Boss's Day is coming up — I have some recommendations for a tasteful gift: https://giftist.ai/c/boss-day" },
-    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Sweetest Day is this Saturday — I have some recommendations to surprise your partner: https://giftist.ai/c/sweetest-day" },
-    { name: 'Halloween', month: 9, day: 31, message: "Halloween is 2 weeks away — I have some recommendations for costumes, host gifts, and trick-or-treat goodies: https://giftist.ai/c/halloween" },
+    { name: "Boss's Day", month: 9, day: 16, message: "Here are my top picks for your boss:\n\nYeti wine tumbler ($20), Bellroy leather card holder ($50), Montblanc rollerball pen refill set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/boss-day" },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Here are my top picks for your partner:\n\nSugarfina candy bento box ($20), Jo Malone travel candle ($50), Diptyque candle + roses ($100)\n\nWant something different? Tell me: https://giftist.ai/c/sweetest-day" },
+    { name: 'Halloween', month: 9, day: 31, message: "Here are my top picks for Halloween:\n\nSpooky charcuterie board set ($20), Halloween movie night basket ($50), Pottery Barn Halloween throw + mug set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/halloween" },
 
     // November
-    { name: 'Veterans Day', month: 10, day: 11, message: "Veterans Day is coming up — I have some recommendations for a veteran or service member: https://giftist.ai/c/veterans-day" },
-    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Thanksgiving is 2 weeks away — I have some recommendations for host gifts and friendsgiving: https://giftist.ai/c/thanksgiving" },
-    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Black Friday is coming — I have some recommendations for the best gift deals: https://giftist.ai/c/black-friday" },
+    { name: 'Veterans Day', month: 10, day: 11, message: "Here are my top picks for a veteran:\n\nAmerican flag lapel pin + thank you card ($20), RTIC insulated tumbler + coffee set ($50), Garmin fitness tracker ($100)\n\nWant something different? Tell me: https://giftist.ai/c/veterans-day" },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Here are my top picks for the Thanksgiving host:\n\nYankee Candle autumn wreath ($20), Cheese board + artisan cheese set ($50), Staub ceramic baking dish ($100)\n\nWant something different? Tell me: https://giftist.ai/c/thanksgiving" },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Here are my top Black Friday gift deals:\n\nAmazonBasics portable charger ($20), Echo Dot 5th gen smart speaker ($50), Apple AirPods 3rd gen ($100)\n\nWant something different? Tell me: https://giftist.ai/c/black-friday" },
 
     // December
-    { name: 'Christmas', month: 11, day: 25, message: "Christmas is 2 weeks away — I have some recommendations. Tell me who you're shopping for: https://giftist.ai/c/christmas" },
-    { name: "New Year's Eve", month: 11, day: 31, message: "New Year's Eve is coming up — I have some recommendations for host gifts and party ideas: https://giftist.ai/c/nye" },
-    { name: 'Secret Santa Season', month: 11, day: 10, message: "Secret Santa season is here — I have some recommendations under $25. Tell me about the person: https://giftist.ai/c/secret-santa" },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "Here are my top picks for Secret Santa:\n\nBurt's Bees lip balm gift set ($20), Tile Mate Bluetooth tracker ($50), Sonos Roam portable speaker ($100)\n\nWant something different? Tell me: https://giftist.ai/c/secret-santa" },
+    { name: 'Christmas', month: 11, day: 25, message: "Here are my top picks for Christmas:\n\nRifle Paper Co. holiday candle ($20), Yeti Rambler wine tumbler set ($50), Kindle Paperwhite latest gen ($100)\n\nWant something different? Tell me: https://giftist.ai/c/christmas" },
+    { name: "New Year's Eve", month: 11, day: 31, message: "Here are my top picks for NYE:\n\nChampagne gummy bears + sparkler set ($20), Veuve Clicquot Brut champagne ($50), Cocktail making kit \u2014 shaker + glasses + recipes ($100)\n\nWant something different? Tell me: https://giftist.ai/c/nye" },
   ]
 }
 
@@ -1022,11 +1022,14 @@ export async function runSeasonalReminders() {
       let text: string
       let subject: string
       if (cadence.urgent) {
-        text = `Hey ${displayName}! ${holiday.name} is *tomorrow* — I have some last-minute recommendations ready for you. Tap here and I'll personalize them: ${ctaUrl}`
-        subject = `${holiday.name} is tomorrow — I have recommendations`
+        // Extract gift suggestions from the 2-week message for use in urgent version
+        const suggestionsMatch = holiday.message.match(/\n\n(.+)\n\n/)
+        const suggestions = suggestionsMatch ? suggestionsMatch[1] : ''
+        text = `Hey ${displayName}! ${holiday.name} is *tomorrow*:\n\n${suggestions}\n\nWant something different? Tell me: ${ctaUrl}`
+        subject = `${holiday.name} is tomorrow — here are my picks`
       } else {
         text = `Hey ${displayName}! ${holiday.message}`
-        subject = `${holiday.name} is coming up — need gift ideas?`
+        subject = `${holiday.name} is coming up — here are my picks`
       }
 
       const urgencyBanner = cadence.urgent
