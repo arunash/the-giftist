@@ -33,15 +33,15 @@ export async function searchRetailers(
       tools: [{ type: 'web_search_preview' as any }],
       input: `Find this product for sale online: "${searchQuery}"${descriptionHint}
 
-Search for it at major US retailers (Amazon, Target, Walmart, Best Buy, etc.) and find the best price.
+IMPORTANT: Always search Amazon FIRST (amazon.com). For Amazon, find the exact product page URL in the format https://www.amazon.com/dp/ASIN (e.g., https://www.amazon.com/dp/B09TMN58KL). Also check Target, Walmart, Best Buy for comparison.
 
 Return ONLY a JSON array of results you found, each with:
 - retailer: store name (e.g. "Amazon")
-- url: direct product page URL
+- url: direct product page URL (for Amazon, MUST be amazon.com/dp/ASIN format)
 - price: formatted price like "$29.99" (or null if not found)
 - priceValue: numeric price like 29.99 (or null)
 
-Example: [{"retailer":"Amazon","url":"https://amazon.com/dp/...","price":"$29.99","priceValue":29.99}]
+Example: [{"retailer":"Amazon","url":"https://www.amazon.com/dp/B09TMN58KL","price":"$29.99","priceValue":29.99}]
 
 If you cannot find the product at any retailer, return an empty array: []`,
     }, {
