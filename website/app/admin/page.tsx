@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2 } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -174,6 +174,172 @@ function SourceBar({ breakdown, total }: { breakdown: Record<string, number>; to
   )
 }
 
+interface FulfillmentOrder {
+  id: string; itemName: string; itemUrl: string | null; itemImage: string | null
+  amount: number; status: string; senderName: string | null; recipientName: string
+  recipientPhone: string; recipientEmail: string | null
+  shippingName: string | null; shippingAddress: string | null
+  shippingCity: string | null; shippingState: string | null; shippingZip: string | null
+  trackingNumber: string | null; trackingUrl: string | null
+  redeemedAt: string; shippedAt: string | null
+}
+
+function FulfillmentTable() {
+  const [orders, setOrders] = useState<FulfillmentOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [shipping, setShipping] = useState<string | null>(null)
+  const [shipForm, setShipForm] = useState<{ trackingNumber: string; trackingUrl: string; expectedDelivery: string }>({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
+
+  useEffect(() => {
+    fetch('/api/admin/fulfillment')
+      .then(r => r.json())
+      .then(setOrders)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleShip = async (orderId: string) => {
+    const res = await fetch('/api/admin/fulfillment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        giftSendId: orderId,
+        trackingNumber: shipForm.trackingNumber || undefined,
+        trackingUrl: shipForm.trackingUrl || undefined,
+        expectedDelivery: shipForm.expectedDelivery || undefined,
+      }),
+    })
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
+      setShipping(null)
+      setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
+    }
+  }
+
+  const pending = orders.filter(o => o.status === 'REDEEMED_PENDING_SHIPMENT')
+  const shipped = orders.filter(o => o.status === 'SHIPPED' || o.status === 'DELIVERED')
+
+  if (loading) return <div className="text-muted text-sm">Loading fulfillment orders...</div>
+  if (orders.length === 0) return <p className="text-muted text-sm">No shipping orders yet.</p>
+
+  return (
+    <div className="space-y-4">
+      {pending.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-2">
+          <Package className="h-4 w-4 text-amber-400" />
+          <span className="text-sm font-medium text-amber-300">{pending.length} order{pending.length > 1 ? 's' : ''} pending shipment</span>
+        </div>
+      )}
+
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
+              <th className="p-3 text-left text-xs text-muted font-medium">Ship to</th>
+              <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
+              <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
+              <th className="p-3 text-left text-xs text-muted font-medium">Redeemed</th>
+              <th className="p-3 text-left text-xs text-muted font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...pending, ...shipped].map(order => (
+              <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    {order.itemImage && <img src={order.itemImage} alt="" className="w-8 h-8 rounded object-cover" />}
+                    <div>
+                      <p className="font-medium text-xs">{order.itemName}</p>
+                      {order.itemUrl && (
+                        <a href={order.itemUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] flex items-center gap-0.5 hover:underline">
+                          <ExternalLink className="h-2.5 w-2.5" /> Buy link
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="p-3 text-xs text-muted">
+                  <p className="font-medium text-foreground">{order.shippingName}</p>
+                  <p>{order.shippingAddress}</p>
+                  <p>{order.shippingCity}, {order.shippingState} {order.shippingZip}</p>
+                </td>
+                <td className="p-3 text-xs font-medium">${order.amount.toFixed(2)}</td>
+                <td className="p-3">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    order.status === 'REDEEMED_PENDING_SHIPMENT' ? 'bg-amber-500/20 text-amber-400' :
+                    order.status === 'SHIPPED' ? 'bg-green-500/20 text-green-400' :
+                    'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {order.status === 'REDEEMED_PENDING_SHIPMENT' ? 'Pending' : order.status}
+                  </span>
+                </td>
+                <td className="p-3 text-xs text-muted">{new Date(order.redeemedAt).toLocaleDateString()}</td>
+                <td className="p-3">
+                  {order.status === 'REDEEMED_PENDING_SHIPMENT' ? (
+                    shipping === order.id ? (
+                      <div className="space-y-2 min-w-[200px]">
+                        <input
+                          type="text"
+                          placeholder="Tracking number"
+                          value={shipForm.trackingNumber}
+                          onChange={e => setShipForm(f => ({ ...f, trackingNumber: e.target.value }))}
+                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Tracking URL"
+                          value={shipForm.trackingUrl}
+                          onChange={e => setShipForm(f => ({ ...f, trackingUrl: e.target.value }))}
+                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
+                        />
+                        <input
+                          type="date"
+                          value={shipForm.expectedDelivery}
+                          onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
+                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
+                        />
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleShip(order.id)}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700"
+                          >
+                            <Truck className="h-3 w-3" /> Ship
+                          </button>
+                          <button
+                            onClick={() => setShipping(null)}
+                            className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs text-muted hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShipping(order.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700"
+                      >
+                        <Truck className="h-3 w-3" /> Mark shipped
+                      </button>
+                    )
+                  ) : (
+                    <span className="text-xs text-muted">
+                      {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
+                      {order.trackingUrl && (
+                        <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
+                      )}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -201,6 +367,15 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* Gift Fulfillment */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <Truck className="h-5 w-5 text-primary" />
+          Gift Fulfillment
+        </h2>
+        <FulfillmentTable />
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
