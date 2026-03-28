@@ -20,6 +20,7 @@ interface RedeemActionsProps {
   senderName: string
   isLoggedIn: boolean
   isPendingRetry?: boolean
+  recipientCountry?: string
 }
 
 export function RedeemActions({
@@ -30,17 +31,20 @@ export function RedeemActions({
   senderName,
   isLoggedIn,
   isPendingRetry,
+  recipientCountry = 'US',
 }: RedeemActionsProps) {
+  const isUS = recipientCountry === 'US'
+
   const [redeeming, setRedeeming] = useState(false)
   const [redeemMethod, setRedeemMethod] = useState<string | null>(null)
   const [redeemed, setRedeemed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Tab: 'cash' or 'ship'
-  const [mainTab, setMainTab] = useState<'cash' | 'ship'>('cash')
+  // Tab: 'cash' or 'ship' — international users only see cash
+  const [mainTab, setMainTab] = useState<'cash' | 'ship'>(isUS ? 'cash' : 'cash')
 
-  // PayPal/Venmo input
-  const [paypalTab, setPaypalTab] = useState<'PAYPAL' | 'VENMO'>('VENMO')
+  // PayPal/Venmo input — international users default to PayPal
+  const [paypalTab, setPaypalTab] = useState<'PAYPAL' | 'VENMO'>(isUS ? 'VENMO' : 'PAYPAL')
   const [paypalEmail, setPaypalEmail] = useState('')
   const [venmoPhone, setVenmoPhone] = useState('')
 
@@ -87,7 +91,7 @@ export function RedeemActions({
   }
 
   const handlePaypalRedeem = () => {
-    if (paypalTab === 'VENMO') {
+    if (paypalTab === 'VENMO' && isUS) {
       if (!venmoPhone.trim()) return
       handleRedeem('VENMO', { venmoPhone: venmoPhone.trim() })
     } else {
@@ -227,87 +231,91 @@ export function RedeemActions({
   if (!isLoggedIn) {
     return (
       <div className="space-y-3">
-        {/* Ship to me — no login required */}
-        <button
-          onClick={() => setMainTab('ship')}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
-        >
-          <Package className="h-5 w-5" />
-          Ship &ldquo;{itemName}&rdquo; to me
-        </button>
+        {/* Ship to me — US only, no login required */}
+        {isUS && (
+          <>
+            <button
+              onClick={() => setMainTab('ship')}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
+            >
+              <Package className="h-5 w-5" />
+              Ship &ldquo;{itemName}&rdquo; to me
+            </button>
 
-        {mainTab === 'ship' && (
-          <div className="border-2 border-violet-200 rounded-2xl p-4 space-y-3">
-            <p className="text-sm font-semibold text-gray-800">Shipping address</p>
-            <input
-              type="text"
-              value={shippingName}
-              onChange={(e) => setShippingName(e.target.value)}
-              placeholder="Full name"
-              className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-            />
-            <input
-              type="text"
-              value={shippingAddress}
-              onChange={(e) => setShippingAddress(e.target.value)}
-              placeholder="Street address"
-              className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={shippingCity}
-                onChange={(e) => setShippingCity(e.target.value)}
-                placeholder="City"
-                className="flex-1 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-              />
-              <input
-                type="text"
-                value={shippingState}
-                onChange={(e) => setShippingState(e.target.value)}
-                placeholder="State"
-                className="w-20 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-              />
-            </div>
-            <input
-              type="text"
-              value={shippingZip}
-              onChange={(e) => setShippingZip(e.target.value)}
-              placeholder="ZIP code"
-              className="w-32 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-            />
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <p className="text-sm text-red-600">{error}</p>
+            {mainTab === 'ship' && (
+              <div className="border-2 border-violet-200 rounded-2xl p-4 space-y-3">
+                <p className="text-sm font-semibold text-gray-800">Shipping address</p>
+                <input
+                  type="text"
+                  value={shippingName}
+                  onChange={(e) => setShippingName(e.target.value)}
+                  placeholder="Full name"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
+                />
+                <input
+                  type="text"
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="Street address"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={shippingCity}
+                    onChange={(e) => setShippingCity(e.target.value)}
+                    placeholder="City"
+                    className="flex-1 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={shippingState}
+                    onChange={(e) => setShippingState(e.target.value)}
+                    placeholder="State"
+                    className="w-20 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={shippingZip}
+                  onChange={(e) => setShippingZip(e.target.value)}
+                  placeholder="ZIP code"
+                  className="w-32 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
+                />
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+                <button
+                  onClick={handleShipRedeem}
+                  disabled={redeeming || !shippingFormValid}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50 disabled:opacity-50"
+                >
+                  {redeeming && redeemMethod === 'SHIP' ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Package className="h-5 w-5" />
+                  )}
+                  Ship it to me
+                </button>
               </div>
             )}
-            <button
-              onClick={handleShipRedeem}
-              disabled={redeeming || !shippingFormValid}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50 disabled:opacity-50"
-            >
-              {redeeming && redeemMethod === 'SHIP' ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Package className="h-5 w-5" />
-              )}
-              Ship it to me
-            </button>
-          </div>
-        )}
 
-        <div className="relative flex items-center gap-3 my-1">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-xs text-gray-400">or get the cash</span>
-          <div className="flex-1 border-t border-gray-200" />
-        </div>
+            <div className="relative flex items-center gap-3 my-1">
+              <div className="flex-1 border-t border-gray-200" />
+              <span className="text-xs text-gray-400">or get the cash</span>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+          </>
+        )}
 
         <a
           href={`/login?gift=${redeemCode}`}
-          className="w-full flex items-center justify-center gap-2 bg-white border-2 border-violet-200 text-violet-700 px-5 py-4 rounded-2xl font-semibold text-base hover:bg-violet-50 transition-all"
+          className={`w-full flex items-center justify-center gap-2 ${isUS ? 'bg-white border-2 border-violet-200 text-violet-700 hover:bg-violet-50' : 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-200/50'} px-5 py-4 rounded-2xl font-semibold text-base transition-all`}
         >
           <Zap className="h-5 w-5" />
-          Get ${(amount - 0.25).toFixed(2)} via Venmo / PayPal
+          Get ${(amount - 0.25).toFixed(2)} via {isUS ? 'Venmo / PayPal' : 'PayPal'}
         </a>
         <p className="text-xs text-gray-400 text-center">
           Sign up to redeem as cash ($0.25 processing fee)
@@ -331,34 +339,38 @@ export function RedeemActions({
         </div>
       )}
 
-      {/* Top-level tabs: Ship to me / Get cash */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-        <button
-          onClick={() => setMainTab('ship')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1.5 ${
-            mainTab === 'ship'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Package className="h-4 w-4" />
-          Ship to me
-        </button>
-        <button
-          onClick={() => setMainTab('cash')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1.5 ${
-            mainTab === 'cash'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Zap className="h-4 w-4" />
-          Get cash
-        </button>
-      </div>
+      {/* Top-level tabs: Ship to me / Get cash (Ship only for US) */}
+      {isUS ? (
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+          <button
+            onClick={() => setMainTab('ship')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1.5 ${
+              mainTab === 'ship'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Package className="h-4 w-4" />
+            Ship to me
+          </button>
+          <button
+            onClick={() => setMainTab('cash')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1.5 ${
+              mainTab === 'cash'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Get cash
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm font-semibold text-gray-800 text-center">Redeem your gift</p>
+      )}
 
-      {mainTab === 'ship' ? (
-        /* ─── Ship to me ─── */
+      {mainTab === 'ship' && isUS ? (
+        /* ─── Ship to me (US only) ─── */
         <div className="border-2 border-violet-200 rounded-2xl p-4 space-y-3">
           <p className="text-sm font-semibold text-gray-800 text-center">
             Get &ldquo;{itemName}&rdquo; shipped to you for free
@@ -421,31 +433,33 @@ export function RedeemActions({
           <div className="border-2 border-blue-200 rounded-2xl p-4 space-y-3">
             <p className="text-sm font-semibold text-gray-800 text-center">Get ${(amount - 0.25).toFixed(2)} sent to you instantly</p>
             <p className="text-[10px] text-gray-400 text-center -mt-2">$0.25 processing fee applies</p>
-            {/* Tabs */}
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-              <button
-                onClick={() => setPaypalTab('VENMO')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                  paypalTab === 'VENMO'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Venmo
-              </button>
-              <button
-                onClick={() => setPaypalTab('PAYPAL')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                  paypalTab === 'PAYPAL'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                PayPal
-              </button>
-            </div>
+            {/* Tabs — Venmo only shown for US */}
+            {isUS ? (
+              <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() => setPaypalTab('VENMO')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                    paypalTab === 'VENMO'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Venmo
+                </button>
+                <button
+                  onClick={() => setPaypalTab('PAYPAL')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                    paypalTab === 'PAYPAL'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  PayPal
+                </button>
+              </div>
+            ) : null}
 
-            {paypalTab === 'PAYPAL' ? (
+            {paypalTab === 'PAYPAL' || !isUS ? (
               <input
                 type="email"
                 value={paypalEmail}
