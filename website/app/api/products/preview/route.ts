@@ -60,13 +60,16 @@ export async function GET(request: NextRequest) {
       const found = await findProductUrl(name)
       if (found) {
         targetUrl = found.url
+        // Use real price from web search (more accurate than Claude's guess)
+        if (found.price) price = found.price
         // Try to scrape image from the found URL
         if (!image) {
           try {
             const product = await extractProductFromUrl(found.url)
             if (product.image) image = product.image
             if (product.name) productName = product.name
-            if (product.price) price = product.price
+            // Only use scraped price if web search didn't find one
+            if (!price && product.price) price = product.price
           } catch {}
         }
       }

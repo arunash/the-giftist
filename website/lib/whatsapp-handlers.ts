@@ -1439,8 +1439,8 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       let displayIdx = 0
       for (let i = 0; i < productSegments.length; i++) {
         const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
-        const price = p.price ? ` — ${p.price}` : ''
         let linkLine = ''
+        let resolvedPrice = p.price  // Will be overridden with real price if found
 
         // Resolve a real product URL if Claude didn't provide one
         // Strip search/category URLs — only allow direct product page links
@@ -1457,22 +1457,28 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
         if (!targetUrl) {
           try {
             const found = await findProductUrl(p.name)
-            if (found?.url) targetUrl = found.url  // already verified inside findProductUrl
+            if (found?.url) {
+              targetUrl = found.url  // already verified inside findProductUrl
+              // Use real price from web search instead of Claude's guess
+              if (found.price) resolvedPrice = found.price
+            }
           } catch {}
         }
+
+        const price = resolvedPrice ? ` — ${resolvedPrice}` : ''
 
         // Create Giftist product page link (landing page resolves images via 3-layer system)
         if (targetUrl) {
           try {
             let priceVal: number | null = null
-            if (p.price) {
-              const m = p.price.replace(/,/g, '').match(/[\d.]+/)
+            if (resolvedPrice) {
+              const m = resolvedPrice.replace(/,/g, '').match(/[\d.]+/)
               if (m) priceVal = parseFloat(m[0])
             }
             const trackedUrl = await createTrackedLink({
               productName: p.name,
               targetUrl,
-              price: p.price || null,
+              price: resolvedPrice || null,
               priceValue: priceVal,
               image: p.image || null,
               userId,
@@ -1501,21 +1507,23 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
               },
             })
             if (!existingItem) {
-              let priceValue: number | null = null
-              if (p.price) {
-                const match = p.price.replace(/,/g, '').match(/[\d.]+/)
-                if (match) priceValue = parseFloat(match[0])
+              // Use resolved price (from web search) instead of Claude's guess
+              let savePriceValue: number | null = null
+              const savePrice = resolvedPrice || p.price
+              if (savePrice) {
+                const match = savePrice.replace(/,/g, '').match(/[\d.]+/)
+                if (match) savePriceValue = parseFloat(match[0])
               }
 
-              const feeCalc = calculateGoalAmount(priceValue)
+              const feeCalc = calculateGoalAmount(savePriceValue)
               const newItem = await prisma.item.create({
                 data: {
                   userId,
                   name: p.name,
-                  price: p.price || null,
-                  priceValue,
-                  url: p.url || `https://www.google.com/search?q=${encodeURIComponent(p.name)}`,
-                  domain: p.url ? (() => { try { return new URL(p.url).hostname } catch { return 'unknown' } })() : 'google.com',
+                  price: savePrice || null,
+                  priceValue: savePriceValue,
+                  url: targetUrl || `https://www.google.com/search?q=${encodeURIComponent(p.name)}`,
+                  domain: targetUrl ? (() => { try { return new URL(targetUrl).hostname } catch { return 'unknown' } })() : 'google.com',
                   source: 'WHATSAPP_AI',
                   goalAmount: feeCalc.goalAmount,
                 },

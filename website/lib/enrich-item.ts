@@ -139,18 +139,25 @@ export async function verifyProductUrl(url: string): Promise<string | null> {
   }
 }
 
+export interface ProductUrlResult {
+  url: string
+  domain: string
+  price?: string | null
+  priceValue?: number | null
+}
+
 // Find a verified product URL using GPT-4o web search (with local cache)
-export async function findProductUrl(productName: string): Promise<{ url: string; domain: string } | null> {
+export async function findProductUrl(productName: string): Promise<ProductUrlResult | null> {
   // Check cache first
   const cached = await getCachedProductUrl(productName)
   if (cached) {
-    console.log(`[ProductCache] HIT: "${productName}" → ${cached.url}`)
-    return { url: cached.url, domain: cached.domain }
+    console.log(`[ProductCache] HIT: "${productName}" → ${cached.url} (${cached.price || 'no price'})`)
+    return { url: cached.url, domain: cached.domain, price: cached.price }
   }
 
   console.log(`[ProductSearch] Searching for: "${productName}"`)
 
-  // Use GPT-4o with web search to find real product URLs
+  // Use GPT-4o with web search to find real product URLs + current prices
   try {
     const { results } = await searchRetailers(productName, null, null)
 
@@ -164,12 +171,12 @@ export async function findProductUrl(productName: string): Promise<{ url: string
       if (verified) {
         let domain = ''
         try { domain = new URL(verified).hostname } catch {}
-        console.log(`[ProductSearch] Verified: "${productName}" → ${verified}`)
+        console.log(`[ProductSearch] Verified: "${productName}" → ${verified} (${result.price || 'no price'})`)
         cacheProductUrl(productName, verified, domain, {
           price: result.price,
           priceValue: result.priceValue,
         }).catch(() => {})
-        return { url: verified, domain }
+        return { url: verified, domain, price: result.price, priceValue: result.priceValue }
       } else {
         console.log(`[ProductSearch] Failed verification: ${result.url}`)
       }
@@ -197,16 +204,18 @@ export async function enrichItem(itemId: string, productName: string): Promise<b
       return false
     }
 
-    console.log(`[ENRICH] Found URL for "${productName}": ${found.url}`)
+    console.log(`[ENRICH] Found URL for "${productName}": ${found.url} (${found.price || 'no price'})`)
 
     let image: string | null = null
-    let price: string | null = null
-    let priceValue: number | null = null
+    // Prefer real price from web search over scraped price
+    let price: string | null = found.price || null
+    let priceValue: number | null = found.priceValue || null
 
     try {
       const scraped = await extractProductFromUrl(found.url)
       if (scraped.image) image = scraped.image
-      if (scraped.priceValue) {
+      // Only use scraped price if web search didn't find one
+      if (!price && scraped.priceValue) {
         price = scraped.price
         priceValue = scraped.priceValue
       }
