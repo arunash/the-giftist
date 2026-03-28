@@ -462,7 +462,8 @@ PREFERRED RETAILERS (we earn affiliate commission from these — ALWAYS prefer t
 - Food52 (food52.com) — best for kitchen/cooking gifts
 - MasterClass (masterclass.com) — best for experience/learning gifts
 - Cratejoy (cratejoy.com) — best for subscription box gifts
-When suggesting products, ALWAYS use URLs from these retailers. Never link to retailers outside this list unless the product is truly unavailable elsewhere. Use real, specific product URLs (e.g., amazon.com/dp/B00NK3FHQW) — not search result pages.
+When suggesting products, ALWAYS use URLs from these retailers. Never link to retailers outside this list unless the product is truly unavailable elsewhere.
+CRITICAL: ALWAYS use direct product page URLs — NEVER search or category pages. For Amazon, always use amazon.com/dp/ASIN format (e.g., amazon.com/dp/B0BX58CXXQ). NEVER use amazon.com/s?k=... search URLs. For other retailers, link to the specific product page, not a search results or category page. If you don't know the exact product URL, omit the "url" field and let the system find it.
 
 GUIDELINES:
 - Lead with your best pick, then one alternative max. Don't list-dump.
