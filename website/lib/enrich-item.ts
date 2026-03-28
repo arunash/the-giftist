@@ -1,8 +1,58 @@
 import { prisma } from '@/lib/db'
 import { extractProductFromUrl } from '@/lib/extract'
 import { calculateGoalAmount } from '@/lib/platform-fee'
+import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
 
 const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+/**
+ * Verify a product URL actually loads a valid page (not 404, not redirect to homepage/search).
+ * Returns the verified (possibly redirected) URL, or null if invalid.
+ */
+export async function verifyProductUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': BROWSER_UA },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+    })
+
+    // Some sites block HEAD, retry with GET
+    if (res.status === 405 || res.status === 403) {
+      const getRes = await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!getRes.ok) return null
+      const finalUrl = getRes.url
+      if (isSearchOrCategoryUrl(finalUrl)) return null
+      // Check if redirected to homepage
+      try {
+        const u = new URL(finalUrl)
+        if (u.pathname === '/' || u.pathname === '') return null
+      } catch {}
+      return finalUrl
+    }
+
+    if (!res.ok) return null
+
+    const finalUrl = res.url
+    if (isSearchOrCategoryUrl(finalUrl)) return null
+
+    // Check if redirected to homepage
+    try {
+      const u = new URL(finalUrl)
+      if (u.pathname === '/' || u.pathname === '') return null
+    } catch {}
+
+    return finalUrl
+  } catch {
+    return null
+  }
+}
 
 // Search Google Shopping + Amazon for a real product URL
 export async function findProductUrl(productName: string): Promise<{ url: string; domain: string } | null> {
@@ -42,11 +92,15 @@ export async function findProductUrl(productName: string): Promise<{ url: string
         }
       })
 
-      if (productUrls.length > 0) {
-        const url = productUrls[0]
-        let domain = ''
-        try { domain = new URL(url).hostname } catch {}
-        return { url, domain }
+      // Verify each URL actually loads before returning
+      for (const candidateUrl of productUrls.slice(0, 3)) {
+        if (isSearchOrCategoryUrl(candidateUrl)) continue
+        const verified = await verifyProductUrl(candidateUrl)
+        if (verified) {
+          let domain = ''
+          try { domain = new URL(verified).hostname } catch {}
+          return { url: verified, domain }
+        }
       }
     } catch {
       continue
@@ -78,7 +132,10 @@ export async function findProductUrl(productName: string): Promise<{ url: string
       })
 
       if (firstProductUrl) {
-        return { url: firstProductUrl, domain: 'www.amazon.com' }
+        const verified = await verifyProductUrl(firstProductUrl)
+        if (verified) {
+          return { url: verified, domain: 'www.amazon.com' }
+        }
       }
     }
   } catch {}

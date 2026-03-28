@@ -1444,11 +1444,20 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
 
         // Resolve a real product URL if Claude didn't provide one
         // Strip search/category URLs — only allow direct product page links
+        const { verifyProductUrl } = await import('@/lib/enrich-item')
         let targetUrl = p.url && !isSearchOrCategoryUrl(p.url) ? p.url : null
+
+        // Verify Claude-provided URL actually loads
+        if (targetUrl) {
+          const verified = await verifyProductUrl(targetUrl)
+          if (!verified) targetUrl = null
+        }
+
+        // Fallback: search for real URL if none provided or verification failed
         if (!targetUrl) {
           try {
             const found = await findProductUrl(p.name)
-            if (found?.url) targetUrl = found.url
+            if (found?.url) targetUrl = found.url  // already verified inside findProductUrl
           } catch {}
         }
 

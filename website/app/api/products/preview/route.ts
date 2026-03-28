@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractProductFromUrl } from '@/lib/extract'
 import { findProductImage } from '@/lib/product-image'
-import { findProductUrl } from '@/lib/enrich-item'
+import { findProductUrl, verifyProductUrl } from '@/lib/enrich-item'
 import { createTrackedLink } from '@/lib/product-link'
+import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -26,23 +27,27 @@ export async function GET(request: NextRequest) {
   let targetUrl: string | null = null
   let urlValid = false
 
-  // Try URL scraping first (existing flow)
+  // Try URL scraping first — but only if it's a direct product link
   if (url) {
     try {
       const parsed = new URL(url)
       if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
         return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
       }
-      // Skip google search fallback URLs
-      if (parsed.hostname !== 'www.google.com') {
-        try {
-          const product = await extractProductFromUrl(url)
-          image = product.image
-          productName = product.name
-          price = product.price
-          urlValid = true
-          targetUrl = url
-        } catch {}
+      // Skip search/category URLs entirely — they'll return wrong product data
+      if (!isSearchOrCategoryUrl(url)) {
+        // Verify the URL actually loads a product page
+        const verified = await verifyProductUrl(url)
+        if (verified) {
+          try {
+            const product = await extractProductFromUrl(verified)
+            image = product.image
+            productName = product.name
+            price = product.price
+            urlValid = true
+            targetUrl = verified
+          } catch {}
+        }
       }
     } catch {
       // Invalid URL — fall through to name-based search
