@@ -33,6 +33,15 @@ function ProductPage() {
   const [product, setProduct] = useState<ProductData | null>(null)
   const [loading, setLoading] = useState(true)
   const [buyingLoading, setBuyingLoading] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  // Check auth status
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(s => setIsLoggedIn(!!s?.user))
+      .catch(() => setIsLoggedIn(false))
+  }, [])
 
   // Pre-checkout: recipient info
   const [showRecipientModal, setShowRecipientModal] = useState(false)
@@ -75,7 +84,16 @@ function ProductPage() {
 
   const giftUrl = giftData ? `https://giftist.ai/gift/${giftData.redeemCode}` : ''
 
+  const requireAuth = () => {
+    if (!isLoggedIn) {
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
+      return true
+    }
+    return false
+  }
+
   const handleBuyClick = () => {
+    if (requireAuth()) return
     setShowRecipientModal(true)
   }
 
@@ -198,13 +216,16 @@ function ProductPage() {
           <Link href="/" className="text-lg font-bold text-gray-900">
             Giftist
           </Link>
-          <Link
-            href={`/chat?q=${encodeURIComponent(`Tell me more about "${product.productName}"`)}`}
+          <button
+            onClick={() => {
+              if (requireAuth()) return
+              window.location.href = `/chat?q=${encodeURIComponent(`Tell me more about "${product.productName}"`)}`
+            }}
             className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1"
           >
             <MessageCircle className="h-3.5 w-3.5" />
             Ask concierge
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -275,15 +296,16 @@ function ProductPage() {
               )}
 
               {/* View on retailer */}
-              <a
-                href={`/go-r/${slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => {
+                  if (requireAuth()) return
+                  window.open(`/go-r/${slug}`, '_blank')
+                }}
                 className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition"
               >
                 <ExternalLink className="h-4 w-4" />
                 View on {product.domain}
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -301,13 +323,16 @@ function ProductPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Get personalized advice, find similar items, or compare options.
                   </p>
-                  <Link
-                    href={`/chat?q=${encodeURIComponent(`I'm looking at "${product.productName}" (${product.price || 'no price'}). What do you think? Any similar alternatives?`)}`}
+                  <button
+                    onClick={() => {
+                      if (requireAuth()) return
+                      window.location.href = `/chat?q=${encodeURIComponent(`I'm looking at "${product.productName}" (${product.price || 'no price'}). What do you think? Any similar alternatives?`)}`
+                    }}
                     className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:text-primary-hover transition"
                   >
                     Chat with concierge
                     <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -325,15 +350,16 @@ function ProductPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Message our concierge to buy this gift or get it for someone special.
                   </p>
-                  <a
-                    href={`https://wa.me/15014438478?text=${encodeURIComponent(`I want to buy "${product.productName}" ${product.price || ''}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => {
+                      if (requireAuth()) return
+                      window.open(`https://wa.me/15014438478?text=${encodeURIComponent(`I want to buy "${product.productName}" ${product.price || ''}`)}`, '_blank')
+                    }}
                     className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-green-600 hover:text-green-700 transition"
                   >
                     Message on WhatsApp
                     <ArrowRight className="h-3 w-3" />
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

@@ -11,6 +11,7 @@ interface ContributeButtonProps {
   shareId: string
   ownerName?: string
   hasFee?: boolean
+  isLoggedIn?: boolean
 }
 
 export default function ContributeButton({
@@ -20,6 +21,7 @@ export default function ContributeButton({
   shareId,
   ownerName,
   hasFee,
+  isLoggedIn,
 }: ContributeButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -78,7 +80,13 @@ export default function ContributeButton({
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (!isLoggedIn) {
+            window.location.href = `/login?callbackUrl=${encodeURIComponent(`/u/${shareId}`)}`
+            return
+          }
+          setIsOpen(true)
+        }}
         className="flex-1 flex items-center justify-center gap-1 bg-primary text-white py-2 rounded-lg font-medium hover:bg-primary-hover transition"
       >
         <DollarSign className="h-4 w-4" />

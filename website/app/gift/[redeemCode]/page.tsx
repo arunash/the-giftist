@@ -45,8 +45,10 @@ export default async function GiftRedeemPage({
     )
   }
 
-  // Pending shipment — show status
+  // Pending shipment — show status (requires login to view tracking)
   if (gift.status === 'REDEEMED_PENDING_SHIPMENT' || gift.status === 'SHIPPED') {
+    const shipSession = await getServerSession(authOptions)
+    const shipLoggedIn = !!shipSession?.user
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
@@ -65,20 +67,31 @@ export default async function GiftRedeemPage({
                   ? ' is on its way to you.'
                   : ' — we\'re ordering it now. You\'ll get tracking info by email.'}
               </p>
-              {gift.trackingUrl && (
-                <a
-                  href={gift.trackingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {shipLoggedIn ? (
+                <>
+                  {gift.trackingUrl && (
+                    <a
+                      href={gift.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-violet-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-violet-600 transition"
+                    >
+                      Track your package
+                    </a>
+                  )}
+                  {gift.trackingNumber && !gift.trackingUrl && (
+                    <p className="text-sm text-gray-600 font-mono bg-gray-50 rounded-lg px-4 py-2 inline-block">
+                      Tracking: {gift.trackingNumber}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href={`/login?gift=${redeemCode}`}
                   className="inline-flex items-center gap-2 bg-violet-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-violet-600 transition"
                 >
-                  Track your package
-                </a>
-              )}
-              {gift.trackingNumber && !gift.trackingUrl && (
-                <p className="text-sm text-gray-600 font-mono bg-gray-50 rounded-lg px-4 py-2 inline-block">
-                  Tracking: {gift.trackingNumber}
-                </p>
+                  Sign in to view details
+                </Link>
               )}
             </div>
             <GiftCardFooter />

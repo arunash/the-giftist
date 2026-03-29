@@ -168,15 +168,19 @@ export function RedeemActions({
         )}
 
         {itemUrl && redeemMethod !== 'SHIP' && (
-          <a
-            href={itemUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => {
+              if (!isLoggedIn) {
+                window.location.href = `/login?gift=${redeemCode}`
+                return
+              }
+              window.open(itemUrl, '_blank')
+            }}
             className="w-full flex items-center justify-center gap-2 bg-white border-2 border-violet-200 text-violet-700 px-4 py-3 rounded-xl font-semibold text-sm hover:bg-violet-50 transition"
           >
             <ExternalLink className="h-4 w-4" />
             View the suggested item
-          </a>
+          </button>
         )}
 
         {!thankYouSent ? (
@@ -217,13 +221,19 @@ export function RedeemActions({
         )}
 
         {/* Send a gift back CTA */}
-        <a
-          href={`/chat?q=${encodeURIComponent(`I want to send a thank-you gift to ${senderName}`)}`}
+        <button
+          onClick={() => {
+            if (!isLoggedIn) {
+              window.location.href = `/login?gift=${redeemCode}`
+              return
+            }
+            window.location.href = `/chat?q=${encodeURIComponent(`I want to send a thank-you gift to ${senderName}`)}`
+          }}
           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-3 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-rose-600 transition shadow-md shadow-pink-200/50"
         >
           <Gift className="h-4 w-4" />
           Send a gift back to {senderName}
-        </a>
+        </button>
       </div>
     )
   }

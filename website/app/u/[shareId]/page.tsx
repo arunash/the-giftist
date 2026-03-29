@@ -5,10 +5,13 @@ import { prisma } from '@/lib/db'
 import { formatPrice, getProgressPercentage } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
 import { Gift } from 'lucide-react'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import ContributeButton from './ContributeButton'
 import ShareHeader from './ShareHeader'
 import ShareItemButton from './ShareItemButton'
 import ViewTracker from './ViewTracker'
+import AuthGatedLink from './AuthGatedLink'
 
 export async function generateMetadata({
   params,
@@ -50,6 +53,8 @@ export default async function SharedWishlistPage({
   searchParams: { event?: string }
 }) {
   const eventShareUrl = searchParams.event
+  const session = await getServerSession(authOptions)
+  const isLoggedIn = !!session?.user
 
   const user = await prisma.user.findUnique({
     where: { shareId: params.shareId },
@@ -176,6 +181,7 @@ export default async function SharedWishlistPage({
                 item={item}
                 shareId={params.shareId}
                 ownerName={user.name || 'Someone'}
+                isLoggedIn={isLoggedIn}
               />
             ))}
           </div>
@@ -185,7 +191,7 @@ export default async function SharedWishlistPage({
   )
 }
 
-function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ownerName: string }) {
+function ItemCard({ item, shareId, ownerName, isLoggedIn }: { item: any; shareId: string; ownerName: string; isLoggedIn: boolean }) {
   const goalAmount = item.goalAmount || item.priceValue || 0
   const progress = getProgressPercentage(item.fundedAmount, goalAmount)
   const remaining = Math.max(0, goalAmount - item.fundedAmount)
@@ -196,7 +202,7 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
   return (
     <div className="bg-surface rounded-xl overflow-hidden border border-border">
       {/* Image */}
-      <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="block relative h-48 bg-surface-hover">
+      <AuthGatedLink href={affiliateUrl} isLoggedIn={isLoggedIn} shareId={shareId} className="block relative h-48 bg-surface-hover">
         {item.image ? (
           <img
             src={item.image}
@@ -220,14 +226,14 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
             Fully Funded!
           </div>
         )}
-      </a>
+      </AuthGatedLink>
 
       {/* Content */}
       <div className="p-4">
         <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
-          <a href={affiliateUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <AuthGatedLink href={affiliateUrl} isLoggedIn={isLoggedIn} shareId={shareId} className="hover:underline">
             {item.name}
-          </a>
+          </AuthGatedLink>
         </h3>
         {goalAmount > 0 && (
           <>
@@ -303,6 +309,7 @@ function ItemCard({ item, shareId, ownerName }: { item: any; shareId: string; ow
               remaining={remaining}
               shareId={shareId}
               hasFee={!!(item.goalAmount && item.priceValue && item.goalAmount > item.priceValue)}
+              isLoggedIn={isLoggedIn}
             />
           )}
           <ShareItemButton itemId={item.id} ownerName={ownerName} />
