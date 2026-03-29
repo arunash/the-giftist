@@ -192,7 +192,10 @@ function FulfillmentTable() {
 
   useEffect(() => {
     fetch('/api/admin/fulfillment')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(setOrders)
       .catch(console.error)
       .finally(() => setLoading(false))

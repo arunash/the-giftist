@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { RedeemActions } from './redeem-actions'
+import { GiftPageClient } from './gift-page-client'
 
 export default async function GiftRedeemPage({
   params,
@@ -127,53 +128,55 @@ export default async function GiftRedeemPage({
   const recipientCountry = headersList.get('x-vercel-ip-country') || 'US'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <GiftCardShell>
-          <GiftCardHeader senderName={senderName} />
+    <GiftPageClient senderName={senderName} showReveal={!gift.redeemedAt}>
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <GiftCardShell>
+            <GiftCardHeader senderName={senderName} />
 
-          {/* Item details */}
-          <div className="px-6 py-6">
-            {gift.itemImage && (
-              <div className="w-full h-52 rounded-2xl overflow-hidden mb-5 bg-gray-50 border border-gray-100">
-                <img
-                  src={gift.itemImage}
-                  alt={gift.itemName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+            {/* Item details */}
+            <div className="px-6 py-6">
+              {gift.itemImage && (
+                <div className="w-full h-52 rounded-2xl overflow-hidden mb-5 bg-gray-50 border border-gray-100">
+                  <img
+                    src={gift.itemImage}
+                    alt={gift.itemName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
-            <h2 className="text-lg font-bold text-gray-900 mb-1">{gift.itemName}</h2>
-            <p className="text-2xl font-bold text-primary mb-4">
-              ${gift.amount.toFixed(2)}
-            </p>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{gift.itemName}</h2>
+              <p className="text-2xl font-bold text-primary mb-4">
+                ${gift.amount.toFixed(2)}
+              </p>
 
-            {gift.senderMessage && (
-              <div className="bg-violet-50 border-l-4 border-violet-300 rounded-r-xl px-4 py-3 mb-6">
-                <p className="text-sm text-gray-700 italic leading-relaxed">
-                  &ldquo;{gift.senderMessage}&rdquo;
-                </p>
-                <p className="text-xs text-gray-400 mt-1.5">&mdash; {senderName}</p>
-              </div>
-            )}
+              {gift.senderMessage && (
+                <div className="bg-violet-50 border-l-4 border-violet-300 rounded-r-xl px-4 py-3 mb-6">
+                  <p className="text-sm text-gray-700 italic leading-relaxed">
+                    &ldquo;{gift.senderMessage}&rdquo;
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1.5">&mdash; {senderName}</p>
+                </div>
+              )}
 
-            <RedeemActions
-              redeemCode={redeemCode}
-              itemUrl={gift.itemUrl}
-              itemName={gift.itemName}
-              amount={gift.amount}
-              senderName={senderName}
-              isLoggedIn={isLoggedIn}
-              isPendingRetry={gift.status === 'REDEEMED_PENDING_REWARD'}
-              recipientCountry={recipientCountry}
-            />
-          </div>
+              <RedeemActions
+                redeemCode={redeemCode}
+                itemUrl={gift.itemUrl}
+                itemName={gift.itemName}
+                amount={gift.amount}
+                senderName={senderName}
+                isLoggedIn={isLoggedIn}
+                isPendingRetry={gift.status === 'REDEEMED_PENDING_REWARD'}
+                recipientCountry={recipientCountry}
+              />
+            </div>
 
-          <GiftCardFooter />
-        </GiftCardShell>
+            <GiftCardFooter />
+          </GiftCardShell>
+        </div>
       </div>
-    </div>
+    </GiftPageClient>
   )
 }
 
