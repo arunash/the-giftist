@@ -85,6 +85,17 @@ export async function GET() {
     recentGiftSends,
     fulfillmentAggregates,
     fulfillmentDetails,
+    // Analytics
+    pageViewsTotal,
+    pageViewsToday,
+    pageViewsWeek,
+    pageViewsByPath,
+    pageViewsByReferrer,
+    pageViewsByUtmSource,
+    pageViewsByUtmCampaign,
+    uniqueSessionsToday,
+    uniqueSessionsWeek,
+    allProductClicks,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -304,6 +315,24 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' },
     }),
+    // Analytics queries
+    prisma.pageView.count(),
+    prisma.pageView.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.pageView.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.pageView.groupBy({ by: ['path'], _count: { id: true }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
+    prisma.pageView.groupBy({ by: ['referrer'], _count: { id: true }, where: { referrer: { not: null } }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
+    prisma.pageView.groupBy({ by: ['utmSource'], _count: { id: true }, where: { utmSource: { not: null } }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
+    prisma.pageView.groupBy({ by: ['utmCampaign'], _count: { id: true }, where: { utmCampaign: { not: null } }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
+    prisma.pageView.groupBy({ by: ['sessionId'], where: { createdAt: { gte: todayStart }, sessionId: { not: null } } }),
+    prisma.pageView.groupBy({ by: ['sessionId'], where: { createdAt: { gte: weekAgo }, sessionId: { not: null } } }),
+    prisma.productClick.findMany({
+      orderBy: { clicks: 'desc' },
+      select: {
+        id: true, slug: true, productName: true, targetUrl: true, price: true, priceValue: true,
+        image: true, userId: true, source: true, clicks: true, lastReferrer: true,
+        createdAt: true, lastClicked: true,
+      },
+    }),
   ])
 
   // Build costs map
@@ -509,6 +538,20 @@ export async function GET() {
       bufferedMessages: groupMessagesTotal,
       messagesToday: groupMessagesToday,
       profilesCreated: groupProfilesCreated,
+    },
+    analytics: {
+      pageViews: {
+        total: pageViewsTotal,
+        today: pageViewsToday,
+        week: pageViewsWeek,
+        uniqueSessionsToday: uniqueSessionsToday.length,
+        uniqueSessionsWeek: uniqueSessionsWeek.length,
+      },
+      topPages: (pageViewsByPath as any[]).map(p => ({ path: p.path, views: p._count.id })),
+      topReferrers: (pageViewsByReferrer as any[]).map(r => ({ referrer: r.referrer, views: r._count.id })),
+      topUtmSources: (pageViewsByUtmSource as any[]).map(u => ({ source: u.utmSource, views: u._count.id })),
+      topUtmCampaigns: (pageViewsByUtmCampaign as any[]).map(c => ({ campaign: c.utmCampaign, views: c._count.id })),
+      allProductClicks: allProductClicks as any[],
     },
     pnl: {
       totalRevenue: (fulfillmentAggregates as any)._sum?.platformFee || 0,

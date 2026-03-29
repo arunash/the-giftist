@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell, BarChart3, Link2 } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -94,6 +94,24 @@ interface Stats {
       id: string; itemName: string; amount: number; platformFee: number
       totalCharged: number; fulfillmentCost: number | null; status: string
       createdAt: string; senderName: string; stripeFee: number; netMargin: number
+    }>
+  }
+  productClicks: {
+    totalClicks: number
+    totalLinks: number
+    topClicked: Array<{ productName: string; clicks: number; source: string; targetUrl: string }>
+  }
+  analytics: {
+    pageViews: { total: number; today: number; week: number; uniqueSessionsToday: number; uniqueSessionsWeek: number }
+    topPages: Array<{ path: string; views: number }>
+    topReferrers: Array<{ referrer: string; views: number }>
+    topUtmSources: Array<{ source: string; views: number }>
+    topUtmCampaigns: Array<{ campaign: string; views: number }>
+    allProductClicks: Array<{
+      id: string; slug: string; productName: string; targetUrl: string
+      price: string | null; priceValue: number | null; image: string | null
+      userId: string | null; source: string; clicks: number; lastReferrer: string | null
+      createdAt: string; lastClicked: string | null
     }>
   }
 }
@@ -613,8 +631,151 @@ function PnLSection({ stats }: { stats: Stats }) {
   )
 }
 
+function AnalyticsSection({ stats }: { stats: Stats }) {
+  const a = stats.analytics
+  return (
+    <div className="space-y-6">
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard icon={BarChart3} label="Page Views" value={a.pageViews.total} sub={`+${a.pageViews.today} today · +${a.pageViews.week} this week`} />
+        <KpiCard icon={Users} label="Sessions Today" value={a.pageViews.uniqueSessionsToday} sub={`${a.pageViews.uniqueSessionsWeek} this week`} />
+        <KpiCard icon={Globe} label="Product Links" value={stats.productClicks.totalLinks} sub={`${stats.productClicks.totalClicks} total clicks`} />
+        <KpiCard icon={Users} label="Users" value={stats.users.total} sub={`+${stats.users.newToday} today`} />
+        <KpiCard icon={Link2} label="Top Clicked" value={stats.productClicks.topClicked?.[0]?.clicks || 0} sub={stats.productClicks.topClicked?.[0]?.productName || '—'} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Top Pages */}
+        <div className="bg-surface rounded-xl border border-border">
+          <h3 className="text-sm font-medium p-4 border-b border-border flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Top Pages
+          </h3>
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {a.topPages.map(p => (
+              <div key={p.path} className="flex justify-between items-center px-4 py-2.5 text-sm">
+                <span className="text-muted truncate max-w-[70%]">{p.path}</span>
+                <span className="font-medium">{p.views}</span>
+              </div>
+            ))}
+            {a.topPages.length === 0 && <p className="p-4 text-sm text-muted text-center">No page views yet.</p>}
+          </div>
+        </div>
+
+        {/* Top Referrers */}
+        <div className="bg-surface rounded-xl border border-border">
+          <h3 className="text-sm font-medium p-4 border-b border-border flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" /> Top Referrers
+          </h3>
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {a.topReferrers.map(r => (
+              <div key={r.referrer} className="flex justify-between items-center px-4 py-2.5 text-sm">
+                <span className="text-muted truncate max-w-[70%]">{r.referrer}</span>
+                <span className="font-medium">{r.views}</span>
+              </div>
+            ))}
+            {a.topReferrers.length === 0 && <p className="p-4 text-sm text-muted text-center">No referrer data yet.</p>}
+          </div>
+        </div>
+
+        {/* UTM Sources */}
+        <div className="bg-surface rounded-xl border border-border">
+          <h3 className="text-sm font-medium p-4 border-b border-border flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" /> UTM Sources
+          </h3>
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {a.topUtmSources.map(u => (
+              <div key={u.source} className="flex justify-between items-center px-4 py-2.5 text-sm">
+                <span className="text-muted">{u.source}</span>
+                <span className="font-medium">{u.views}</span>
+              </div>
+            ))}
+            {a.topUtmSources.length === 0 && <p className="p-4 text-sm text-muted text-center">No UTM data yet.</p>}
+          </div>
+        </div>
+
+        {/* UTM Campaigns */}
+        <div className="bg-surface rounded-xl border border-border">
+          <h3 className="text-sm font-medium p-4 border-b border-border flex items-center gap-2">
+            <Send className="h-4 w-4 text-primary" /> UTM Campaigns
+          </h3>
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {a.topUtmCampaigns.map(c => (
+              <div key={c.campaign} className="flex justify-between items-center px-4 py-2.5 text-sm">
+                <span className="text-muted">{c.campaign}</span>
+                <span className="font-medium">{c.views}</span>
+              </div>
+            ))}
+            {a.topUtmCampaigns.length === 0 && <p className="p-4 text-sm text-muted text-center">No campaign data yet.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProductLinksSection({ stats }: { stats: Stats }) {
+  const links = stats.analytics.allProductClicks
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard icon={Link2} label="Total Links" value={links.length} />
+        <KpiCard icon={BarChart3} label="Total Clicks" value={links.reduce((s, l) => s + l.clicks, 0)} />
+        <KpiCard icon={Globe} label="With Clicks" value={links.filter(l => l.clicks > 0).length} sub={`${links.filter(l => l.clicks === 0).length} never clicked`} />
+        <KpiCard icon={Zap} label="Sources" value={[...new Set(links.map(l => l.source))].join(', ') || '—'} />
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted">
+              <th className="p-3">Product</th>
+              <th className="p-3">Source</th>
+              <th className="p-3 text-right">Price</th>
+              <th className="p-3 text-right">Clicks</th>
+              <th className="p-3">Last Referrer</th>
+              <th className="p-3">Last Clicked</th>
+              <th className="p-3">Created</th>
+              <th className="p-3">Link</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {links.map(link => (
+              <tr key={link.id} className="hover:bg-background/50">
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    {link.image && (
+                      <img src={link.image} alt="" className="w-8 h-8 rounded object-cover" />
+                    )}
+                    <span className="truncate max-w-[200px]">{link.productName}</span>
+                  </div>
+                </td>
+                <td className="p-3"><SourceBadge source={link.source} /></td>
+                <td className="p-3 text-right">{link.price || '—'}</td>
+                <td className="p-3 text-right font-medium">{link.clicks}</td>
+                <td className="p-3 text-xs text-muted truncate max-w-[150px]">{link.lastReferrer || '—'}</td>
+                <td className="p-3 text-xs text-muted">{link.lastClicked ? new Date(link.lastClicked).toLocaleDateString() : '—'}</td>
+                <td className="p-3 text-xs text-muted">{new Date(link.createdAt).toLocaleDateString()}</td>
+                <td className="p-3">
+                  <a href={link.targetUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </td>
+              </tr>
+            ))}
+            {links.length === 0 && (
+              <tr><td colSpan={8} className="p-6 text-center text-muted">No product links yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl'>('dashboard')
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links'>('dashboard')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -664,6 +825,24 @@ export default function AdminDashboard() {
           <DollarSign className="h-3.5 w-3.5" />
           P&L
         </button>
+        <button
+          onClick={() => setAdminTab('analytics')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'analytics' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          Analytics
+        </button>
+        <button
+          onClick={() => setAdminTab('product-links')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'product-links' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <Link2 className="h-3.5 w-3.5" />
+          Product Links
+        </button>
       </div>
 
       {adminTab === 'fulfillment' ? (
@@ -675,6 +854,26 @@ export default function AdminDashboard() {
           </div>
         ) : stats ? (
           <PnLSection stats={stats} />
+        ) : (
+          <p className="text-muted">Failed to load stats.</p>
+        )
+      ) : adminTab === 'analytics' ? (
+        loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          </div>
+        ) : stats ? (
+          <AnalyticsSection stats={stats} />
+        ) : (
+          <p className="text-muted">Failed to load stats.</p>
+        )
+      ) : adminTab === 'product-links' ? (
+        loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          </div>
+        ) : stats ? (
+          <ProductLinksSection stats={stats} />
         ) : (
           <p className="text-muted">Failed to load stats.</p>
         )

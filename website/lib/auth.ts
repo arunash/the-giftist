@@ -102,6 +102,23 @@ const adapter = {
     createDefaultEventsForUser(created.id).catch(() => {})
     // Fire-and-forget: welcome notification
     notifyWelcome(created.id, created.email, created.phone, created.name).catch(() => {})
+    // Fire-and-forget: capture UTM params from recent anonymous page views
+    prisma.pageView.findFirst({
+      where: { userId: null, utmSource: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    }).then(pv => {
+      if (pv) {
+        prisma.user.update({
+          where: { id: created.id },
+          data: {
+            utmSource: pv.utmSource,
+            utmMedium: pv.utmMedium,
+            utmCampaign: pv.utmCampaign,
+            signupReferrer: pv.referrer,
+          },
+        }).catch(() => {})
+      }
+    }).catch(() => {})
     return created
   },
 }

@@ -44,6 +44,10 @@ model User {
   suspendedAt                   DateTime?
   suspendedReason               String?
   funnelStage                   String?
+  utmSource                     String?
+  utmMedium                     String?
+  utmCampaign                   String?
+  signupReferrer                String?
   accounts                      Account[]
   activityEvents                ActivityEvent[]
   chatMessages                  ChatMessage[]
@@ -398,11 +402,30 @@ model ProductClick {
   userId      String?
   source      String   @default("WEB") // WEB, WHATSAPP, CHAT
   clicks      Int      @default(0)
+  lastReferrer String?
   createdAt   DateTime @default(now())
   lastClicked DateTime?
 
   @@index([slug])
   @@index([createdAt])
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  referrer  String?
+  utmSource String?
+  utmMedium String?
+  utmCampaign String?
+  userAgent String?
+  ip        String?
+  userId    String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([utmSource])
 }
 
 model ProductUrlCache {

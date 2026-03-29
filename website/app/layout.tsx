@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
+import { Suspense } from 'react'
 import { Providers } from './providers'
 import { CookieConsent } from '@/components/ui/cookie-consent'
+import { PageTracker } from '@/components/analytics/page-tracker'
 
 const dmSans = DM_Sans({ subsets: ['latin'] })
 
@@ -74,6 +76,7 @@ export default function RootLayout({
       </head>
       <body className={dmSans.className}>
         <Providers>{children}</Providers>
+        <Suspense fallback={null}><PageTracker /></Suspense>
         <CookieConsent />
       </body>
     </html>

@@ -23,6 +23,17 @@ export async function GET(
       return NextResponse.redirect(new URL('/', request.url))
     }
 
+    // Track click + referrer
+    const referrer = request.headers.get('referer') || null
+    prisma.productClick.update({
+      where: { slug },
+      data: {
+        clicks: { increment: 1 },
+        lastClicked: new Date(),
+        lastReferrer: referrer,
+      },
+    }).catch(() => {})
+
     const affiliateUrl = applyAffiliateTag(cleanUrl)
 
     return new Response(null, {
