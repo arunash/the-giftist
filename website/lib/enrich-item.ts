@@ -194,7 +194,8 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
             }
           } catch {}
         } else {
-          // For trusted retailers (block server requests), do a quick stock check via fetch
+          // For trusted retailers, only check structured data (JSON-LD / schema.org)
+          // Don't scan full HTML — retailers have "out of stock" text for variants, delivery options, etc.
           try {
             const res = await fetch(verified, {
               headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
@@ -203,16 +204,14 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
             if (res.ok) {
               const html = await res.text()
               const lower = html.toLowerCase()
-              // Check for prominent out-of-stock indicators
+              // Only check structured data signals, NOT body text (too many false positives)
               if (
-                lower.includes('out of stock') ||
-                lower.includes('currently unavailable') ||
-                lower.includes('sold out') ||
                 lower.includes('"availability":"outofstock"') ||
                 lower.includes('"availability":"out_of_stock"') ||
-                lower.includes('schema.org/OutOfStock')
+                lower.includes('"availability":"https://schema.org/outofstock"') ||
+                lower.includes('schema.org/outofstock')
               ) {
-                console.log(`[ProductSearch] Out of stock: ${verified}`)
+                console.log(`[ProductSearch] Out of stock (schema): ${verified}`)
                 stockOk = false
               }
             }

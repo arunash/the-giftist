@@ -49,20 +49,57 @@ function titleMatchesProduct(title: string, searchName: string): boolean {
   return matchRatio >= 0.5
 }
 
+/** Try to extract URLs from markdown-formatted text when JSON parsing fails */
+function extractFromMarkdown(text: string, productName: string): RetailerResult[] {
+  const results: RetailerResult[] = []
+  // Match markdown links: [text](url) or plain URLs
+  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(?:^|\s)(https?:\/\/(?:www\.)?(?:amazon|walmart|target|bestbuy)\.[^\s]+)/gmi
+  let match
+  while ((match = linkRegex.exec(text)) !== null) {
+    const label = match[1] || ''
+    const url = (match[2] || match[3] || '').replace(/[).,;]+$/, '')
+    if (!url) continue
+
+    let retailer = ''
+    if (url.includes('amazon.')) retailer = 'Amazon'
+    else if (url.includes('walmart.')) retailer = 'Walmart'
+    else if (url.includes('target.')) retailer = 'Target'
+    else if (url.includes('bestbuy.')) retailer = 'Best Buy'
+    else continue
+
+    // Extract price from surrounding text
+    const priceMatch = text.slice(Math.max(0, (match.index || 0) - 50), (match.index || 0) + match[0].length + 50).match(/\$(\d+(?:\.\d{2})?)/)
+    const priceValue = priceMatch ? parseFloat(priceMatch[1]) : null
+
+    results.push({
+      retailer,
+      url,
+      title: label || null,
+      price: priceValue ? `$${priceValue.toFixed(2)}` : null,
+      priceValue,
+    })
+  }
+
+  return results.filter(r => {
+    if (r.title && !titleMatchesProduct(r.title, productName)) return false
+    return true
+  })
+}
+
 function parseAndValidateResults(text: string, productName: string): RetailerResult[] {
   // Match JSON arrays starting with [{ — avoids matching markdown links like [text](url)
   const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/)
   if (!jsonMatch) {
-    console.log(`[RetailerSearch] No JSON array found for "${productName}". Raw text: ${text.slice(0, 200)}`)
-    return []
+    console.log(`[RetailerSearch] No JSON array found for "${productName}". Trying markdown extraction. Raw: ${text.slice(0, 200)}`)
+    return extractFromMarkdown(text, productName)
   }
 
   let parsed: RetailerResult[]
   try {
     parsed = JSON.parse(jsonMatch[0])
   } catch {
-    console.log(`[RetailerSearch] JSON parse failed for "${productName}". Matched: ${jsonMatch[0].slice(0, 200)}`)
-    return []
+    console.log(`[RetailerSearch] JSON parse failed for "${productName}". Trying markdown extraction. Matched: ${jsonMatch[0].slice(0, 200)}`)
+    return extractFromMarkdown(text, productName)
   }
   if (!Array.isArray(parsed) || parsed.length === 0) return []
 
@@ -91,7 +128,9 @@ CRITICAL RULES:
 2. Product MUST be IN STOCK and available to buy right now. Do NOT include out-of-stock, discontinued, or "currently unavailable" products.
 3. URL must go to a direct product page, not a search results page.
 
-Search Amazon, Target, Walmart, and Best Buy. For Amazon, the URL MUST be in amazon.com/dp/ASIN format.
+PRIORITY ORDER: Search Amazon FIRST, then Target, Walmart, and Best Buy. Amazon is the most important — always include an Amazon result if the product exists there.
+
+For Amazon, the URL MUST be in https://www.amazon.com/dp/ASIN format (10-character alphanumeric ASIN). Example: https://www.amazon.com/dp/B0C9S7Y9FN
 
 For EACH result, you MUST include the "title" field — the exact product title as shown on the retailer's page. This is used to verify you found the right product.
 
@@ -107,11 +146,23 @@ Fields:
 
 If you cannot find the EXACT product IN STOCK at a retailer, omit that retailer. If you cannot find it anywhere in stock, return [].`
 
+const AMAZON_SEARCH_PROMPT = (searchQuery: string) => `Find this SPECIFIC product on Amazon.com: "${searchQuery}"
+
+I need the EXACT Amazon product page URL in this format: https://www.amazon.com/dp/ASIN
+The ASIN is a 10-character alphanumeric code (e.g., B0C9S7Y9FN).
+
+The product MUST be in stock and available for purchase right now.
+
+Return ONLY a raw JSON array with NO other text:
+[{"retailer":"Amazon","url":"https://www.amazon.com/dp/B0XXXXXXXXX","title":"exact product title from the page","price":"$XX.XX","priceValue":XX.XX}]
+
+If you cannot find the exact product on Amazon, return [].`
+
 /** Search using Perplexity Sonar (better at returning real URLs with citations) */
 async function searchWithPerplexity(
   productName: string,
-  searchQuery: string,
-  descriptionHint: string,
+  prompt: string,
+  label: string = 'general',
 ): Promise<RetailerResult[]> {
   const client = getPerplexity()
   if (!client) return []
@@ -121,7 +172,7 @@ async function searchWithPerplexity(
       model: 'sonar',
       messages: [
         { role: 'system', content: 'You are a product search assistant. Return only raw JSON arrays, no markdown or explanation.' },
-        { role: 'user', content: RETAILER_SEARCH_PROMPT(searchQuery, descriptionHint) },
+        { role: 'user', content: prompt },
       ],
     })
 
@@ -137,11 +188,11 @@ async function searchWithPerplexity(
 
     const results = parseAndValidateResults(text, productName)
     if (results.length > 0) {
-      console.log(`[RetailerSearch] Perplexity found ${results.length} results for "${productName}"`)
+      console.log(`[RetailerSearch] Perplexity (${label}) found ${results.length} results for "${productName}"`)
     }
     return results
   } catch (error) {
-    console.log(`[RetailerSearch] Perplexity search failed for "${productName}":`, error)
+    console.log(`[RetailerSearch] Perplexity (${label}) search failed for "${productName}":`, error)
     return []
   }
 }
@@ -194,15 +245,34 @@ export async function searchRetailers(
 
   try {
     // Try Perplexity first (better at returning real product URLs), fall back to GPT-4o
-    let results = await searchWithPerplexity(productName, searchQuery, descriptionHint)
+    let results = await searchWithPerplexity(
+      productName,
+      RETAILER_SEARCH_PROMPT(searchQuery, descriptionHint),
+      'general',
+    )
     if (results.length === 0) {
       results = await searchWithGPT4o(productName, searchQuery, descriptionHint)
+    }
+
+    // If no Amazon result found, do a targeted Amazon-only search via Perplexity
+    const hasAmazon = results.some(r => r.url.includes('amazon.com/dp/'))
+    if (!hasAmazon) {
+      console.log(`[RetailerSearch] No Amazon result — running targeted Amazon search for "${productName}"`)
+      const amazonResults = await searchWithPerplexity(
+        productName,
+        AMAZON_SEARCH_PROMPT(searchQuery),
+        'amazon',
+      )
+      if (amazonResults.length > 0) {
+        // Prepend Amazon results
+        results = [...amazonResults.filter(r => r.url.includes('amazon.com')), ...results]
+      }
     }
 
     if (results.length === 0) return { results: [], bestResult: null }
 
     // Pick lowest price as best result
-    const withPrice = results.filter((r) => r.priceValue !== null)
+    const withPrice = results.filter((r) => r.priceValue !== null && r.priceValue > 0)
     const bestResult = withPrice.length > 0
       ? withPrice.reduce((best, r) => (r.priceValue! < best.priceValue! ? r : best))
       : results[0] || null
