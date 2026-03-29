@@ -239,6 +239,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (method === 'SHIP') {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
+    }
+    const shipUserId = (session.user as any).id
+
     if (!shippingName || !shippingAddress || !shippingCity || !shippingState || !shippingZip) {
       return NextResponse.json({ error: 'Missing shipping address' }, { status: 400 })
     }
@@ -249,6 +255,7 @@ export async function POST(request: NextRequest) {
         status: 'REDEEMED_PENDING_SHIPMENT',
         redeemedAt: new Date(),
         redemptionMethod: 'SHIP',
+        recipientUserId: shipUserId,
         shippingName,
         shippingAddress,
         shippingCity,

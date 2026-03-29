@@ -231,94 +231,15 @@ export function RedeemActions({
   if (!isLoggedIn) {
     return (
       <div className="space-y-3">
-        {/* Ship to me — US only, no login required */}
-        {isUS && (
-          <>
-            <button
-              onClick={() => setMainTab('ship')}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
-            >
-              <Package className="h-5 w-5" />
-              Ship &ldquo;{itemName}&rdquo; to me
-            </button>
-
-            {mainTab === 'ship' && (
-              <div className="border-2 border-violet-200 rounded-2xl p-4 space-y-3">
-                <p className="text-sm font-semibold text-gray-800">Shipping address</p>
-                <input
-                  type="text"
-                  value={shippingName}
-                  onChange={(e) => setShippingName(e.target.value)}
-                  placeholder="Full name"
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-                />
-                <input
-                  type="text"
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Street address"
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={shippingCity}
-                    onChange={(e) => setShippingCity(e.target.value)}
-                    placeholder="City"
-                    className="flex-1 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={shippingState}
-                    onChange={(e) => setShippingState(e.target.value)}
-                    placeholder="State"
-                    className="w-20 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-                  />
-                </div>
-                <input
-                  type="text"
-                  value={shippingZip}
-                  onChange={(e) => setShippingZip(e.target.value)}
-                  placeholder="ZIP code"
-                  className="w-32 px-4 py-3 bg-gray-50 rounded-xl text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-violet-300 text-sm"
-                />
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
-                <button
-                  onClick={handleShipRedeem}
-                  disabled={redeeming || !shippingFormValid}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50 disabled:opacity-50"
-                >
-                  {redeeming && redeemMethod === 'SHIP' ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Package className="h-5 w-5" />
-                  )}
-                  Ship it to me
-                </button>
-              </div>
-            )}
-
-            <div className="relative flex items-center gap-3 my-1">
-              <div className="flex-1 border-t border-gray-200" />
-              <span className="text-xs text-gray-400">or get the cash</span>
-              <div className="flex-1 border-t border-gray-200" />
-            </div>
-          </>
-        )}
-
         <a
           href={`/login?gift=${redeemCode}`}
-          className={`w-full flex items-center justify-center gap-2 ${isUS ? 'bg-white border-2 border-violet-200 text-violet-700 hover:bg-violet-50' : 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-200/50'} px-5 py-4 rounded-2xl font-semibold text-base transition-all`}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-4 rounded-2xl font-semibold text-base hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-200/50"
         >
-          <Zap className="h-5 w-5" />
-          Get ${(amount - 0.25).toFixed(2)} via {isUS ? 'Venmo / PayPal' : 'PayPal'}
+          <Gift className="h-5 w-5" />
+          Claim your gift
         </a>
         <p className="text-xs text-gray-400 text-center">
-          Sign up to redeem as cash ($0.25 processing fee)
+          Sign up to redeem — choose shipping or cash
         </p>
       </div>
     )
