@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { emailWrapper } from '@/lib/notifications'
 
-const ADMIN_EMAILS = ['arunash@norbea.ch']
-
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !ADMIN_EMAILS.includes((session.user as any).email)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const { giftSendId, trackingNumber, trackingUrl } = await request.json()
 

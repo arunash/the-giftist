@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 import { smartWhatsAppSend, emailWrapper } from '@/lib/notifications'
 import { sendSms } from '@/lib/sms'
 import { sendEmail } from '@/lib/email'
 
-const ADMIN_EMAILS = ['arunash@norbea.ch']
-
 // GET: list gift orders — ?tab=all returns everything, default returns shipment orders only
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !ADMIN_EMAILS.includes((session.user as any).email)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const tab = request.nextUrl.searchParams.get('tab')
 
@@ -60,10 +57,8 @@ export async function GET(request: NextRequest) {
 
 // POST: mark order as shipped + notify recipient
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || !ADMIN_EMAILS.includes((session.user as any).email)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const { giftSendId, trackingNumber, trackingUrl, expectedDelivery } = await request.json()
 
