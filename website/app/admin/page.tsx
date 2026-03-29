@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2 } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -174,32 +174,64 @@ function SourceBar({ breakdown, total }: { breakdown: Record<string, number>; to
   )
 }
 
-interface FulfillmentOrder {
+interface GiftOrder {
   id: string; itemName: string; itemUrl: string | null; itemImage: string | null
-  amount: number; status: string; senderName: string | null; recipientName: string
+  amount: number; platformFee: number; totalCharged: number; status: string
+  redemptionMethod: string | null; senderName: string | null; recipientName: string
   recipientPhone: string; recipientEmail: string | null
   shippingName: string | null; shippingAddress: string | null
   shippingCity: string | null; shippingState: string | null; shippingZip: string | null
   trackingNumber: string | null; trackingUrl: string | null
-  redeemedAt: string; shippedAt: string | null
+  redeemCode: string; createdAt: string; redeemedAt: string | null; shippedAt: string | null
 }
 
-function FulfillmentTable() {
-  const [orders, setOrders] = useState<FulfillmentOrder[]>([])
-  const [loading, setLoading] = useState(true)
+const STATUS_STYLE: Record<string, string> = {
+  PENDING: 'bg-gray-500/20 text-gray-400',
+  PAID: 'bg-blue-500/20 text-blue-400',
+  NOTIFIED: 'bg-blue-500/20 text-blue-400',
+  REDEEMED: 'bg-green-500/20 text-green-400',
+  REDEEMED_PENDING_SHIPMENT: 'bg-amber-500/20 text-amber-400',
+  REDEEMED_PENDING_REWARD: 'bg-red-500/20 text-red-400',
+  SHIPPED: 'bg-green-500/20 text-green-400',
+  DELIVERED: 'bg-emerald-500/20 text-emerald-400',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  REDEEMED_PENDING_SHIPMENT: 'Ship Pending',
+  REDEEMED_PENDING_REWARD: 'Payout Failed',
+  NOTIFIED: 'Notified',
+}
+
+function GiftFulfillmentSection() {
+  const [tab, setTab] = useState<'shipments' | 'all'>('shipments')
+  const [shipOrders, setShipOrders] = useState<GiftOrder[]>([])
+  const [allOrders, setAllOrders] = useState<GiftOrder[]>([])
+  const [loadingShip, setLoadingShip] = useState(true)
+  const [loadingAll, setLoadingAll] = useState(false)
+  const [allLoaded, setAllLoaded] = useState(false)
   const [shipping, setShipping] = useState<string | null>(null)
   const [shipForm, setShipForm] = useState<{ trackingNumber: string; trackingUrl: string; expectedDelivery: string }>({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
 
+  // Load shipment orders on mount
   useEffect(() => {
     fetch('/api/admin/fulfillment')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(setOrders)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then(setShipOrders)
       .catch(console.error)
-      .finally(() => setLoading(false))
+      .finally(() => setLoadingShip(false))
   }, [])
+
+  // Load all orders on tab switch (lazy)
+  useEffect(() => {
+    if (tab === 'all' && !allLoaded) {
+      setLoadingAll(true)
+      fetch('/api/admin/fulfillment?tab=all')
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+        .then((data: GiftOrder[]) => { setAllOrders(data); setAllLoaded(true) })
+        .catch(console.error)
+        .finally(() => setLoadingAll(false))
+    }
+  }, [tab, allLoaded])
 
   const handleShip = async (orderId: string) => {
     const res = await fetch('/api/admin/fulfillment', {
@@ -213,132 +245,215 @@ function FulfillmentTable() {
       }),
     })
     if (res.ok) {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
+      setShipOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
+      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
       setShipping(null)
       setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
     }
   }
 
-  const pending = orders.filter(o => o.status === 'REDEEMED_PENDING_SHIPMENT')
-  const shipped = orders.filter(o => o.status === 'SHIPPED' || o.status === 'DELIVERED')
-
-  if (loading) return <div className="text-muted text-sm">Loading fulfillment orders...</div>
-  if (orders.length === 0) return <p className="text-muted text-sm">No shipping orders yet.</p>
+  const pendingShip = shipOrders.filter(o => o.status === 'REDEEMED_PENDING_SHIPMENT')
+  const shipped = shipOrders.filter(o => o.status === 'SHIPPED' || o.status === 'DELIVERED')
 
   return (
     <div className="space-y-4">
-      {pending.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-2">
-          <Package className="h-4 w-4 text-amber-400" />
-          <span className="text-sm font-medium text-amber-300">{pending.length} order{pending.length > 1 ? 's' : ''} pending shipment</span>
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-surface rounded-xl w-fit">
+        <button
+          onClick={() => setTab('shipments')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            tab === 'shipments' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <Truck className="h-3.5 w-3.5" />
+          Shipments
+          {pendingShip.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full text-[10px] font-bold">{pendingShip.length}</span>}
+        </button>
+        <button
+          onClick={() => setTab('all')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            tab === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <Gift className="h-3.5 w-3.5" />
+          All Gifts
+        </button>
+      </div>
 
-      <div className="bg-surface rounded-xl border border-border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
-              <th className="p-3 text-left text-xs text-muted font-medium">Ship to</th>
-              <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
-              <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
-              <th className="p-3 text-left text-xs text-muted font-medium">Redeemed</th>
-              <th className="p-3 text-left text-xs text-muted font-medium">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...pending, ...shipped].map(order => (
-              <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
-                <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    {order.itemImage && <img src={order.itemImage} alt="" className="w-8 h-8 rounded object-cover" />}
-                    <div>
-                      <p className="font-medium text-xs">{order.itemName}</p>
-                      {order.itemUrl && (
-                        <a href={order.itemUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] flex items-center gap-0.5 hover:underline">
-                          <ExternalLink className="h-2.5 w-2.5" /> Buy link
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="p-3 text-xs text-muted">
-                  <p className="font-medium text-foreground">{order.shippingName}</p>
-                  <p>{order.shippingAddress}</p>
-                  <p>{order.shippingCity}, {order.shippingState} {order.shippingZip}</p>
-                </td>
-                <td className="p-3 text-xs font-medium">${order.amount.toFixed(2)}</td>
-                <td className="p-3">
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                    order.status === 'REDEEMED_PENDING_SHIPMENT' ? 'bg-amber-500/20 text-amber-400' :
-                    order.status === 'SHIPPED' ? 'bg-green-500/20 text-green-400' :
-                    'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {order.status === 'REDEEMED_PENDING_SHIPMENT' ? 'Pending' : order.status}
-                  </span>
-                </td>
-                <td className="p-3 text-xs text-muted">{new Date(order.redeemedAt).toLocaleDateString()}</td>
-                <td className="p-3">
-                  {order.status === 'REDEEMED_PENDING_SHIPMENT' ? (
-                    shipping === order.id ? (
-                      <div className="space-y-2 min-w-[200px]">
-                        <input
-                          type="text"
-                          placeholder="Tracking number"
-                          value={shipForm.trackingNumber}
-                          onChange={e => setShipForm(f => ({ ...f, trackingNumber: e.target.value }))}
-                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Tracking URL"
-                          value={shipForm.trackingUrl}
-                          onChange={e => setShipForm(f => ({ ...f, trackingUrl: e.target.value }))}
-                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
-                        />
-                        <input
-                          type="date"
-                          value={shipForm.expectedDelivery}
-                          onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
-                          className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary"
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleShip(order.id)}
-                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700"
-                          >
-                            <Truck className="h-3 w-3" /> Ship
-                          </button>
-                          <button
-                            onClick={() => setShipping(null)}
-                            className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs text-muted hover:text-foreground"
-                          >
-                            Cancel
-                          </button>
+      {tab === 'shipments' ? (
+        /* ─── Shipments Tab ─── */
+        loadingShip ? (
+          <div className="text-muted text-sm">Loading...</div>
+        ) : shipOrders.length === 0 ? (
+          <p className="text-muted text-sm">No shipping orders yet.</p>
+        ) : (
+          <>
+            {pendingShip.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-2">
+                <Package className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-medium text-amber-300">{pendingShip.length} order{pendingShip.length > 1 ? 's' : ''} pending shipment</span>
+              </div>
+            )}
+            <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
+                    <th className="p-3 text-left text-xs text-muted font-medium">Ship to</th>
+                    <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
+                    <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
+                    <th className="p-3 text-left text-xs text-muted font-medium">Redeemed</th>
+                    <th className="p-3 text-left text-xs text-muted font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...pendingShip, ...shipped].map(order => (
+                    <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {order.itemImage && <img src={order.itemImage} alt="" className="w-8 h-8 rounded object-cover" />}
+                          <div>
+                            <p className="font-medium text-xs">{order.itemName}</p>
+                            {order.itemUrl && (
+                              <a href={order.itemUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] flex items-center gap-0.5 hover:underline">
+                                <ExternalLink className="h-2.5 w-2.5" /> Buy link
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs text-muted">
+                        <p className="font-medium text-foreground">{order.shippingName}</p>
+                        <p>{order.shippingAddress}</p>
+                        <p>{order.shippingCity}, {order.shippingState} {order.shippingZip}</p>
+                      </td>
+                      <td className="p-3 text-xs font-medium">${order.amount.toFixed(2)}</td>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[order.status] || 'bg-gray-500/20 text-gray-400'}`}>
+                          {STATUS_LABEL[order.status] || order.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-xs text-muted">{order.redeemedAt ? new Date(order.redeemedAt).toLocaleDateString() : '—'}</td>
+                      <td className="p-3">
+                        {order.status === 'REDEEMED_PENDING_SHIPMENT' ? (
+                          shipping === order.id ? (
+                            <div className="space-y-2 min-w-[200px]">
+                              <input type="text" placeholder="Tracking number" value={shipForm.trackingNumber}
+                                onChange={e => setShipForm(f => ({ ...f, trackingNumber: e.target.value }))}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                              <input type="text" placeholder="Tracking URL" value={shipForm.trackingUrl}
+                                onChange={e => setShipForm(f => ({ ...f, trackingUrl: e.target.value }))}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                              <input type="date" value={shipForm.expectedDelivery}
+                                onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                              <div className="flex gap-1">
+                                <button onClick={() => handleShip(order.id)}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
+                                  <Truck className="h-3 w-3" /> Ship
+                                </button>
+                                <button onClick={() => setShipping(null)}
+                                  className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs text-muted hover:text-foreground">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setShipping(order.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
+                              <Truck className="h-3 w-3" /> Mark shipped
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-xs text-muted">
+                            {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
+                            {order.trackingUrl && (
+                              <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
+                            )}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
+      ) : (
+        /* ─── All Gifts Tab ─── */
+        loadingAll ? (
+          <div className="text-muted text-sm">Loading all gifts...</div>
+        ) : allOrders.length === 0 ? (
+          <p className="text-muted text-sm">No gifts yet.</p>
+        ) : (
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">From</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">To</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Method</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Created</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allOrders.map(order => (
+                  <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        {order.itemImage && <img src={order.itemImage} alt="" className="w-8 h-8 rounded object-cover" />}
+                        <div>
+                          <p className="font-medium text-xs">{order.itemName}</p>
+                          {order.itemUrl && (
+                            <a href={order.itemUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] flex items-center gap-0.5 hover:underline">
+                              <ExternalLink className="h-2.5 w-2.5" /> Product
+                            </a>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => setShipping(order.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700"
-                      >
-                        <Truck className="h-3 w-3" /> Mark shipped
-                      </button>
-                    )
-                  ) : (
-                    <span className="text-xs text-muted">
-                      {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
-                      {order.trackingUrl && (
-                        <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
+                    </td>
+                    <td className="p-3 text-xs">{order.senderName || '—'}</td>
+                    <td className="p-3 text-xs">
+                      <p>{order.recipientName}</p>
+                      <p className="text-muted text-[10px]">{order.recipientPhone}</p>
+                    </td>
+                    <td className="p-3 text-xs">
+                      <p className="font-medium">${order.amount.toFixed(2)}</p>
+                      {order.platformFee > 0 && <p className="text-[10px] text-green-500">+${order.platformFee.toFixed(2)} fee</p>}
+                    </td>
+                    <td className="p-3">
+                      {order.redemptionMethod ? (
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-surface border border-border">
+                          {order.redemptionMethod}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
                       )}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[order.status] || 'bg-gray-500/20 text-gray-400'}`}>
+                        {STATUS_LABEL[order.status] || order.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-xs text-muted">{new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3">
+                      <a href={`/gift/${order.redeemCode}`} target="_blank" rel="noopener noreferrer"
+                        className="text-primary text-[10px] hover:underline flex items-center gap-0.5">
+                        <ExternalLink className="h-2.5 w-2.5" /> Gift page
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
     </div>
   )
 }
@@ -380,7 +495,7 @@ export default function AdminDashboard() {
           <Truck className="h-5 w-5 text-primary" />
           Gift Fulfillment
         </h2>
-        <FulfillmentTable />
+        <GiftFulfillmentSection />
       </div>
 
       {/* KPI Cards */}

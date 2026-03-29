@@ -8,22 +8,26 @@ import { sendEmail } from '@/lib/email'
 
 const ADMIN_EMAILS = ['arunash@norbea.ch']
 
-// GET: list all gift orders that need fulfillment
-export async function GET() {
+// GET: list gift orders — ?tab=all returns everything, default returns shipment orders only
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user || !ADMIN_EMAILS.includes((session.user as any).email)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const tab = request.nextUrl.searchParams.get('tab')
+
+  const where = tab === 'all'
+    ? {}
+    : { status: { in: ['REDEEMED_PENDING_SHIPMENT', 'SHIPPED', 'DELIVERED'] } }
+
   const orders = await prisma.giftSend.findMany({
-    where: {
-      status: { in: ['REDEEMED_PENDING_SHIPMENT', 'SHIPPED', 'DELIVERED'] },
-    },
+    where,
     include: {
       sender: { select: { name: true, email: true } },
       recipient: { select: { name: true, email: true, phone: true } },
     },
-    orderBy: { redeemedAt: 'desc' },
+    orderBy: { createdAt: 'desc' },
   })
 
   return NextResponse.json(orders.map(o => ({
@@ -32,7 +36,10 @@ export async function GET() {
     itemUrl: o.itemUrl,
     itemImage: o.itemImage,
     amount: o.amount,
+    platformFee: o.platformFee,
+    totalCharged: o.totalCharged,
     status: o.status,
+    redemptionMethod: o.redemptionMethod,
     senderName: o.sender.name,
     recipientName: o.recipientName || o.recipient?.name || 'Unknown',
     recipientPhone: o.recipientPhone,
@@ -44,6 +51,8 @@ export async function GET() {
     shippingZip: o.shippingZip,
     trackingNumber: o.trackingNumber,
     trackingUrl: o.trackingUrl,
+    redeemCode: o.redeemCode,
+    createdAt: o.createdAt,
     redeemedAt: o.redeemedAt,
     shippedAt: o.shippedAt,
   })))

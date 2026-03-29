@@ -145,7 +145,7 @@ function ProductPage() {
   const shareViaWhatsApp = () => {
     if (!giftData) return
     const phone = recipientPhone.replace(/\D/g, '')
-    const text = `I got you something! 🎁\n\nOpen your gift: ${giftUrl}`
+    const text = `I got you something!\n\nOpen your gift: ${giftUrl}`
     if (phone) {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
     } else {
@@ -158,7 +158,7 @@ function ProductPage() {
     try {
       await navigator.share({
         title: `You received a gift!`,
-        text: `I got you something! 🎁`,
+        text: `I got you something!`,
         url: giftUrl,
       })
     } catch {
