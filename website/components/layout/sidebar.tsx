@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import {
-  LayoutGrid,
   MessageCircle,
   Wallet,
   Settings,
@@ -14,7 +13,6 @@ import {
   ArrowUpRight,
   Gift,
   Sparkles,
-  Users,
 } from 'lucide-react'
 import Image from 'next/image'
 import { cn, formatPrice } from '@/lib/utils'
@@ -23,9 +21,8 @@ import { GiftDNA } from './gift-dna'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 
 const navItems = [
-  { href: '/feed', label: 'Home', icon: LayoutGrid },
-  { href: '/chat', label: 'Concierge', icon: MessageCircle },
-  { href: '/circle', label: 'Circle', icon: Users },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/gifts', label: 'Gifts', icon: Gift },
   { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -51,7 +48,7 @@ export function Sidebar({ walletBalance = 0, fundsReceived = 0 }: SidebarProps) 
     <aside className="hidden lg:flex flex-col w-80 h-screen fixed left-0 top-0 bg-surface border-r border-border">
       {/* Logo + Notifications */}
       <div className="p-6 flex items-center justify-between">
-        <Link href="/feed" className="flex items-center gap-2.5">
+        <Link href="/chat" className="flex items-center gap-2.5">
           <Image src="/logo-light.png" alt="Giftist" width={32} height={32} className="rounded-lg" />
           <span className="text-lg font-bold text-primary">The Giftist</span>
         </Link>

@@ -4,19 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
-  LayoutGrid,
   MessageCircle,
   Wallet,
   Settings,
   LogOut,
-  Users,
+  Gift,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/feed', label: 'Home', icon: LayoutGrid },
-  { href: '/chat', label: 'Concierge', icon: MessageCircle },
-  { href: '/circle', label: 'Circle', icon: Users },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/gifts', label: 'Gifts', icon: Gift },
   { href: '/wallet', label: 'Funds', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

@@ -50,7 +50,7 @@ export async function GET() {
   // Instead of building OAuth manually, redirect to NextAuth's CSRF-free internal flow
   // The simplest approach: redirect to the NextAuth signIn page which auto-redirects to Google
   const signInUrl = new URL('/api/auth/signin/google', process.env.NEXTAUTH_URL)
-  signInUrl.searchParams.set('callbackUrl', '/feed')
+  signInUrl.searchParams.set('callbackUrl', '/chat')
 
   // Actually, we need to POST to this URL with CSRF token, which is the whole problem.
   // So instead, let's use a form-based approach via an HTML page

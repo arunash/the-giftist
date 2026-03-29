@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const session = await requireAdmin()
   if (!session) {
-    redirect('/feed')
+    redirect('/chat')
   }
 
   return (

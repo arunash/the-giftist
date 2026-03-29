@@ -10,7 +10,7 @@ import { HeroChatInput } from '@/components/landing/hero-chat-input'
 export default async function Home() {
   const session = await getServerSession(authOptions)
   if (session?.user) {
-    redirect('/feed')
+    redirect('/chat')
   }
   return (
     <div className="min-h-screen bg-background">
