@@ -435,9 +435,15 @@ export async function POST(request: NextRequest) {
                 },
               })
 
-              // Send email receipt to sender
-              const { sendGiftSendReceipt } = await import('@/lib/gift-notifications')
+              // Send email receipt to sender + notify recipient + schedule reminders
+              const { sendGiftSendReceipt, notifyGiftReceived, scheduleGiftReminders } = await import('@/lib/gift-notifications')
               sendGiftSendReceipt(giftSendId).catch(() => {})
+              notifyGiftReceived(giftSendId).catch((err) =>
+                console.error(`[GiftWebhook] Failed to notify recipient:`, err)
+              )
+              scheduleGiftReminders(giftSendId).catch((err) =>
+                console.error(`[GiftWebhook] Failed to schedule reminders:`, err)
+              )
             }
           }
         }
