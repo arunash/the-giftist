@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { logApiCall, logError } from '@/lib/api-logger'
+import { searchAmazon, isAmazonApiConfigured } from '@/lib/amazon-search'
 
 export interface RetailerResult {
   retailer: string
@@ -244,7 +245,13 @@ export async function searchRetailers(
   const descriptionHint = description ? `\nProduct description: ${description}` : ''
 
   try {
-    // Try Perplexity first (better at returning real product URLs), fall back to GPT-4o
+    // Try Amazon PA-API first (most reliable for Amazon links)
+    let amazonResults: RetailerResult[] = []
+    if (isAmazonApiConfigured()) {
+      amazonResults = await searchAmazon(searchQuery, 3)
+    }
+
+    // Get other retailers via Perplexity, fall back to GPT-4o
     let results = await searchWithPerplexity(
       productName,
       RETAILER_SEARCH_PROMPT(searchQuery, descriptionHint),
@@ -254,18 +261,23 @@ export async function searchRetailers(
       results = await searchWithGPT4o(productName, searchQuery, descriptionHint)
     }
 
-    // If no Amazon result found, do a targeted Amazon-only search via Perplexity
-    const hasAmazon = results.some(r => r.url.includes('amazon.com/dp/'))
+    // Merge: PA-API Amazon results take priority over LLM-found Amazon results
+    if (amazonResults.length > 0) {
+      const nonAmazonResults = results.filter(r => !r.url.includes('amazon.com'))
+      results = [...amazonResults, ...nonAmazonResults]
+    }
+
+    // If still no Amazon result, try targeted Perplexity Amazon search as last resort
+    const hasAmazon = results.some(r => r.url.includes('amazon.com'))
     if (!hasAmazon) {
       console.log(`[RetailerSearch] No Amazon result — running targeted Amazon search for "${productName}"`)
-      const amazonResults = await searchWithPerplexity(
+      const perplexityAmazon = await searchWithPerplexity(
         productName,
         AMAZON_SEARCH_PROMPT(searchQuery),
         'amazon',
       )
-      if (amazonResults.length > 0) {
-        // Prepend Amazon results
-        results = [...amazonResults.filter(r => r.url.includes('amazon.com')), ...results]
+      if (perplexityAmazon.length > 0) {
+        results = [...perplexityAmazon.filter(r => r.url.includes('amazon.com')), ...results]
       }
     }
 
