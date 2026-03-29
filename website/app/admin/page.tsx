@@ -53,7 +53,7 @@ interface Stats {
   costsTotalToday: number
   errors: { today: number; week: number; bySource: Record<string, number>; bySourceToday: Record<string, number> }
   recentErrors: Array<{ id: string; source: string; message: string; createdAt: string }>
-  recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; _count: { items: number } }>
+  recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; updatedAt: string; _count: { items: number } }>
   recentActivity: Array<{ id: string; type: string; createdAt: string; user: { name: string | null }; item: { name: string } | null; metadata: string | null }>
   itemsAddedToday: Array<{ id: string; name: string; source: string; price: string | null; priceValue: number | null; addedAt: string; user: { name: string | null } }>
   feedback: {
@@ -829,7 +829,7 @@ export default function AdminDashboard() {
 
       {/* Recent Users */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Recent Signups</h2>
+        <h2 className="text-lg font-semibold mb-3">Recently Active Users</h2>
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -838,6 +838,7 @@ export default function AdminDashboard() {
                 <th className="text-left p-3 font-medium">Phone</th>
                 <th className="text-left p-3 font-medium">Email</th>
                 <th className="text-left p-3 font-medium">Items</th>
+                <th className="text-left p-3 font-medium">Last Active</th>
                 <th className="text-left p-3 font-medium">Joined</th>
               </tr>
             </thead>
@@ -848,6 +849,7 @@ export default function AdminDashboard() {
                   <td className="p-3 text-muted">{u.phone || '—'}</td>
                   <td className="p-3 text-muted">{u.email || '—'}</td>
                   <td className="p-3">{u._count.items}</td>
+                  <td className="p-3 text-muted">{new Date(u.updatedAt).toLocaleDateString()}</td>
                   <td className="p-3 text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}

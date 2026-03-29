@@ -165,7 +165,7 @@ export async function GET() {
       take: 20,
     }),
     prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       take: 10,
       select: {
         id: true,
@@ -173,6 +173,7 @@ export async function GET() {
         phone: true,
         email: true,
         createdAt: true,
+        updatedAt: true,
         _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
       },
     }),
