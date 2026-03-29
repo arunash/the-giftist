@@ -784,7 +784,7 @@ Mother's Day is May 11 — let's find something she'll love!`
   }
 
   // No URL and not a command — handle as conversational chat via Claude
-  return handleChatMessage(userId, text)
+  return handleChatMessage(userId, text, phone)
 }
 
 async function handleInstagramLink(
@@ -953,7 +953,7 @@ async function handleInstagramLink(
   return `Saved from Instagram`
 }
 
-async function handleChatMessage(userId: string, text: string): Promise<string> {
+async function handleChatMessage(userId: string, text: string, phone?: string): Promise<string> {
   // Check daily message limit for free users
   const { allowed, remaining } = await checkChatLimit(userId)
   if (!allowed) {
@@ -1602,12 +1602,14 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       }
     }
 
-    // Send product images via WhatsApp before the text reply
-    for (const pi of productImages) {
-      try {
-        await sendImageMessage(phone, pi.image, pi.caption)
-      } catch (err) {
-        console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
+    // Send product images via WhatsApp before the text reply (only for WhatsApp flow)
+    if (phone) {
+      for (const pi of productImages) {
+        try {
+          await sendImageMessage(phone, pi.image, pi.caption)
+        } catch (err) {
+          console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
+        }
       }
     }
 
