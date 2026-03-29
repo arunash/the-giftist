@@ -8,6 +8,7 @@ export interface ProductInfo {
   image: string | null
   url: string
   domain: string
+  inStock?: boolean  // true = in stock, false = out of stock, undefined = unknown
 }
 
 // --- Helpers ---
@@ -66,11 +67,17 @@ function findProductInJsonLd(data: any): Partial<ProductInfo> | null {
     const price = offer?.price || offer?.lowPrice
     const currency = offer?.priceCurrency || 'USD'
     const image = data.image
+    // Check availability from schema.org
+    const availability = (offer?.availability || '').toLowerCase()
+    let inStock: boolean | undefined = undefined
+    if (availability.includes('instock') || availability.includes('in_stock')) inStock = true
+    if (availability.includes('outofstock') || availability.includes('out_of_stock') || availability.includes('discontinued') || availability.includes('soldout')) inStock = false
     return {
       name: data.name,
       price: price ? formatPrice(price, currency) : null,
       priceValue: price ? parseFloat(price) : null,
       image: typeof image === 'string' ? image : Array.isArray(image) ? image[0] : image?.url || image?.['@id'] || null,
+      inStock,
     }
   }
   if (data['@graph']) return findProductInJsonLd(data['@graph'])
@@ -302,6 +309,35 @@ export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
     }
   }
 
+  // Determine stock status: JSON-LD first, then scan page text for out-of-stock signals
+  let inStock: boolean | undefined = (jsonLd as any)?.inStock
+  if (inStock === undefined) {
+    const bodyText = $('body').text().toLowerCase()
+    const OOS_PATTERNS = [
+      'out of stock', 'out-of-stock', 'currently unavailable', 'not available',
+      'sold out', 'soldout', 'no longer available', 'discontinued',
+      'temporarily out of stock', 'notify me when available', 'back in stock',
+      'coming soon', 'pre-order', 'preorder',
+    ]
+    for (const pattern of OOS_PATTERNS) {
+      if (bodyText.includes(pattern)) {
+        // Check it's prominent (not buried in a review or footer)
+        const oosEl = $(`[class*="stock"], [class*="availability"], [data-testid*="stock"], [id*="availability"], .add-to-cart-section, .buy-box`)
+        const oosText = oosEl.length > 0 ? oosEl.text().toLowerCase() : ''
+        if (oosText.includes(pattern)) {
+          inStock = false
+          break
+        }
+        // Also check for prominent standalone elements
+        const prominentMatch = $('h2, h3, .alert, .notice, [role="alert"], .product-info, .pdp-main').text().toLowerCase()
+        if (prominentMatch.includes(pattern)) {
+          inStock = false
+          break
+        }
+      }
+    }
+  }
+
   return {
     name: cleanText(name),
     price: jsonLd?.price || og?.price || dom?.price || null,
@@ -309,5 +345,6 @@ export async function extractProductFromUrl(url: string): Promise<ProductInfo> {
     image,
     url,
     domain,
+    inStock,
   }
 }

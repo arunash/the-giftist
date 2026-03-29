@@ -182,6 +182,47 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
 
       const verified = await verifyProductUrl(result.url)
       if (verified) {
+        // Check if product is in stock by scraping the page
+        let stockOk = true
+        if (!isTrustedRetailerUrl(verified)) {
+          // For non-trusted retailers, scrape to check stock
+          try {
+            const scraped = await extractProductFromUrl(verified)
+            if (scraped.inStock === false) {
+              console.log(`[ProductSearch] Out of stock: ${verified}`)
+              stockOk = false
+            }
+          } catch {}
+        } else {
+          // For trusted retailers (block server requests), do a quick stock check via fetch
+          try {
+            const res = await fetch(verified, {
+              headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html' },
+              signal: AbortSignal.timeout(8000),
+            })
+            if (res.ok) {
+              const html = await res.text()
+              const lower = html.toLowerCase()
+              // Check for prominent out-of-stock indicators
+              if (
+                lower.includes('out of stock') ||
+                lower.includes('currently unavailable') ||
+                lower.includes('sold out') ||
+                lower.includes('"availability":"outofstock"') ||
+                lower.includes('"availability":"out_of_stock"') ||
+                lower.includes('schema.org/OutOfStock')
+              ) {
+                console.log(`[ProductSearch] Out of stock: ${verified}`)
+                stockOk = false
+              }
+            }
+          } catch {
+            // Can't check stock — assume ok (trusted retailer)
+          }
+        }
+
+        if (!stockOk) continue
+
         let domain = ''
         try { domain = new URL(verified).hostname } catch {}
         console.log(`[ProductSearch] Verified: "${productName}" → ${verified} (${result.price || 'no price'})`)

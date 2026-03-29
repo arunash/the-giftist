@@ -86,7 +86,10 @@ function parseAndValidateResults(text: string, productName: string): RetailerRes
 
 const RETAILER_SEARCH_PROMPT = (searchQuery: string, descriptionHint: string) => `Find this SPECIFIC product for sale online: "${searchQuery}"${descriptionHint}
 
-CRITICAL: You must find the EXACT product — not a similar or related product. Verify each URL leads to "${searchQuery}" specifically.
+CRITICAL RULES:
+1. Find the EXACT product — not a similar or related product. Verify each URL leads to "${searchQuery}" specifically.
+2. Product MUST be IN STOCK and available to buy right now. Do NOT include out-of-stock, discontinued, or "currently unavailable" products.
+3. URL must go to a direct product page, not a search results page.
 
 Search Amazon, Target, Walmart, and Best Buy. For Amazon, the URL MUST be in amazon.com/dp/ASIN format.
 
@@ -102,7 +105,7 @@ Fields:
 - price: formatted price like "$29.99" (or null)
 - priceValue: numeric price (or null)
 
-If you cannot find the EXACT product at a retailer, omit that retailer. If you cannot find it anywhere, return [].`
+If you cannot find the EXACT product IN STOCK at a retailer, omit that retailer. If you cannot find it anywhere in stock, return [].`
 
 /** Search using Perplexity Sonar (better at returning real URLs with citations) */
 async function searchWithPerplexity(
