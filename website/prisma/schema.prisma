@@ -444,6 +444,18 @@ model ProductUrlCache {
   @@index([verifiedAt])
 }
 
+model ProductSuggestion {
+  id          String   @id @default(cuid())
+  productName String   // exact name as suggested
+  nameKey     String   // lowercase normalized for dedup matching
+  source      String   @default("CHAT") // CHAT, TRENDING, WHATSAPP, GREETING
+  userId      String?  // null for cross-user tracking
+  createdAt   DateTime @default(now())
+
+  @@index([nameKey, createdAt])
+  @@index([createdAt])
+}
+
 model Feedback {
   id        String   @id @default(cuid())
   userId    String

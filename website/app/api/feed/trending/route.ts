@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { extractProductFromUrl } from '@/lib/extract'
+import { getOverSuggestedProducts, trackSuggestedProducts } from '@/lib/product-suggestions'
 import OpenAI from 'openai'
 
 export const dynamic = 'force-dynamic'
@@ -46,10 +47,12 @@ export async function GET(request: NextRequest) {
       recentNames ? `Recent wishlist items: ${recentNames}` : '',
     ].filter(Boolean).join('\n')
 
-    // Build exclusion list from user's existing items to avoid suggesting duplicates
+    // Build exclusion list from user's existing items + globally over-suggested products
     const existingNames = recentItems.map((i) => i.name).slice(0, 10)
-    const excludeClause = existingNames.length > 0
-      ? `\n\nDo NOT suggest any of these products the user already has: ${existingNames.join(', ')}`
+    const overSuggested = await getOverSuggestedProducts()
+    const allExclusions = [...existingNames, ...overSuggested]
+    const excludeClause = allExclusions.length > 0
+      ? `\n\nDo NOT suggest any of these products (user already has them OR they've been over-recommended this week): ${allExclusions.join(', ')}`
       : ''
 
     const response = await getClient().responses.create({
@@ -126,7 +129,16 @@ Return ONLY a JSON array, no other text:
       })
     )
 
-    return NextResponse.json(enriched.filter((item: any) => item.image))
+    const results = enriched.filter((item: any) => item.image)
+
+    // Track suggested products for global dedup
+    trackSuggestedProducts(
+      results.map((item: any) => item.name),
+      'TRENDING',
+      userId,
+    ).catch(() => {})
+
+    return NextResponse.json(results)
   } catch (error) {
     console.error('Error fetching trending:', error)
     logError({ source: 'API', message: String(error), stack: (error as Error)?.stack }).catch(() => {})

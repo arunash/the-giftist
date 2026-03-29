@@ -10,6 +10,7 @@ import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
 import { logApiCall, logError } from '@/lib/api-logger'
+import { extractProductNamesFromContent, trackSuggestedProducts } from '@/lib/product-suggestions'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -153,6 +154,10 @@ export async function POST(request: NextRequest) {
             await prisma.chatMessage.create({
               data: { userId, role: 'ASSISTANT', content: fullContent },
             })
+
+            // Track suggested products for dedup
+            const suggestedNames = extractProductNamesFromContent(fullContent)
+            trackSuggestedProducts(suggestedNames, 'CHAT', userId).catch(() => {})
 
             // Process structured blocks (events, add-to-event)
             processStructuredBlocks(userId, fullContent).catch((err) => {

@@ -1,4 +1,5 @@
 import { prisma } from './db'
+import { getOverSuggestedProducts } from './product-suggestions'
 
 const FREE_DAILY_MESSAGE_LIMIT = 10
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
@@ -124,7 +125,7 @@ function getStartOfDayInUTC(timezone: string): Date {
 }
 
 export async function buildChatContext(userId: string): Promise<string> {
-  const [items, events, wallet, user, circleMembers] = await Promise.all([
+  const [items, events, wallet, user, circleMembers, overSuggested] = await Promise.all([
     prisma.item.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' },
@@ -179,6 +180,7 @@ export async function buildChatContext(userId: string): Promise<string> {
       orderBy: { name: 'asc' },
       take: 20,
     }),
+    getOverSuggestedProducts(),
   ])
 
   // Use short numeric indices instead of raw DB IDs to prevent leaking internal identifiers
@@ -319,7 +321,7 @@ NO REPEAT SUGGESTIONS:
 - NEVER suggest a product you already suggested earlier in this conversation. Track every product name you've mentioned.
 - If the user asks for more options, suggest ENTIRELY DIFFERENT products — not variations of what you already showed.
 - If the user rejected a suggestion, don't suggest it again in any form.
-- This includes across follow-up messages — if you suggested "Ember Mug" in message 1, never suggest it again in message 3.
+- This includes across follow-up messages — if you suggested "Ember Mug" in message 1, never suggest it again in message 3.${overSuggested.length > 0 ? `\n- GLOBAL BLACKLIST — these products have been over-suggested this week across all users. NEVER suggest them: ${overSuggested.join(', ')}` : ''}
 
 NO BOILERPLATE — BE A REAL CURATOR:
 - NEVER suggest mugs, cups, or candles of any kind (coffee mugs, travel mugs, custom mugs, Ember mugs, tumblers, Stanley cups, scented candles, candle sets, Yankee Candle, etc.) unless the user explicitly asks for one. These are the most generic, uninspired gift suggestions possible — suggesting one makes you look like a basic search engine, not a concierge.

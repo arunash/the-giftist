@@ -1038,6 +1038,11 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       })
     }
 
+    // Track suggested products for dedup
+    const { extractProductNamesFromContent, trackSuggestedProducts } = await import('./product-suggestions')
+    const suggestedNames = extractProductNamesFromContent(fullContent)
+    trackSuggestedProducts(suggestedNames, 'WHATSAPP', userId).catch(() => {})
+
     // Auto-create events and add items to events from structured blocks
     const segments = parseChatContent(fullContent)
     const eventConfirmations: string[] = []
