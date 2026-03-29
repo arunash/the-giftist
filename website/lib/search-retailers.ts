@@ -4,6 +4,7 @@ import { logApiCall, logError } from '@/lib/api-logger'
 export interface RetailerResult {
   retailer: string
   url: string
+  title: string | null  // product title from the actual page
   price: string | null
   priceValue: number | null
 }
@@ -19,6 +20,23 @@ function getClient() {
   return _client
 }
 
+/** Check if a product title roughly matches what we searched for */
+function titleMatchesProduct(title: string, searchName: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim()
+  const titleNorm = normalize(title)
+  const searchNorm = normalize(searchName)
+
+  // Extract key words from search (2+ chars, skip common words)
+  const skipWords = new Set(['the', 'and', 'for', 'with', 'from', 'by', 'in', 'of', 'oz', 'inch'])
+  const searchWords = searchNorm.split(' ').filter(w => w.length >= 2 && !skipWords.has(w))
+
+  // At least half of the key search words should appear in the title
+  const matches = searchWords.filter(w => titleNorm.includes(w))
+  const matchRatio = searchWords.length > 0 ? matches.length / searchWords.length : 0
+
+  return matchRatio >= 0.5
+}
+
 export async function searchRetailers(
   productName: string,
   brand: string | null,
@@ -31,19 +49,25 @@ export async function searchRetailers(
     const response = await getClient().responses.create({
       model: 'gpt-4o',
       tools: [{ type: 'web_search_preview' as any }],
-      input: `Find this product for sale online: "${searchQuery}"${descriptionHint}
+      input: `Find this SPECIFIC product for sale online: "${searchQuery}"${descriptionHint}
 
-IMPORTANT: Always search Amazon FIRST (amazon.com). For Amazon, find the exact product page URL in the format https://www.amazon.com/dp/ASIN (e.g., https://www.amazon.com/dp/B09TMN58KL). Also check Target, Walmart, Best Buy for comparison.
+CRITICAL: You must find the EXACT product — not a similar or related product. Verify each URL leads to "${searchQuery}" specifically.
 
-Return ONLY a JSON array of results you found, each with:
-- retailer: store name (e.g. "Amazon")
-- url: direct product page URL (for Amazon, MUST be amazon.com/dp/ASIN format)
-- price: formatted price like "$29.99" (or null if not found)
-- priceValue: numeric price like 29.99 (or null)
+Search Amazon first (amazon.com/dp/ASIN format), then also check Target, Walmart, Best Buy.
 
-Example: [{"retailer":"Amazon","url":"https://www.amazon.com/dp/B09TMN58KL","price":"$29.99","priceValue":29.99}]
+For EACH result, you MUST include the "title" field — the exact product title as shown on the retailer's page. This is used to verify you found the right product.
 
-If you cannot find the product at any retailer, return an empty array: []`,
+Return ONLY a JSON array:
+[{"retailer":"Amazon","url":"https://www.amazon.com/dp/B0XXXXXXXXX","title":"Ember Temperature Control Smart Mug 2, 14 oz, Black","price":"$149.95","priceValue":149.95}]
+
+Fields:
+- retailer: store name
+- url: direct product page URL (Amazon MUST be amazon.com/dp/ASIN)
+- title: EXACT product title from the page (REQUIRED)
+- price: formatted price like "$29.99" (or null)
+- priceValue: numeric price (or null)
+
+If you cannot find the EXACT product, return []. Do NOT return a different product.`,
     }, {
       timeout: 30000,
     })
@@ -67,20 +91,38 @@ If you cannot find the product at any retailer, return an empty array: []`,
       .join('')
 
     const jsonMatch = text.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) return { results: [], bestResult: null }
+    if (!jsonMatch) {
+      console.log(`[RetailerSearch] No JSON array found in response for "${productName}". Raw text: ${text.slice(0, 200)}`)
+      return { results: [], bestResult: null }
+    }
 
-    const parsed: RetailerResult[] = JSON.parse(jsonMatch[0])
+    let parsed: RetailerResult[]
+    try {
+      parsed = JSON.parse(jsonMatch[0])
+    } catch {
+      console.log(`[RetailerSearch] JSON parse failed for "${productName}". Matched: ${jsonMatch[0].slice(0, 200)}`)
+      return { results: [], bestResult: null }
+    }
     if (!Array.isArray(parsed) || parsed.length === 0) return { results: [], bestResult: null }
 
-    // Validate and clean results
+    // Validate, clean, and verify title matches
     const results = parsed
       .filter((r) => r.url && r.retailer)
       .map((r) => ({
         retailer: r.retailer,
         url: r.url,
+        title: r.title || null,
         price: r.price || null,
         priceValue: typeof r.priceValue === 'number' ? r.priceValue : null,
       }))
+      .filter((r) => {
+        // Reject results where the title clearly doesn't match what we searched for
+        if (r.title && !titleMatchesProduct(r.title, productName)) {
+          console.log(`[RetailerSearch] Title mismatch: searched "${productName}", got "${r.title}" — skipping ${r.url}`)
+          return false
+        }
+        return true
+      })
 
     // Pick lowest price as best result
     const withPrice = results.filter((r) => r.priceValue !== null)
