@@ -40,8 +40,8 @@ export function RedeemActions({
   const [redeemed, setRedeemed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Tab: 'cash' or 'ship' — international users only see cash
-  const [mainTab, setMainTab] = useState<'cash' | 'ship'>(isUS ? 'cash' : 'cash')
+  // Tab: 'cash' or 'ship' — US defaults to ship, international only sees cash
+  const [mainTab, setMainTab] = useState<'cash' | 'ship'>(isUS ? 'ship' : 'cash')
 
   // PayPal/Venmo input — international users default to PayPal
   const [paypalTab, setPaypalTab] = useState<'PAYPAL' | 'VENMO'>(isUS ? 'VENMO' : 'PAYPAL')
