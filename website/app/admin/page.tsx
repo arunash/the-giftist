@@ -527,50 +527,17 @@ function GiftFulfillmentSection() {
   )
 }
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/admin/stats')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+function PnLSection({ stats }: { stats: Stats }) {
+  if (!stats.pnl || stats.pnl.details.length === 0) {
+    return <p className="text-muted text-sm">No gift orders with financial data yet.</p>
+  }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      {/* Gift Fulfillment — always renders independently */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Truck className="h-5 w-5 text-primary" />
-          Gift Fulfillment
-        </h2>
-        <GiftFulfillmentSection />
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-        </div>
-      ) : !stats ? (
-        <p className="text-muted">Failed to load stats.</p>
-      ) : (
-      <>
-
-      {/* P&L / Margin */}
-      {stats.pnl && stats.pnl.details.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-green-500" />
-            P&L / Margins
-          </h2>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        <DollarSign className="h-5 w-5 text-green-500" />
+        P&L / Margins
+      </h2>
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {(() => {
@@ -642,8 +609,85 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+    </div>
+  )
+}
+
+export default function AdminDashboard() {
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl'>('dashboard')
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/stats')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(setStats)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Admin</h1>
+      </div>
+
+      {/* Top-level tabs */}
+      <div className="flex gap-1 p-1 bg-surface rounded-xl w-fit">
+        <button
+          onClick={() => setAdminTab('dashboard')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'dashboard' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <Activity className="h-3.5 w-3.5" />
+          Dashboard
+        </button>
+        <button
+          onClick={() => setAdminTab('fulfillment')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'fulfillment' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <Truck className="h-3.5 w-3.5" />
+          Fulfillment
+        </button>
+        <button
+          onClick={() => setAdminTab('pnl')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'pnl' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <DollarSign className="h-3.5 w-3.5" />
+          P&L
+        </button>
+      </div>
+
+      {adminTab === 'fulfillment' ? (
+        <GiftFulfillmentSection />
+      ) : adminTab === 'pnl' ? (
+        loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          </div>
+        ) : stats ? (
+          <PnLSection stats={stats} />
+        ) : (
+          <p className="text-muted">Failed to load stats.</p>
+        )
+      ) : (
+      /* Dashboard tab */
+      loading ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
         </div>
-      )}
+      ) : !stats ? (
+        <p className="text-muted">Failed to load stats.</p>
+      ) : (
+      <>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1043,7 +1087,7 @@ export default function AdminDashboard() {
         </div>
       </div>
       </>
-      )}
+      ))}
     </div>
   )
 }
