@@ -181,7 +181,7 @@ interface GiftOrder {
   recipientPhone: string; recipientEmail: string | null
   shippingName: string | null; shippingAddress: string | null
   shippingCity: string | null; shippingState: string | null; shippingZip: string | null
-  trackingNumber: string | null; trackingUrl: string | null
+  trackingNumber: string | null; trackingUrl: string | null; fulfillmentCost: number | null
   redeemCode: string; createdAt: string; redeemedAt: string | null; shippedAt: string | null
 }
 
@@ -210,7 +210,7 @@ function GiftFulfillmentSection() {
   const [loadingAll, setLoadingAll] = useState(false)
   const [allLoaded, setAllLoaded] = useState(false)
   const [shipping, setShipping] = useState<string | null>(null)
-  const [shipForm, setShipForm] = useState<{ trackingNumber: string; trackingUrl: string; expectedDelivery: string }>({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
+  const [shipForm, setShipForm] = useState<{ trackingNumber: string; trackingUrl: string; expectedDelivery: string; fulfillmentCost: string }>({ trackingNumber: '', trackingUrl: '', expectedDelivery: '', fulfillmentCost: '' })
 
   // Load shipment orders on mount
   useEffect(() => {
@@ -242,13 +242,15 @@ function GiftFulfillmentSection() {
         trackingNumber: shipForm.trackingNumber || undefined,
         trackingUrl: shipForm.trackingUrl || undefined,
         expectedDelivery: shipForm.expectedDelivery || undefined,
+        fulfillmentCost: shipForm.fulfillmentCost ? parseFloat(shipForm.fulfillmentCost) : undefined,
       }),
     })
     if (res.ok) {
-      setShipOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
-      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString() } : o))
+      const cost = shipForm.fulfillmentCost ? parseFloat(shipForm.fulfillmentCost) : null
+      setShipOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString(), fulfillmentCost: cost } : o))
+      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString(), fulfillmentCost: cost } : o))
       setShipping(null)
-      setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '' })
+      setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '', fulfillmentCost: '' })
     }
   }
 
@@ -347,6 +349,9 @@ function GiftFulfillmentSection() {
                               <input type="date" value={shipForm.expectedDelivery}
                                 onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
                                 className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                              <input type="number" step="0.01" placeholder="Actual cost ($)" value={shipForm.fulfillmentCost}
+                                onChange={e => setShipForm(f => ({ ...f, fulfillmentCost: e.target.value }))}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
                               <div className="flex gap-1">
                                 <button onClick={() => handleShip(order.id)}
                                   className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
@@ -367,6 +372,9 @@ function GiftFulfillmentSection() {
                         ) : (
                           <span className="text-xs text-muted">
                             {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
+                            {order.fulfillmentCost != null && (
+                              <span className="block text-[10px] text-green-500">Cost: ${order.fulfillmentCost.toFixed(2)}</span>
+                            )}
                             {order.trackingUrl && (
                               <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
                             )}

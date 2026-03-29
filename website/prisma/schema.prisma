@@ -523,6 +523,7 @@ model GiftSend {
   shippingCountry    String?   @default("US")
   trackingNumber     String?
   trackingUrl        String?
+  fulfillmentCost    Float?
   shippedAt          DateTime?
   deliveredAt        DateTime?
   createdAt          DateTime  @default(now())

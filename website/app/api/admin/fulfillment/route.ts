@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     trackingNumber: o.trackingNumber,
     trackingUrl: o.trackingUrl,
     redeemCode: o.redeemCode,
+    fulfillmentCost: o.fulfillmentCost,
     createdAt: o.createdAt,
     redeemedAt: o.redeemedAt,
     shippedAt: o.shippedAt,
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
   const admin = await requireAdmin()
   if (admin instanceof NextResponse) return admin
 
-  const { giftSendId, trackingNumber, trackingUrl, expectedDelivery } = await request.json()
+  const { giftSendId, trackingNumber, trackingUrl, expectedDelivery, fulfillmentCost } = await request.json()
 
   if (!giftSendId) {
     return NextResponse.json({ error: 'Missing giftSendId' }, { status: 400 })
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
       status: 'SHIPPED',
       trackingNumber: trackingNumber || null,
       trackingUrl: trackingUrl || null,
+      fulfillmentCost: typeof fulfillmentCost === 'number' ? fulfillmentCost : null,
       shippedAt: new Date(),
     },
   })
