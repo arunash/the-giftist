@@ -1429,10 +1429,10 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
     }
 
     // Extract product blocks, create tracked links, and auto-save to wishlist
-    // Every product MUST have a link. Images resolve on the landing page when clicked.
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
     let autoSavedCount = 0
+    const productImages: { image: string; caption: string }[] = []  // For sending images via WhatsApp
     if (productSegments.length > 0) {
       const { findProductUrl } = await import('@/lib/enrich-item')
       const lines: string[] = []
@@ -1493,6 +1493,27 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
 
         displayIdx++
         lines.push(`${displayIdx}. *${p.name}*${price}${linkLine}`)
+
+        // Try to get product image for WhatsApp (scrape from target URL or search)
+        if (targetUrl) {
+          try {
+            const { extractProductFromUrl } = await import('@/lib/extract')
+            const scraped = await extractProductFromUrl(targetUrl)
+            if (scraped.image) {
+              productImages.push({ image: scraped.image, caption: `${displayIdx}. *${p.name}*${price}` })
+            }
+          } catch {}
+          // Fallback: try Google image search
+          if (!productImages.find(pi => pi.caption.startsWith(`${displayIdx}.`))) {
+            try {
+              const { findProductImage } = await import('@/lib/product-image')
+              const img = await findProductImage(p.name)
+              if (img) {
+                productImages.push({ image: img, caption: `${displayIdx}. *${p.name}*${price}` })
+              }
+            } catch {}
+          }
+        }
 
         // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
         if (!p.id && p.name) {
@@ -1578,6 +1599,15 @@ async function handleChatMessage(userId: string, text: string): Promise<string> 
       const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
       if (msgCount > 0 && msgCount % 5 === 0) {
         chatWebCta = '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
+      }
+    }
+
+    // Send product images via WhatsApp before the text reply
+    for (const pi of productImages) {
+      try {
+        await sendImageMessage(phone, pi.image, pi.caption)
+      } catch (err) {
+        console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
       }
     }
 

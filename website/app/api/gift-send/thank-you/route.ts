@@ -27,14 +27,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
-  // Verify the logged-in user is the gift recipient
+  // Verify the logged-in user is the gift recipient (by userId or phone match)
   const userId = (session.user as any).id
-  if (!gift.recipientUserId || gift.recipientUserId !== userId) {
+  const userPhone = (session.user as any).phone || null
+  const isRecipientById = gift.recipientUserId && gift.recipientUserId === userId
+  const isRecipientByPhone = userPhone && gift.recipientPhone &&
+    userPhone.replace(/\D/g, '') === gift.recipientPhone.replace(/\D/g, '')
+  if (!isRecipientById && !isRecipientByPhone) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   if (!gift.redeemedAt) {
     return NextResponse.json({ error: 'Gift has not been redeemed yet' }, { status: 400 })
+  }
+
+  // Link recipientUserId if not set yet (e.g., ITEM_CLICK or SHIP redemption)
+  if (!gift.recipientUserId) {
+    await prisma.giftSend.update({
+      where: { id: gift.id },
+      data: { recipientUserId: userId },
+    }).catch(() => {})
   }
 
   // Send WhatsApp to sender
@@ -48,7 +60,9 @@ export async function POST(request: NextRequest) {
       'gift_thank_you',
       [recipientName, gift.itemName, message],
       { skipTimeCheck: true }
-    ).catch(() => {})
+    ).catch((err) => {
+      console.error(`[ThankYou] Failed to send to ${gift.sender.phone}:`, err)
+    })
   }
 
   return NextResponse.json({ success: true })
