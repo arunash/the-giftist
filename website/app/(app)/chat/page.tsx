@@ -151,9 +151,9 @@ function GiftsCarousel({ gifts, loading: giftsLoading }: { gifts: GiftItem[]; lo
 
   if (giftsLoading) {
     return (
-      <div className="flex gap-3 overflow-hidden px-1 py-2">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="flex-shrink-0 w-52 h-24 bg-surface rounded-xl animate-pulse" />
+      <div className="flex gap-2 overflow-hidden px-1 py-0.5">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="flex-shrink-0 w-48 h-10 bg-surface rounded-lg animate-pulse" />
         ))}
       </div>
     )
@@ -180,7 +180,7 @@ function GiftsCarousel({ gifts, loading: giftsLoading }: { gifts: GiftItem[]; lo
           <ChevronLeft className="h-4 w-4" />
         </button>
       )}
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide px-1 py-1">
+      <div ref={scrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide px-1 py-0.5">
         {gifts.map(gift => {
           const status = STATUS_CONFIG[gift.status] || STATUS_CONFIG.PENDING
           const StatusIcon = status.icon
@@ -188,33 +188,29 @@ function GiftsCarousel({ gifts, loading: giftsLoading }: { gifts: GiftItem[]; lo
             <Link
               key={gift.id}
               href={gift.direction === 'received' ? `/gift/${gift.redeemCode}` : '#'}
-              className="flex-shrink-0 w-52 bg-surface rounded-xl border border-border p-3 hover:border-primary/30 transition"
+              className="flex-shrink-0 flex items-center gap-2 bg-surface rounded-lg border border-border px-2.5 py-1.5 hover:border-primary/30 transition"
             >
-              <div className="flex items-center gap-2.5">
-                {gift.itemImage ? (
-                  <img src={gift.itemImage} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center flex-shrink-0">
-                    <Gift className="h-4 w-4 text-primary/40" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{gift.itemName}</p>
-                  <p className="text-[10px] text-muted truncate">
-                    {gift.direction === 'sent'
-                      ? `To ${gift.recipientName || 'someone'}`
-                      : `From ${gift.senderName || 'someone'}`
-                    }
-                  </p>
+              {gift.itemImage ? (
+                <img src={gift.itemImage} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center flex-shrink-0">
+                  <Gift className="h-3.5 w-3.5 text-primary/40" />
                 </div>
+              )}
+              <div className="min-w-0 max-w-[100px]">
+                <p className="text-[11px] font-medium truncate leading-tight">{gift.itemName}</p>
+                <p className="text-[9px] text-muted truncate">
+                  {gift.direction === 'sent'
+                    ? `To ${gift.recipientName || 'someone'}`
+                    : `From ${gift.senderName || 'someone'}`
+                  }
+                </p>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${status.color}`}>
-                  <StatusIcon className="h-2 w-2" />
-                  {status.label}
-                </span>
-                <span className="text-xs font-semibold">${gift.amount.toFixed(0)}</span>
-              </div>
+              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium whitespace-nowrap ${status.color}`}>
+                <StatusIcon className="h-2 w-2" />
+                {status.label}
+              </span>
+              <span className="text-[11px] font-semibold whitespace-nowrap">${gift.amount.toFixed(0)}</span>
             </Link>
           )
         })}
@@ -419,13 +415,13 @@ export default function ChatPage() {
         {/* Left: Gifts carousel + Chat */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Gifts carousel */}
-          <div className="flex-shrink-0 border-b border-border px-6 py-3">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                <Gift className="h-4 w-4 text-primary" />
-                Your Gifts
+          <div className="flex-shrink-0 border-b border-border px-4 py-2">
+            <div className="flex items-center justify-between mb-0.5">
+              <h2 className="text-xs font-semibold text-gray-500 flex items-center gap-1 uppercase tracking-wide">
+                <Gift className="h-3 w-3 text-primary" />
+                Gifts
               </h2>
-              <Link href="/gifts" className="text-[11px] text-primary hover:underline font-medium">
+              <Link href="/gifts" className="text-[10px] text-primary hover:underline font-medium">
                 View all
               </Link>
             </div>
@@ -433,8 +429,8 @@ export default function ChatPage() {
           </div>
 
           {/* Chat header */}
-          <div className="p-4 px-6 border-b border-border flex-shrink-0">
-            <h1 className="text-xl font-bold text-gray-900">Gift Concierge</h1>
+          <div className="py-3 px-6 border-b border-border flex-shrink-0">
+            <h1 className="text-lg font-bold text-gray-900">Gift Concierge</h1>
           </div>
 
           {/* Chat messages */}
@@ -466,8 +462,8 @@ export default function ChatPage() {
         </div>
 
         {/* Right: Activity Feed */}
-        <div className="w-80 border-l border-border flex-shrink-0 overflow-y-auto p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Activity</h2>
+        <div className="w-72 border-l border-border flex-shrink-0 overflow-y-auto px-3 py-3">
+          <h2 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Activity</h2>
           {activityContent}
         </div>
       </div>
