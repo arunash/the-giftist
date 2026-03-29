@@ -83,6 +83,8 @@ export async function GET() {
     giftSendCountToday,
     giftSendByStatus,
     recentGiftSends,
+    fulfillmentAggregates,
+    fulfillmentDetails,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -286,6 +288,20 @@ export async function GET() {
         createdAt: true,
         sender: { select: { name: true } },
       },
+    }),
+    // Fulfillment cost totals for P&L
+    prisma.giftSend.aggregate({
+      _sum: { fulfillmentCost: true, amount: true, platformFee: true, totalCharged: true },
+      where: { fulfillmentCost: { not: null } },
+    }),
+    prisma.giftSend.findMany({
+      where: { status: { in: ['SHIPPED', 'DELIVERED', 'REDEEMED_PENDING_SHIPMENT'] } },
+      select: {
+        id: true, itemName: true, amount: true, platformFee: true, totalCharged: true,
+        fulfillmentCost: true, status: true, createdAt: true,
+        sender: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
     }),
   ])
 
@@ -492,6 +508,27 @@ export async function GET() {
       bufferedMessages: groupMessagesTotal,
       messagesToday: groupMessagesToday,
       profilesCreated: groupProfilesCreated,
+    },
+    pnl: {
+      totalRevenue: (fulfillmentAggregates as any)._sum?.platformFee || 0,
+      totalFulfillmentCost: (fulfillmentAggregates as any)._sum?.fulfillmentCost || 0,
+      totalGiftVolume: (fulfillmentAggregates as any)._sum?.amount || 0,
+      // Stripe takes ~2.9% + $0.30 per transaction
+      details: (fulfillmentDetails as any[]).map((g: any) => ({
+        id: g.id,
+        itemName: g.itemName,
+        amount: g.amount,
+        platformFee: g.platformFee,
+        totalCharged: g.totalCharged,
+        fulfillmentCost: g.fulfillmentCost,
+        status: g.status,
+        createdAt: g.createdAt,
+        senderName: g.sender?.name || 'Unknown',
+        // Estimated Stripe fee: 2.9% + $0.30
+        stripeFee: g.totalCharged ? +(g.totalCharged * 0.029 + 0.30).toFixed(2) : 0,
+        // Net margin: platformFee - fulfillmentCost - stripeFee
+        netMargin: g.platformFee - (g.fulfillmentCost || 0) - (g.totalCharged ? g.totalCharged * 0.029 + 0.30 : 0),
+      })),
     },
   })
 }

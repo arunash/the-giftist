@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -85,6 +85,16 @@ interface Stats {
     bufferedMessages: number
     messagesToday: number
     profilesCreated: number
+  }
+  pnl: {
+    totalRevenue: number
+    totalFulfillmentCost: number
+    totalGiftVolume: number
+    details: Array<{
+      id: string; itemName: string; amount: number; platformFee: number
+      totalCharged: number; fulfillmentCost: number | null; status: string
+      createdAt: string; senderName: string; stripeFee: number; netMargin: number
+    }>
   }
 }
 
@@ -247,10 +257,40 @@ function GiftFulfillmentSection() {
     })
     if (res.ok) {
       const cost = shipForm.fulfillmentCost ? parseFloat(shipForm.fulfillmentCost) : null
-      setShipOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString(), fulfillmentCost: cost } : o))
-      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'SHIPPED', shippedAt: new Date().toISOString(), fulfillmentCost: cost } : o))
+      const updates = {
+        status: 'SHIPPED',
+        shippedAt: new Date().toISOString(),
+        fulfillmentCost: cost,
+        trackingNumber: shipForm.trackingNumber || null,
+        trackingUrl: shipForm.trackingUrl || null,
+      }
+      setShipOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o))
+      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o))
       setShipping(null)
       setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '', fulfillmentCost: '' })
+    }
+  }
+
+  const [resending, setResending] = useState<string | null>(null)
+
+  const handleResendNotification = async (orderId: string) => {
+    setResending(orderId)
+    try {
+      const res = await fetch('/api/admin/fulfillment/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ giftSendId: orderId }),
+      })
+      if (res.ok) {
+        alert('Notification sent!')
+      } else {
+        const data = await res.json()
+        alert(`Failed: ${data.error || 'Unknown error'}`)
+      }
+    } catch {
+      alert('Failed to resend notification')
+    } finally {
+      setResending(null)
     }
   }
 
@@ -378,18 +418,27 @@ function GiftFulfillmentSection() {
                                 <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
                               )}
                             </span>
-                            <button onClick={() => {
-                              setShipping(order.id)
-                              setShipForm({
-                                trackingNumber: order.trackingNumber || '',
-                                trackingUrl: order.trackingUrl || '',
-                                expectedDelivery: '',
-                                fulfillmentCost: order.fulfillmentCost != null ? String(order.fulfillmentCost) : '',
-                              })
-                            }}
-                              className="mt-1 text-[10px] text-primary hover:underline">
-                              Edit
-                            </button>
+                            <div className="flex items-center gap-2 mt-1">
+                              <button onClick={() => {
+                                setShipping(order.id)
+                                setShipForm({
+                                  trackingNumber: order.trackingNumber || '',
+                                  trackingUrl: order.trackingUrl || '',
+                                  expectedDelivery: '',
+                                  fulfillmentCost: order.fulfillmentCost != null ? String(order.fulfillmentCost) : '',
+                                })
+                              }}
+                                className="text-[10px] text-primary hover:underline">
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleResendNotification(order.id)}
+                                disabled={resending === order.id}
+                                className="text-[10px] text-amber-400 hover:underline flex items-center gap-0.5 disabled:opacity-50">
+                                {resending === order.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Bell className="h-2.5 w-2.5" />}
+                                Resend
+                              </button>
+                            </div>
                           </div>
                         )}
                       </td>
@@ -514,6 +563,87 @@ export default function AdminDashboard() {
         <p className="text-muted">Failed to load stats.</p>
       ) : (
       <>
+
+      {/* P&L / Margin */}
+      {stats.pnl && stats.pnl.details.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-green-500" />
+            P&L / Margins
+          </h2>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {(() => {
+              const { details } = stats.pnl
+              const totalPlatformFees = details.reduce((s, d) => s + d.platformFee, 0)
+              const totalStripeFees = details.reduce((s, d) => s + d.stripeFee, 0)
+              const totalFulfillment = details.reduce((s, d) => s + (d.fulfillmentCost || 0), 0)
+              const totalNet = details.reduce((s, d) => s + d.netMargin, 0)
+              const totalVolume = details.reduce((s, d) => s + d.totalCharged, 0)
+              return (
+                <>
+                  <div className="bg-surface rounded-xl p-4 border border-border">
+                    <p className="text-[10px] text-muted uppercase tracking-wider">Gift Volume</p>
+                    <p className="text-xl font-bold text-foreground">${totalVolume.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted">{details.length} orders</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-4 border border-border">
+                    <p className="text-[10px] text-muted uppercase tracking-wider">Platform Fees</p>
+                    <p className="text-xl font-bold text-green-400">${totalPlatformFees.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted">Gross revenue</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-4 border border-border">
+                    <p className="text-[10px] text-muted uppercase tracking-wider">Costs</p>
+                    <p className="text-xl font-bold text-red-400">${(totalStripeFees + totalFulfillment).toFixed(2)}</p>
+                    <p className="text-[10px] text-muted">Stripe: ${totalStripeFees.toFixed(2)} · Fulfillment: ${totalFulfillment.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-surface rounded-xl p-4 border border-border">
+                    <p className="text-[10px] text-muted uppercase tracking-wider">Net Margin</p>
+                    <p className={`text-xl font-bold ${totalNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>${totalNet.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted">{totalPlatformFees > 0 ? ((totalNet / totalPlatformFees) * 100).toFixed(0) : 0}% of fees</p>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+          {/* Detail table */}
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-3 text-left text-xs text-muted font-medium">Gift</th>
+                  <th className="p-3 text-right text-xs text-muted font-medium">Charged</th>
+                  <th className="p-3 text-right text-xs text-muted font-medium">Platform Fee</th>
+                  <th className="p-3 text-right text-xs text-muted font-medium">Stripe Fee</th>
+                  <th className="p-3 text-right text-xs text-muted font-medium">Fulfillment</th>
+                  <th className="p-3 text-right text-xs text-muted font-medium">Net</th>
+                  <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.pnl.details.map(d => (
+                  <tr key={d.id} className="border-b border-border/50 hover:bg-surface-hover">
+                    <td className="p-3">
+                      <p className="text-xs font-medium">{d.itemName}</p>
+                      <p className="text-[10px] text-muted">{d.senderName} · {new Date(d.createdAt).toLocaleDateString()}</p>
+                    </td>
+                    <td className="p-3 text-right text-xs">${d.totalCharged.toFixed(2)}</td>
+                    <td className="p-3 text-right text-xs text-green-400">${d.platformFee.toFixed(2)}</td>
+                    <td className="p-3 text-right text-xs text-red-300">-${d.stripeFee.toFixed(2)}</td>
+                    <td className="p-3 text-right text-xs text-red-300">{d.fulfillmentCost != null ? `-$${d.fulfillmentCost.toFixed(2)}` : <span className="text-muted">—</span>}</td>
+                    <td className={`p-3 text-right text-xs font-medium ${d.netMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>${d.netMargin.toFixed(2)}</td>
+                    <td className="p-3">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_STYLE[d.status] || 'bg-gray-500/20 text-gray-400'}`}>
+                        {STATUS_LABEL[d.status] || d.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
