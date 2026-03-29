@@ -473,23 +473,11 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-      </div>
-    )
-  }
-
-  if (!stats) {
-    return <p className="text-muted">Failed to load stats.</p>
-  }
-
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
-      {/* Gift Fulfillment */}
+      {/* Gift Fulfillment — always renders independently */}
       <div>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
           <Truck className="h-5 w-5 text-primary" />
@@ -497,6 +485,15 @@ export default function AdminDashboard() {
         </h2>
         <GiftFulfillmentSection />
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      ) : !stats ? (
+        <p className="text-muted">Failed to load stats.</p>
+      ) : (
+      <>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -893,6 +890,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }
