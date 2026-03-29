@@ -337,48 +337,60 @@ function GiftFulfillmentSection() {
                       </td>
                       <td className="p-3 text-xs text-muted">{order.redeemedAt ? new Date(order.redeemedAt).toLocaleDateString() : '—'}</td>
                       <td className="p-3">
-                        {order.status === 'REDEEMED_PENDING_SHIPMENT' ? (
-                          shipping === order.id ? (
-                            <div className="space-y-2 min-w-[200px]">
-                              <input type="text" placeholder="Tracking number" value={shipForm.trackingNumber}
-                                onChange={e => setShipForm(f => ({ ...f, trackingNumber: e.target.value }))}
-                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
-                              <input type="text" placeholder="Tracking URL" value={shipForm.trackingUrl}
-                                onChange={e => setShipForm(f => ({ ...f, trackingUrl: e.target.value }))}
-                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
-                              <input type="date" value={shipForm.expectedDelivery}
-                                onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
-                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
-                              <input type="number" step="0.01" placeholder="Actual cost ($)" value={shipForm.fulfillmentCost}
-                                onChange={e => setShipForm(f => ({ ...f, fulfillmentCost: e.target.value }))}
-                                className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
-                              <div className="flex gap-1">
-                                <button onClick={() => handleShip(order.id)}
-                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
-                                  <Truck className="h-3 w-3" /> Ship
-                                </button>
-                                <button onClick={() => setShipping(null)}
-                                  className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs text-muted hover:text-foreground">
-                                  Cancel
-                                </button>
-                              </div>
+                        {shipping === order.id ? (
+                          <div className="space-y-2 min-w-[200px]">
+                            <input type="text" placeholder="Tracking number" value={shipForm.trackingNumber}
+                              onChange={e => setShipForm(f => ({ ...f, trackingNumber: e.target.value }))}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                            <input type="text" placeholder="Tracking URL" value={shipForm.trackingUrl}
+                              onChange={e => setShipForm(f => ({ ...f, trackingUrl: e.target.value }))}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                            <input type="date" value={shipForm.expectedDelivery}
+                              onChange={e => setShipForm(f => ({ ...f, expectedDelivery: e.target.value }))}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                            <input type="number" step="0.01" placeholder="Actual cost ($)" value={shipForm.fulfillmentCost}
+                              onChange={e => setShipForm(f => ({ ...f, fulfillmentCost: e.target.value }))}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs outline-none focus:border-primary" />
+                            <div className="flex gap-1">
+                              <button onClick={() => handleShip(order.id)}
+                                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
+                                <Truck className="h-3 w-3" /> {order.status === 'REDEEMED_PENDING_SHIPMENT' ? 'Ship' : 'Update'}
+                              </button>
+                              <button onClick={() => setShipping(null)}
+                                className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs text-muted hover:text-foreground">
+                                Cancel
+                              </button>
                             </div>
-                          ) : (
-                            <button onClick={() => setShipping(order.id)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
-                              <Truck className="h-3 w-3" /> Mark shipped
-                            </button>
-                          )
+                          </div>
+                        ) : order.status === 'REDEEMED_PENDING_SHIPMENT' ? (
+                          <button onClick={() => { setShipping(order.id); setShipForm({ trackingNumber: '', trackingUrl: '', expectedDelivery: '', fulfillmentCost: '' }) }}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700">
+                            <Truck className="h-3 w-3" /> Mark shipped
+                          </button>
                         ) : (
-                          <span className="text-xs text-muted">
-                            {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
-                            {order.fulfillmentCost != null && (
-                              <span className="block text-[10px] text-green-500">Cost: ${order.fulfillmentCost.toFixed(2)}</span>
-                            )}
-                            {order.trackingUrl && (
-                              <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
-                            )}
-                          </span>
+                          <div>
+                            <span className="text-xs text-muted">
+                              {order.shippedAt && `Shipped ${new Date(order.shippedAt).toLocaleDateString()}`}
+                              {order.fulfillmentCost != null && (
+                                <span className="block text-[10px] text-green-500">Cost: ${order.fulfillmentCost.toFixed(2)}</span>
+                              )}
+                              {order.trackingUrl && (
+                                <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="block text-primary hover:underline mt-0.5">Track</a>
+                              )}
+                            </span>
+                            <button onClick={() => {
+                              setShipping(order.id)
+                              setShipForm({
+                                trackingNumber: order.trackingNumber || '',
+                                trackingUrl: order.trackingUrl || '',
+                                expectedDelivery: '',
+                                fulfillmentCost: order.fulfillmentCost != null ? String(order.fulfillmentCost) : '',
+                              })
+                            }}
+                              className="mt-1 text-[10px] text-primary hover:underline">
+                              Edit
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

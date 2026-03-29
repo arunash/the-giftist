@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 })
   }
 
+  const isAlreadyShipped = gift.status === 'SHIPPED' || gift.status === 'DELIVERED'
+
   await prisma.giftSend.update({
     where: { id: giftSendId },
     data: {
@@ -86,9 +88,14 @@ export async function POST(request: NextRequest) {
       trackingNumber: trackingNumber || null,
       trackingUrl: trackingUrl || null,
       fulfillmentCost: typeof fulfillmentCost === 'number' ? fulfillmentCost : null,
-      shippedAt: new Date(),
+      ...(!isAlreadyShipped && { shippedAt: new Date() }),
     },
   })
+
+  // Only notify on first shipment, not edits
+  if (isAlreadyShipped) {
+    return NextResponse.json({ success: true })
+  }
 
   // Notify recipient via all channels
   const senderName = gift.sender.name || 'A friend'
