@@ -1006,7 +1006,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     }))
 
   // Build system prompt with user context
-  const systemPrompt = await buildChatContext(userId)
+  const systemPrompt = await buildChatContext(userId, 'whatsapp')
 
   try {
     const response = await client.messages.create({
