@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { findProductImage } from './product-image'
+import { verifyImageMatch } from './verify-image'
 import { logApiCall } from './api-logger'
 
 const anthropic = new Anthropic()
@@ -50,14 +51,18 @@ Return ONLY the JSON, no markdown.`,
       parsed = {}
     }
 
-    // Step 2: Try each alternative search query
+    // Step 2: Try each alternative search query, verify match
     if (parsed.queries?.length) {
       for (const query of parsed.queries) {
         try {
           const image = await findProductImage(query)
           if (image) {
-            console.log(`[ai-image] Found image for "${productName}" via query: "${query}"`)
-            return image
+            const matches = await verifyImageMatch(image, productName)
+            if (matches) {
+              console.log(`[ai-image] Verified image for "${productName}" via query: "${query}"`)
+              return image
+            }
+            console.log(`[ai-image] Image mismatch for "${productName}" via query: "${query}"`)
           }
         } catch {}
       }

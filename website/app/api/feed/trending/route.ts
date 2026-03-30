@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { extractProductFromUrl } from '@/lib/extract'
+import { verifyImageMatch } from '@/lib/verify-image'
 import { getOverSuggestedProducts, trackSuggestedProducts } from '@/lib/product-suggestions'
 import OpenAI from 'openai'
 
@@ -118,9 +119,12 @@ Return ONLY a JSON array, no other text:
       rawItems.map(async (item: any) => {
         try {
           const scraped = await extractProductFromUrl(item.url)
+          if (!scraped.image) return item
+          // Verify image matches the product
+          const matches = await verifyImageMatch(scraped.image, item.name)
           return {
             ...item,
-            image: scraped.image || '',
+            image: matches ? scraped.image : '',
             price: scraped.price || item.price,
           }
         } catch {

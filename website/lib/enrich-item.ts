@@ -3,6 +3,7 @@ import { extractProductFromUrl } from '@/lib/extract'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
 import { searchRetailers } from '@/lib/search-retailers'
+import { verifyImageMatch } from '@/lib/verify-image'
 import crypto from 'crypto'
 
 const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -270,7 +271,15 @@ export async function enrichItem(itemId: string, productName: string): Promise<b
 
     try {
       const scraped = await extractProductFromUrl(found.url)
-      if (scraped.image) image = scraped.image
+      if (scraped.image) {
+        // Verify the scraped image actually matches the product
+        const matches = await verifyImageMatch(scraped.image, productName)
+        if (matches) {
+          image = scraped.image
+        } else {
+          console.log(`[ENRICH] Image mismatch for "${productName}", scraped image rejected`)
+        }
+      }
       // Only use scraped price if web search didn't find one
       if (!price && scraped.priceValue) {
         price = scraped.price
@@ -281,7 +290,7 @@ export async function enrichItem(itemId: string, productName: string): Promise<b
     }
 
     if (!image) {
-      console.log(`[ENRICH] No image found for: ${productName}`)
+      console.log(`[ENRICH] No verified image found for: ${productName}`)
       return false
     }
 
