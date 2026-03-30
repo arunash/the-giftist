@@ -1,7 +1,7 @@
 import { prisma } from './db'
 import { getOverSuggestedProducts } from './product-suggestions'
 
-const FREE_DAILY_MESSAGE_LIMIT = 10
+const FREE_LIFETIME_MESSAGE_LIMIT = 10
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
 
@@ -17,7 +17,7 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { timezone: true, messageCredits: true },
+      select: { messageCredits: true },
     }),
   ])
 
@@ -28,21 +28,18 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     return { allowed: true, remaining: Infinity }
   }
 
-  // Start of day in user's local timezone (falls back to UTC)
-  const startOfUserDay = getStartOfDayInUTC(user?.timezone || 'UTC')
-
-  const todayCount = await prisma.chatMessage.count({
+  // Count total lifetime messages (not daily)
+  const totalCount = await prisma.chatMessage.count({
     where: {
       userId,
       role: 'USER',
-      createdAt: { gte: startOfUserDay },
     },
   })
 
-  const freeRemaining = Math.max(0, FREE_DAILY_MESSAGE_LIMIT - todayCount)
+  const freeRemaining = Math.max(0, FREE_LIFETIME_MESSAGE_LIMIT - totalCount)
 
-  // If free daily limit not exhausted, allow
-  if (todayCount < FREE_DAILY_MESSAGE_LIMIT) {
+  // If free lifetime limit not exhausted, allow
+  if (totalCount < FREE_LIFETIME_MESSAGE_LIMIT) {
     return { allowed: true, remaining: freeRemaining }
   }
 

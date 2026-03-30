@@ -357,7 +357,7 @@ export default async function Home() {
                 <PricingItem included text="Share lists via WhatsApp" />
                 <PricingItem included text="1 free event" />
                 <PricingItem included text="Group gift funding" />
-                <PricingItem included text="10 concierge messages/day" />
+                <PricingItem included text="10 free concierge messages" />
                 <PricingItem included text="2 Gift DNA analyses" />
                 <PricingItem included={false} text="Unlimited concierge" />
               </div>
@@ -388,7 +388,7 @@ export default async function Home() {
                 <PricingItem included text="50 extra concierge messages" />
                 <PricingItem included text="5 extra Gift DNA analyses" />
                 <PricingItem included text="Use anytime — credits never expire" />
-                <PricingItem included text="Kicks in after daily free limit" />
+                <PricingItem included text="Kicks in after 10 free messages" />
                 <PricingItem included={false} text="Unlimited concierge" />
                 <PricingItem included={false} text="Priority recommendations" />
               </div>

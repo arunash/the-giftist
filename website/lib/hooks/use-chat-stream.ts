@@ -30,7 +30,7 @@ export function useChatStream() {
       if (res.status === 429) {
         const data = await res.json()
         // Encode upgrade URLs into the message so the UI can render buttons
-        let limitMsg = data.message || "You've reached your daily message limit."
+        let limitMsg = data.message || "You've used your 10 free messages."
         if (data.creditPackUrl) {
           limitMsg += `\n\n[UPGRADE_CREDIT_PACK:${data.creditPackUrl}]`
         }

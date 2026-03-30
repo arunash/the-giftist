@@ -957,7 +957,7 @@ async function handleInstagramLink(
 }
 
 async function handleChatMessage(userId: string, text: string, phone?: string): Promise<string> {
-  // Check daily message limit for free users
+  // Check message limit for free users
   const { allowed, remaining } = await checkChatLimit(userId)
   if (!allowed) {
     // Generate inline checkout link
@@ -980,9 +980,9 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
         success_url: 'https://giftist.ai/settings?credits=success',
         cancel_url: 'https://giftist.ai',
       })
-      return `You've used all your free messages for today.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 Gift DNA analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+      return `You've used your 10 free messages.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 Gift DNA analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
     } catch {
-      return "You've reached your daily message limit. Visit giftist.ai/settings to buy a Credit Pack or upgrade to Gold!"
+      return "You've used your 10 free messages. Visit giftist.ai/settings to buy a Credit Pack ($5 for 50 messages) or upgrade to Gold for unlimited!"
     }
   }
 

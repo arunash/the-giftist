@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       return new Response('Message is too long', { status: 400 })
     }
 
-    // Check daily message limit for free users
+    // Check message limit for free users
     const { allowed, remaining } = await checkChatLimit(userId)
     if (!allowed) {
       // Generate Stripe checkout URLs so user can upgrade inline
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       return new Response(
         JSON.stringify({
           error: 'limit_reached',
-          message: "You've reached your daily message limit.",
+          message: "You've used your 10 free messages. Grab a Credit Pack or upgrade to Gold for unlimited!",
           creditPackUrl: creditSession.url,
           goldUrl: goldSession?.url || null,
         }),
