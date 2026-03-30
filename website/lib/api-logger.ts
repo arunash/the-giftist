@@ -6,10 +6,11 @@ const PRICING: Record<string, { input: number; output: number }> = {
   'claude-3-5-sonnet-20241022': { input: 3, output: 15 },
   'claude-3-haiku-20240307': { input: 0.8, output: 4 },
   'claude-haiku-4-5-20251001': { input: 0.8, output: 4 },
-  'claude-haiku-4-5-20250929': { input: 0.8, output: 4 },
   'gpt-4o': { input: 2.5, output: 10 },
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
   'gpt-5.2': { input: 2.5, output: 10 },
+  'sonar': { input: 1, output: 1 },
+  'sonar-pro': { input: 3, output: 15 },
 }
 
 // Per-call surcharges for tool use (e.g. web search costs on top of tokens)

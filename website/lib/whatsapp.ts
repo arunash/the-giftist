@@ -76,13 +76,65 @@ export async function sendTemplateMessage(to: string, templateName: string, para
   return result
 }
 
+/**
+ * Upload an image to WhatsApp's media API by downloading it first.
+ * Returns the media ID, or null if upload fails.
+ */
+async function uploadImageToWhatsApp(imageUrl: string): Promise<string | null> {
+  try {
+    const imgRes = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        Accept: 'image/*',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!imgRes.ok) return null
+
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+    if (!contentType.startsWith('image/')) return null
+
+    const buffer = Buffer.from(await imgRes.arrayBuffer())
+    if (buffer.length < 1000 || buffer.length > 5 * 1024 * 1024) return null
+
+    // Upload to WhatsApp Media API
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('type', contentType)
+    form.append('file', new Blob([buffer], { type: contentType }), 'product.jpg')
+
+    const uploadRes = await fetch(
+      `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN()}` },
+        body: form,
+      }
+    )
+    if (!uploadRes.ok) return null
+
+    const data = await uploadRes.json()
+    return data.id || null
+  } catch {
+    return null
+  }
+}
+
 export async function sendImageMessage(to: string, imageUrl: string, caption: string) {
   if (isBlocked(to)) return { messages: [] }
+
+  // Try to upload image first (avoids WhatsApp 131053 media errors)
+  const mediaId = await uploadImageToWhatsApp(imageUrl)
+
+  const imagePayload = mediaId
+    ? { id: mediaId, caption }
+    : { link: imageUrl, caption }
+
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
     type: 'image',
-    image: { link: imageUrl, caption },
+    image: imagePayload,
   })
   logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
   const waMessageId = result?.messages?.[0]?.id

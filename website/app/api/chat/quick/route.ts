@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { parseChatContent, type ProductData } from '@/lib/parse-chat-content'
-import { findProductUrl } from '@/lib/enrich-item'
 import { applyAffiliateTag } from '@/lib/affiliate'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -82,7 +81,7 @@ async function validateUrl(url: string): Promise<boolean> {
   }
 }
 
-// Resolve product URLs: validate AI's URL, fallback to Google Shopping search
+// Resolve product URLs: validate AI's URL, fallback to Amazon search (no expensive GPT-4o searches for anonymous users)
 async function resolveProductUrl(product: ProductData): Promise<string | null> {
   // If AI provided a URL, validate it
   if (product.url && !product.url.includes('google.com/search')) {
@@ -90,11 +89,9 @@ async function resolveProductUrl(product: ProductData): Promise<string | null> {
     if (valid) return applyAffiliateTag(product.url)
   }
 
-  // Fallback: search Google Shopping for the product by name
-  const found = await findProductUrl(product.name)
-  if (found) return applyAffiliateTag(found.url)
-
-  return null
+  // For anonymous landing page: cheap Amazon search link instead of GPT-4o web search
+  const affiliateTag = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG || 'giftist05-20'
+  return `https://www.amazon.com/s?k=${encodeURIComponent(product.name)}&tag=${affiliateTag}`
 }
 
 export async function POST(request: NextRequest) {
@@ -114,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20250929',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 600,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: message }],
@@ -128,7 +125,7 @@ export async function POST(request: NextRequest) {
     logApiCall({
       provider: 'ANTHROPIC',
       endpoint: '/messages',
-      model: 'claude-haiku-4-5-20250929',
+      model: 'claude-haiku-4-5-20251001',
       inputTokens: response.usage?.input_tokens,
       outputTokens: response.usage?.output_tokens,
       source: 'LANDING',
