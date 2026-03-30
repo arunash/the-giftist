@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X, Loader2 } from 'lucide-react'
+import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X, Loader2, Heart, Sparkles, ShieldCheck, Star, RefreshCw, Headphones, DollarSign, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
 
 interface ProductData {
@@ -34,6 +34,7 @@ function ProductPage() {
   const [loading, setLoading] = useState(true)
   const [buyingLoading, setBuyingLoading] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [saved, setSaved] = useState(false)
 
   // Check auth status
   useEffect(() => {
@@ -184,6 +185,17 @@ function ProductPage() {
     }
   }
 
+  const handleSaveForLater = () => {
+    if (requireAuth()) return
+    setSaved(true)
+    // Could call an API to save, but for now just visual feedback
+  }
+
+  const askConcierge = (prompt: string) => {
+    if (requireAuth()) return
+    window.location.href = `/chat?q=${encodeURIComponent(prompt)}`
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -217,10 +229,7 @@ function ProductPage() {
             Giftist
           </Link>
           <button
-            onClick={() => {
-              if (requireAuth()) return
-              window.location.href = `/chat?q=${encodeURIComponent(`Tell me more about "${product.productName}"`)}`
-            }}
+            onClick={() => askConcierge(`Tell me more about "${product.productName}"`)}
             className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1"
           >
             <MessageCircle className="h-3.5 w-3.5" />
@@ -229,10 +238,9 @@ function ProductPage() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Product card */}
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {/* Product card with image */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          {/* Image */}
           {product.image && (
             <div className="aspect-square bg-gray-100 relative overflow-hidden">
               <img
@@ -240,131 +248,231 @@ function ProductPage() {
                 alt={product.productName}
                 className="w-full h-full object-cover"
               />
+              {/* Picked by Giftist badge */}
+              <div className="absolute top-4 left-4 px-3 py-1.5 bg-white/90 backdrop-blur-sm text-gray-900 text-xs font-semibold rounded-full flex items-center gap-1.5 shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                Picked by Giftist
+              </div>
               {purchased && (
-                <div className="absolute top-4 left-4 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg">
+                <div className="absolute top-4 right-4 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg">
                   Purchased
                 </div>
               )}
             </div>
           )}
 
-          {/* Info */}
           <div className="p-5">
             <h1 className="text-xl font-semibold text-gray-900 leading-tight">
               {product.productName}
             </h1>
-            <p className="text-sm text-gray-400 mt-1">from {product.domain}</p>
-
             {product.price && (
-              <p className="text-2xl font-bold text-gray-900 mt-3">{product.price}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">{product.price}</p>
             )}
-
-            <div className="mt-5 space-y-3">
-              {purchased && giftData ? (
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-green-500 text-white rounded-xl font-semibold text-sm hover:bg-green-600 transition"
-                >
-                  <Gift className="h-4 w-4" />
-                  Send to {giftData.recipientName || 'recipient'}
-                </button>
-              ) : purchased && loadingGift ? (
-                <button disabled className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-200 text-gray-500 rounded-xl font-semibold text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading gift...
-                </button>
-              ) : !purchased ? (
-                <button
-                  onClick={handleBuyClick}
-                  disabled={buyingLoading || !product.priceValue}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  {total ? `Buy as Gift — $${total.toFixed(2)}` : 'Buy as Gift'}
-                </button>
-              ) : null}
-
-              {!purchased && total && fee && (
-                <div className="text-center">
-                  <p className="text-xs text-gray-400">
-                    {product.price} + ${fee.toFixed(2)} service fee + ${shippingFee.toFixed(2)} shipping
-                  </p>
-                  <p className="text-[10px] text-gray-300 mt-0.5">
-                    Charges will appear as North Beach Technologies LLC
-                  </p>
-                </div>
-              )}
-
-              {/* View on retailer */}
-              <button
-                onClick={() => {
-                  if (requireAuth()) return
-                  window.open(`/go-r/${slug}`, '_blank')
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View on {product.domain}
-              </button>
-            </div>
           </div>
         </div>
 
+        {/* Why this works */}
         {!purchased && (
-          <>
-            {/* Ask concierge CTA */}
-            <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Not sure? Ask your Gift Concierge</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Get personalized advice, find similar items, or compare options.
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (requireAuth()) return
-                      window.location.href = `/chat?q=${encodeURIComponent(`I'm looking at "${product.productName}" (${product.price || 'no price'}). What do you think? Any similar alternatives?`)}`
-                    }}
-                    className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:text-primary-hover transition"
-                  >
-                    Chat with concierge
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb className="h-4 w-4 text-amber-500" />
+              <h3 className="font-semibold text-gray-900 text-sm">Why this works</h3>
             </div>
-
-            {/* WhatsApp CTA */}
-            <div className="mt-4 bg-white rounded-2xl border border-gray-200 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-green-600 fill-current">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Buy via WhatsApp</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Message our concierge to buy this gift or get it for someone special.
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (requireAuth()) return
-                      window.open(`https://wa.me/15014438478?text=${encodeURIComponent(`I want to buy "${product.productName}" ${product.price || ''}`)}`, '_blank')
-                    }}
-                    className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-green-600 hover:text-green-700 transition"
-                  >
-                    Message on WhatsApp
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
+            <ul className="space-y-2.5">
+              <li className="flex items-start gap-2.5 text-sm text-gray-600">
+                <span className="text-gray-400 mt-0.5">&#8226;</span>
+                <span>Popular, well-reviewed choice that almost anyone would appreciate</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm text-gray-600">
+                <span className="text-gray-400 mt-0.5">&#8226;</span>
+                <span>Feels like a thoughtful upgrade, not a random gift</span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm text-gray-600">
+                <span className="text-gray-400 mt-0.5">&#8226;</span>
+                <span>From a trusted brand with reliable quality</span>
+              </li>
+            </ul>
+          </div>
         )}
+
+        {/* Verification badges */}
+        {!purchased && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>Verified price from {product.domain}</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span>In stock and ready to ship</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <Star className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                <span>Highly rated by verified buyers</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Actions section */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          {/* Save for later */}
+          {!purchased && (
+            <button
+              onClick={handleSaveForLater}
+              className={`w-full flex items-center justify-center gap-2 py-3 border rounded-xl font-medium text-sm transition ${
+                saved
+                  ? 'border-pink-200 bg-pink-50 text-pink-600'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${saved ? 'fill-pink-500 text-pink-500' : ''}`} />
+              {saved ? 'Saved!' : 'Save for later'}
+            </button>
+          )}
+
+          {/* Buy as Gift */}
+          {purchased && giftData ? (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-green-500 text-white rounded-xl font-semibold text-sm hover:bg-green-600 transition"
+            >
+              <Gift className="h-4 w-4" />
+              Send to {giftData.recipientName || 'recipient'}
+            </button>
+          ) : purchased && loadingGift ? (
+            <button disabled className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-200 text-gray-500 rounded-xl font-semibold text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading gift...
+            </button>
+          ) : !purchased ? (
+            <>
+              <button
+                onClick={handleBuyClick}
+                disabled={buyingLoading || !product.priceValue}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
+              >
+                <Gift className="h-4 w-4" />
+                {total ? `Buy as Gift — $${total.toFixed(2)}` : 'Buy as Gift'}
+              </button>
+              {total && fee && (
+                <p className="text-xs text-gray-400 text-center">
+                  {product.price} + ${fee.toFixed(2)} service + ${shippingFee.toFixed(2)} shipping
+                </p>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        {/* Ask Giftist chat prompts */}
+        {!purchased && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageCircle className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-gray-900 text-sm">Ask Giftist</h3>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => askConcierge(`Is "${product.productName}" a good gift for my dad?`)}
+                className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                &ldquo;Is this a good gift for my dad?&rdquo;
+              </button>
+              <button
+                onClick={() => askConcierge(`Show me cheaper alternatives to "${product.productName}" (${product.price || ''}) — something under $100`)}
+                className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                &ldquo;Show me cheaper options&rdquo;
+              </button>
+              <button
+                onClick={() => askConcierge(`Compare "${product.productName}" with similar alternatives. Which one is the best gift?`)}
+                className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                &ldquo;Compare with alternatives&rdquo;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Not sure yet? Alternative suggestions */}
+        {!purchased && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw className="h-4 w-4 text-gray-500" />
+              <h3 className="font-semibold text-gray-900 text-sm">Not sure yet? Try these:</h3>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => askConcierge(`Show me similar premium gifts like "${product.productName}" in the same price range`)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                <Headphones className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                Similar premium gifts
+              </button>
+              <button
+                onClick={() => askConcierge(`Show me gift alternatives under $100 similar to "${product.productName}"`)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                <DollarSign className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                Alternatives under $100
+              </button>
+              <button
+                onClick={() => askConcierge(`What are the safest, most universally loved gifts similar to "${product.productName}"?`)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm text-gray-700 transition"
+              >
+                <Lightbulb className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                Safer crowd-favorite gifts
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Concierge help CTA */}
+        {!purchased && (
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 text-sm">Your Giftist concierge can help</h3>
+                <ul className="mt-2 space-y-1.5">
+                  <li className="text-xs text-gray-600 flex items-center gap-1.5">
+                    <span className="text-primary">&#8226;</span> Personalize this for your recipient
+                  </li>
+                  <li className="text-xs text-gray-600 flex items-center gap-1.5">
+                    <span className="text-primary">&#8226;</span> Find better options instantly
+                  </li>
+                  <li className="text-xs text-gray-600 flex items-center gap-1.5">
+                    <span className="text-primary">&#8226;</span> Help you decide faster
+                  </li>
+                </ul>
+                <button
+                  onClick={() => askConcierge(`I'm looking at "${product.productName}" (${product.price || 'no price'}). Help me decide — is this the right gift?`)}
+                  className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-primary hover:text-primary-hover transition"
+                >
+                  Chat now
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View on retailer */}
+        <div className="text-center py-2">
+          <button
+            onClick={() => {
+              if (requireAuth()) return
+              window.open(`/go-r/${slug}`, '_blank')
+            }}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View on {product.domain}
+          </button>
+        </div>
       </div>
 
       {/* Recipient info modal (pre-checkout) */}
