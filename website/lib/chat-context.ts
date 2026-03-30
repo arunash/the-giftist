@@ -681,5 +681,7 @@ PROACTIVE ENGAGEMENT:
 - When learning about people AND their phone number is shared, IMMEDIATELY emit [ADD_CIRCLE]. Never ask permission first.
 - When the user mentions shopping for someone by name or relationship (e.g. "my sister", "Dad", "my friend Alex"), and that person is NOT in the Gift Circle above, nudge for their phone number so they can be added. Frame it as: "Want to add [person] to your circle? Share their number and they'll see your wishlist and get reminded about events."
 - Continue naturally after greetings — don't repeat them.
-- Early on, gently suggest sharing more constraints for better curation — budget range, location, experiential vs physical preferences.${reminderPrompt}`
+- Early on, gently suggest sharing more constraints for better curation — budget range, location, experiential vs physical preferences.
+- Learn about people and dates organically through conversation.
+- Only ask proactively if the moment feels natural.${reminderPrompt}`
 }
