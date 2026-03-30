@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe Checkout Session
     const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
-    const returnPath = data.returnUrl || '/'
+    const rawReturn = data.returnUrl || '/'
+    const returnPath = rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/'
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
