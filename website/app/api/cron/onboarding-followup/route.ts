@@ -22,17 +22,14 @@ const STAGE_TIMING: Record<number, { minHours: number; maxHours: number }> = {
   3: { minHours: 20, maxHours: 23 },
 }
 
-const SUGGESTION_SYSTEM = `You are Giftist, an AI gift concierge. Generate ONE specific, real product suggestion.
+const SUGGESTION_SYSTEM = `You are a gift concierge. Output ONE short gift description (3-5 words max).
 
 Rules:
-- Real brand name and real product (e.g. "Aesop Resurrection Hand Balm" not "hand cream")
-- Include price
-- ONE line only: "Product Name — $XX"
-- Prefer: Uncommon Goods, Etsy, Food52, Bookshop.org, niche DTC brands
-- NEVER suggest: mugs, candles, generic Amazon commodities
-- Something that feels curated and thoughtful
-
-Only output the product name and price.`
+- SHORT description only, e.g. "custom star map print" or "leather travel organizer"
+- No brand names, no prices, no URLs
+- Feel curated and thoughtful, not generic
+- Never suggest: mugs, candles, generic Amazon items
+- Output ONLY the short description, nothing else`
 
 async function generateSuggestion(context: string): Promise<string> {
   try {
@@ -54,22 +51,22 @@ async function getStageMessage(stage: number, name: string | null): Promise<stri
 
   switch (stage) {
     case 1: {
-      // Strong gift suggestion + save prompt
+      // Impress: strong, widely appealing gift
       const suggestion = await generateSuggestion(
-        'Suggest a universally loved, impressive gift under $75. Something that makes people say "where did you find this?"'
+        'A universally loved, impressive gift. Something practical but thoughtful.'
       )
-      return `Hey ${n}, thought you might like this:\n\n${suggestion}\n\nWant me to save it for you? Or tell me who you're shopping for and I'll personalize.`
+      return `Hey ${n} — ${suggestion}. Practical but thoughtful. Want me to save it for you?`
     }
     case 2: {
-      // Different angle — new vibe
+      // Explore: different direction, more unique
       const suggestion = await generateSuggestion(
-        'Suggest a unique experience or subscription gift under $60. Something unexpected — not a physical product.'
+        'A unique experience or creative gift. Something unexpected and memorable.'
       )
-      return `${n}, here's something different:\n\n${suggestion}\n\nWant me to find more like this, or tell me about someone you're shopping for?`
+      return `${n} — how about a ${suggestion}? More unique than typical gifts. Want me to save it?`
     }
     case 3: {
-      // Final attempt — personal touch
-      return `Last one from me, ${n}! Want me to find something more personal? Just tell me who it's for — "gift for my mom who loves gardening" — and I'll send you 2-3 ideas.`
+      // Personalize: ask for context
+      return `Hey ${n} — tell me who you're shopping for and I'll find the perfect thing. "Gift for my mom who loves cooking" works great.`
     }
     default:
       return ''

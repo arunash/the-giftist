@@ -37,17 +37,14 @@ function parseFunnelStage(raw: string | null): FunnelState {
 // Every outbound message should include a curated product suggestion.
 // Uses Claude Haiku to generate contextual, specific product picks.
 
-const SUGGESTION_SYSTEM = `You are Giftist, an AI gift concierge. Generate ONE specific, real product suggestion.
+const SUGGESTION_SYSTEM = `You are a gift concierge. Output ONE short gift description (3-5 words max).
 
 Rules:
-- Use real brand names and real products (e.g. "Aesop Resurrection Hand Balm" not "hand cream")
-- Include approximate price
-- Keep the suggestion to ONE line: "Product Name — $XX"
-- Prefer: Uncommon Goods, Etsy, Food52, Bookshop.org, MasterClass, niche DTC brands
-- NEVER suggest: mugs, candles, generic Amazon commodities
-- Pick something that feels thoughtful and curated, not obvious
-
-Only output the product name and price, nothing else.`
+- SHORT description only, e.g. "custom star map print" or "leather travel organizer"
+- No brand names, no prices, no URLs
+- Feel curated and thoughtful, not generic
+- Never suggest: mugs, candles, generic Amazon items
+- Output ONLY the short description, nothing else`
 
 async function generateSuggestion(context: string): Promise<string> {
   try {
@@ -404,11 +401,11 @@ export async function runDailyEngagement() {
 
           // Generate a contextual suggestion based on what we know
           const context = user.interests
-            ? `Suggest a gift for someone whose friend likes: ${user.interests}. Something unique and under $75.`
-            : `Suggest a universally loved gift under $75 that feels personal and thoughtful. Not generic.`
+            ? `A thoughtful gift for someone who likes: ${user.interests}.`
+            : `A practical but thoughtful gift that works for almost anyone.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `Hey ${displayName}, I found something you might like:\n\n${suggestion}\n\nWant me to save this for you? Or tell me who you're shopping for and I'll personalize it.`
+          const text = `Hey ${displayName} — ${suggestion}. Thoughtful and easy to love. Want me to save it for you?`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'Found something for you',
@@ -432,11 +429,11 @@ export async function runDailyEngagement() {
           state.day7Suggestion = true
 
           const context = user._count.items > 0
-            ? `User has ${user._count.items} saved items. Suggest something complementary or from a different category. Under $100.`
-            : `Suggest a crowd-favorite gift that's universally impressive. Under $100. Something people say "where did you find this?"`
+            ? `Something different from what they already have. A unique or experiential gift.`
+            : `A crowd-favorite gift. Something that always impresses.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `${displayName}, this just caught my eye:\n\n${suggestion}\n\nWant me to save it, or want something more personal?`
+          const text = `${displayName} — ${suggestion}. More unique than typical gifts. Want me to save it?`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'This caught my eye',
@@ -458,10 +455,10 @@ export async function runDailyEngagement() {
       if (!state.day14Reactivation && daysSinceLastMessage >= 14 && daysSinceLastMessage < 30) {
         state.day14Reactivation = true
 
-        const context = `Suggest one impressive, unique gift under $60 that would make someone say "this is so thoughtful". Something from an interesting brand, not Amazon generic.`
+        const context = `A surprising, thoughtful gift. Something people wouldn't find on their own.`
         const suggestion = await generateSuggestion(context)
 
-        const text = `Hey ${displayName}, found something I think you'd love:\n\n${suggestion}\n\nWant me to find something more personal? Just tell me who it's for.`
+        const text = `Hey ${displayName} — ${suggestion}. Tell me who it's for and I'll make it personal.`
         await queueMessage({
           userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
           subject: 'Found something you might love',
@@ -515,38 +512,39 @@ export async function runDailyEngagement() {
         })
 
         if (days >= 21) {
-          // Early discovery: "Want me to line up some options?"
-          text = `Hey ${displayName}! ${evt.name} is ${days} days away. Want me to line up a few great options early?`
+          // 30d: Suggest thoughtful starting point
+          const suggestion = await generateSuggestion(`A thoughtful gift for a "${evt.name}" event.`)
+          text = `${displayName} — ${evt.name} is ${days} days out. How about a ${suggestion}? Want me to save it?`
         } else if (days >= 13) {
-          // 14 days: curated suggestion + save prompt
+          // 14d: Reinforce or suggest
           if (evt._count.items > 0) {
-            text = `${evt.name} is 2 weeks away! Here's what you have lined up:\n\n${itemNames.map(n => `• ${n}`).join('\n')}\n\nNeed anything else? I can find more options.`
+            text = `${evt.name} is 2 weeks away. You've got ${itemNames[0]} saved — solid pick. Need anything else?`
           } else {
-            const suggestion = await generateSuggestion(`Suggest a gift for "${evt.name}" event. Something thoughtful under $75.`)
-            text = `${evt.name} is 2 weeks away and you haven't picked anything yet. Here's a start:\n\n${suggestion}\n\nWant me to save this or find something more specific?`
+            const suggestion = await generateSuggestion(`A thoughtful gift for "${evt.name}". Something that feels personal.`)
+            text = `${displayName} — ${evt.name} is 2 weeks out. A ${suggestion} could be perfect. Want me to save it?`
           }
         } else if (days >= 6) {
-          // 7 days: shortlist (top 2-3 ideas)
+          // 7d: Reinforce safe choice
           if (evt._count.items > 0) {
-            text = `${evt.name} is next week! Your shortlist:\n\n${itemNames.map(n => `• ${n}`).join('\n')}\n\nReady to go, or want to swap anything?`
+            text = `${evt.name} is next week. You're set with ${evt._count.items} item(s). Want to swap or add anything?`
           } else {
-            const suggestion = await generateSuggestion(`Suggest 2 gift ideas for "${evt.name}". One safe crowd-pleaser and one unique option. Under $100 each.`)
-            text = `${evt.name} is next week! Here are my top picks:\n\n${suggestion}\n\nWant me to save these for you?`
+            const suggestion = await generateSuggestion(`A safe, crowd-pleasing gift for "${evt.name}".`)
+            text = `${evt.name} is next week — ${suggestion}. Safe pick that always works. Want me to save it?`
           }
         } else if (days >= 2) {
-          // 3 days: urgency + safe options
+          // 3d: Quick-win gift
           if (evt._count.items === 0) {
-            const suggestion = await generateSuggestion(`Suggest one safe, universally loved gift that can be ordered quickly. Under $50. For "${evt.name}".`)
-            text = `${evt.name} is in ${days} days! Here's a safe pick that's always a hit:\n\n${suggestion}\n\nWant this or something else?`
+            const suggestion = await generateSuggestion(`A quick-to-order gift that always impresses.`)
+            text = `${evt.name} is in ${days} days — ${suggestion}. Ships fast and always impresses. Save it?`
           } else {
-            text = `${evt.name} is in ${days} days! You're set with ${evt._count.items} item(s). Need any last-minute additions?`
+            text = `${evt.name} is in ${days} days. You're ready with ${evt._count.items} item(s). All good?`
           }
         } else {
-          // 1 day: last-minute
+          // 1d: Last-minute help
           if (evt._count.items === 0) {
-            text = `${evt.name} is *tomorrow*! I can find a last-minute gift right now — just tell me your budget.`
+            text = `${evt.name} is tomorrow — tell me your budget and who it's for. I'll find something fast.`
           } else {
-            text = `${evt.name} is *tomorrow*! You're all set with ${evt._count.items} item(s). Have a great one!`
+            text = `${evt.name} is tomorrow — you're all set. Have a great one, ${displayName}!`
           }
         }
 
@@ -574,18 +572,16 @@ export async function runDailyEngagement() {
 
 // ── Gold Daily AI-Personalized Messages ──
 
-const GOLD_DAILY_SYSTEM = `You are Giftist, a personal gift concierge sending a brief daily WhatsApp message.
+const GOLD_DAILY_SYSTEM = `You are a gift concierge sending a short daily message. Max 120-150 characters.
 
 Rules:
-- Max 2-3 sentences
-- MUST include one specific product suggestion (real brand, real product, real price)
-- Be warm, specific, actionable
+- ONE short gift idea (3-5 word description, no brand names or prices)
+- End with "Want me to save it?" or similar save prompt
 - Reference their events/items by name when available
-- End with a save or action prompt
-- Max one emoji
-- NEVER assume gender
-- NEVER list features or say "here's what I can do"
-- Every message should feel like it arrived at the perfect time`
+- Warm, opinionated, like a friend with great taste
+- Never salesy, never say "trending" or "here's what I can do"
+- No bullet points, no paragraphs
+- The message should feel like it arrived at the perfect time`
 
 export async function runGoldDailyEngagement() {
   const now = new Date()
@@ -883,47 +879,47 @@ interface Holiday {
 function getHolidays(year: number): Holiday[] {
   return [
     // January
-    { name: "New Year's Day", month: 0, day: 1, message: "Here are my top picks for New Year's gifts:\n\nRifle Paper Co. 2027 planner ($20), Theragun Mini massage gun ($50), Ember Temperature Control Mug ($100)\n\nWant something different? Tell me: https://giftist.ai/c/new-year" },
-    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "Here are my top picks to honor a teacher, mentor, or community leader:\n\n\"The World According to MLK\" illustrated book ($20), Donation in their name + framed certificate ($50), MasterClass annual membership ($100)\n\nWant something different? Tell me: https://giftist.ai/c/mlk-day" },
+    { name: "New Year's Day", month: 0, day: 1, message: "personalized leather journal. Fresh start energy. Want me to save it?" },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "illustrated history book. Meaningful for a mentor or teacher. Want me to save it?" },
     // February
-    { name: "Galentine's Day", month: 1, day: 13, message: "Here are my top picks for your best friend:\n\nVoluspa mini candle trio ($20), Uncommon Goods friendship bracelet set ($50), Spa day gift card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/galentines" },
-    { name: "Valentine's Day", month: 1, day: 14, message: "Here are my top picks for your Valentine:\n\nCompartes chocolate truffle box ($20), Fleur & Bee skincare set ($50), Date night experience \u2014 cooking class for 2 ($100)\n\nWant something different? Tell me: https://giftist.ai/c/valentines" },
-    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Here are my top picks for Lunar New Year:\n\nLucky red envelope set with gold foil ($20), Premium tea gift set ($50), Le Creuset mini cocotte in red ($100)\n\nWant something different? Tell me: https://giftist.ai/c/lunar-new-year" },
+    { name: "Galentine's Day", month: 1, day: 13, message: "matching friendship bracelet set. Simple and sweet. Want me to save it?" },
+    { name: "Valentine's Day", month: 1, day: 14, message: "couples cooking class experience. Better than flowers. Want me to save it?" },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "premium loose leaf tea set. Elegant and traditional. Want me to save it?" },
     // March
-    { name: "International Women's Day", month: 2, day: 8, message: "Here are my top picks for the women in your life:\n\n\"Untamed\" by Glennon Doyle + bookmark set ($20), Anthropologie monogram mug + candle set ($50), Away packing cubes set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/womens-day" },
-    { name: "St. Patrick's Day", month: 2, day: 17, message: "Here are my top picks for St. Patrick's Day:\n\nJameson Irish Whiskey miniatures set ($20), Waterford crystal shamrock paperweight ($50), Redbreast 12-year Irish whiskey ($100)\n\nWant something different? Tell me: https://giftist.ai/c/st-patricks" },
+    { name: "International Women's Day", month: 2, day: 8, message: "luxe silk sleep mask set. Thoughtful for any woman in your life. Want me to save it?" },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "craft Irish whiskey sampler. A cut above the usual. Want me to save it?" },
     // April
-    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Here are my top picks for Easter:\n\nGodiva chocolate Easter basket ($20), Williams Sonoma brunch board kit ($50), Le Creuset egg cup set + serving platter ($100)\n\nWant something different? Tell me: https://giftist.ai/c/easter" },
-    { name: 'Earth Day', month: 3, day: 22, message: "Here are my top picks for Earth Day:\n\nBee's Wrap reusable food wraps ($20), Hydro Flask insulated water bottle ($50), Patagonia recycled fleece jacket ($100)\n\nWant something different? Tell me: https://giftist.ai/c/earth-day" },
-    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Here are my top picks for Admin Professionals Day:\n\nStarbucks gift card + handwritten note ($20), Moleskine leather notebook + pen set ($50), Apple AirTag + leather keychain set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/admin-day" },
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "artisan chocolate truffle box. Beats a generic basket. Want me to save it?" },
+    { name: 'Earth Day', month: 3, day: 22, message: "reusable beeswax wrap set. Practical and planet-friendly. Want me to save it?" },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "leather notebook and pen set. Classy without overdoing it. Want me to save it?" },
     // May
-    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Here are my top picks for Mom:\n\nFresh sugar lip treatment set ($20), Kendra Scott pendant necklace ($50), Dyson Airwrap attachment set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/mothers-day" },
-    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Here are my top picks for Cinco de Mayo:\n\nTaj\u00edn margarita kit ($20), Hand-blown Mexican glass tumbler set ($50), Casamigos tequila + margarita mixer set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/cinco-de-mayo" },
-    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Here are my top picks for your kid's teacher:\n\nAmazon gift card + handmade card ($20), Yeti tumbler + gourmet coffee set ($50), Apple Gift Card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/teacher" },
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "silk pillowcase and eye mask set. Something she'd never buy herself. Want me to save it?" },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "hand-blown Mexican glass set. Perfect for the host. Want me to save it?" },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "gourmet coffee and tumbler set. Teachers always appreciate this. Want me to save it?" },
     // June
-    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Here are my top picks for Dad:\n\nHanes comfort crew socks 6-pack ($20), Yeti Rambler 20oz tumbler ($50), Weber portable charcoal grill ($100)\n\nWant something different? Tell me: https://giftist.ai/c/fathers-day" },
-    { name: 'Juneteenth', month: 5, day: 19, message: "Here are my top picks for Juneteenth:\n\n\"The 1619 Project\" book ($20), McBride Sisters wine duo \u2014 Black-owned ($50), Harlem Candle Company luxury set \u2014 Black-owned ($100)\n\nWant something different? Tell me: https://giftist.ai/c/juneteenth" },
-    { name: 'Graduation Season', month: 5, day: 1, message: "Here are my top picks for a graduate:\n\n\"Oh, the Places You'll Go!\" + bookmark ($20), AirPods case + engraved keychain ($50), Away carry-on luggage tag set + gift card ($100)\n\nWant something different? Tell me: https://giftist.ai/c/graduation" },
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "portable tabletop fire pit. He'll actually use it. Want me to save it?" },
+    { name: 'Juneteenth', month: 5, day: 19, message: "luxury candle from a Black-owned brand. Meaningful and beautiful. Want me to save it?" },
+    { name: 'Graduation Season', month: 5, day: 1, message: "engraved leather luggage tag. Practical for the next chapter. Want me to save it?" },
     // July
-    { name: 'Independence Day', month: 6, day: 4, message: "Here are my top picks for 4th of July:\n\nStars & Stripes charcuterie board ($20), Igloo retro cooler ($50), Solo Stove Mesa tabletop fire pit ($100)\n\nWant something different? Tell me: https://giftist.ai/c/july-4th" },
+    { name: 'Independence Day', month: 6, day: 4, message: "retro cooler for the backyard. Instant party upgrade. Want me to save it?" },
     // August
-    { name: 'Back to School', month: 7, day: 15, message: "Here are my top picks for back to school:\n\nFjallraven Kanken pencil case ($20), JBL wireless earbuds ($50), Apple Pencil ($100)\n\nWant something different? Tell me: https://giftist.ai/c/back-to-school" },
-    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Here are my top picks for your bestie:\n\nPolaroid film pack + mini photo album ($20), Uncommon Goods \"best friends\" print ($50), Aesop hand care duo set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/friendship-day" },
+    { name: 'Back to School', month: 7, day: 15, message: "quality wireless earbuds. The one thing they'll actually use daily. Want me to save it?" },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "custom photo book of your memories. More personal than anything else. Want me to save it?" },
     // September
-    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Here are my top picks for Labor Day:\n\nBurt's Bees relaxation set ($20), Brooklinen luxe pillowcases ($50), Theragun Mini massage gun ($100)\n\nWant something different? Tell me: https://giftist.ai/c/labor-day" },
-    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Here are my top picks for Grandma or Grandpa:\n\nPhoto calendar with family pictures ($20), Kindle Paperwhite case + ebook gift card ($50), Digital picture frame \u2014 Aura Carver ($100)\n\nWant something different? Tell me: https://giftist.ai/c/grandparents-day" },
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "luxe linen pillowcase set. The kind of thing you keep forever. Want me to save it?" },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "digital picture frame. Fill it with family photos — they'll love it. Want me to save it?" },
     // October
-    { name: "Boss's Day", month: 9, day: 16, message: "Here are my top picks for your boss:\n\nYeti wine tumbler ($20), Bellroy leather card holder ($50), Montblanc rollerball pen refill set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/boss-day" },
-    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Here are my top picks for your partner:\n\nSugarfina candy bento box ($20), Jo Malone travel candle ($50), Diptyque candle + roses ($100)\n\nWant something different? Tell me: https://giftist.ai/c/sweetest-day" },
-    { name: 'Halloween', month: 9, day: 31, message: "Here are my top picks for Halloween:\n\nSpooky charcuterie board set ($20), Halloween movie night basket ($50), Pottery Barn Halloween throw + mug set ($100)\n\nWant something different? Tell me: https://giftist.ai/c/halloween" },
+    { name: "Boss's Day", month: 9, day: 16, message: "leather card holder. Professional without being awkward. Want me to save it?" },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "artisan chocolate truffle box. Sweeter than flowers. Want me to save it?" },
+    { name: 'Halloween', month: 9, day: 31, message: "spooky movie night snack basket. Fun for any age. Want me to save it?" },
     // November
-    { name: 'Veterans Day', month: 10, day: 11, message: "Here are my top picks for a veteran:\n\nAmerican flag lapel pin + thank you card ($20), RTIC insulated tumbler + coffee set ($50), Garmin fitness tracker ($100)\n\nWant something different? Tell me: https://giftist.ai/c/veterans-day" },
-    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Here are my top picks for the Thanksgiving host:\n\nYankee Candle autumn wreath ($20), Cheese board + artisan cheese set ($50), Staub ceramic baking dish ($100)\n\nWant something different? Tell me: https://giftist.ai/c/thanksgiving" },
-    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Here are my top Black Friday gift deals:\n\nAmazonBasics portable charger ($20), Echo Dot 5th gen smart speaker ($50), Apple AirPods 3rd gen ($100)\n\nWant something different? Tell me: https://giftist.ai/c/black-friday" },
+    { name: 'Veterans Day', month: 10, day: 11, message: "insulated tumbler and coffee set. Simple way to say thank you. Want me to save it?" },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "artisan cheese board set. The host will remember this one. Want me to save it?" },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "smart speaker. Great time to grab one for someone. Want me to save it?" },
     // December
-    { name: 'Secret Santa Season', month: 11, day: 10, message: "Here are my top picks for Secret Santa:\n\nBurt's Bees lip balm gift set ($20), Tile Mate Bluetooth tracker ($50), Sonos Roam portable speaker ($100)\n\nWant something different? Tell me: https://giftist.ai/c/secret-santa" },
-    { name: 'Christmas', month: 11, day: 25, message: "Here are my top picks for Christmas:\n\nRifle Paper Co. holiday candle ($20), Yeti Rambler wine tumbler set ($50), Kindle Paperwhite latest gen ($100)\n\nWant something different? Tell me: https://giftist.ai/c/christmas" },
-    { name: "New Year's Eve", month: 11, day: 31, message: "Here are my top picks for NYE:\n\nChampagne gummy bears + sparkler set ($20), Veuve Clicquot Brut champagne ($50), Cocktail making kit \u2014 shaker + glasses + recipes ($100)\n\nWant something different? Tell me: https://giftist.ai/c/nye" },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "bluetooth tracker keychain. Useful and always a hit. Want me to save it?" },
+    { name: 'Christmas', month: 11, day: 25, message: "cozy weighted blanket. Practical but thoughtful. Want me to save it?" },
+    { name: "New Year's Eve", month: 11, day: 31, message: "cocktail shaker kit. Perfect for ringing it in. Want me to save it?" },
   ]
 }
 
@@ -1018,39 +1014,26 @@ export async function runSeasonalReminders() {
       let subject: string
 
       if (cadence.label === '14d') {
-        // Discovery: full suggestions
-        text = `Hey ${displayName}! ${holiday.message}`
-        subject = `${holiday.name} is coming up — I have recommendations`
+        // Discovery: one strong idea
+        text = `${displayName} — ${holiday.name} is coming up. How about a ${holiday.message}`
+        subject = `${holiday.name} is coming up`
       } else if (cadence.label === '7d') {
-        // Shortlist: tighter, more urgent
-        const suggestionsMatch = holiday.message.match(/\n\n(.+)\n\n/)
-        const suggestions = suggestionsMatch ? suggestionsMatch[1] : ''
-        text = `${displayName}, ${holiday.name} is next week. Here are my picks:\n\n${suggestions}\n\nWant me to personalize these? Tell me who it's for: ${ctaUrl}`
+        // Shortlist: reinforce with confidence
+        text = `${displayName} — ${holiday.name} is next week. A ${holiday.message} Tell me who it's for and I'll personalize.`
         subject = `${holiday.name} is next week`
       } else {
-        // Urgent (1 day): short, action-oriented
-        const suggestionsMatch = holiday.message.match(/\n\n(.+)\n\n/)
-        const suggestions = suggestionsMatch ? suggestionsMatch[1] : ''
-        text = `${displayName}, ${holiday.name} is *tomorrow*!\n\n${suggestions}\n\nNeed something specific? Tell me: ${ctaUrl}`
+        // Urgent (1 day): last-minute help
+        text = `${displayName} — ${holiday.name} is tomorrow. Tell me who it's for and your budget, I'll find something fast.`
         subject = `${holiday.name} is tomorrow`
       }
 
-      const urgencyBanner = cadence.urgent
-        ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-            <strong style="color: #92400e;">${holiday.name} is tomorrow!</strong>
-          </div>`
-        : ''
-
       const emailHtml = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-          ${urgencyBanner}
           <h2 style="margin: 0 0 16px;">Hey ${displayName}!</h2>
-          <p style="color: #333; line-height: 1.6;">${cadence.urgent
-            ? `${holiday.name} is tomorrow — I have some last-minute recommendations ready for you.`
-            : holiday.message.replace(/(https:\/\/giftist\.ai\/c\/\S+)/, '')}</p>
+          <p style="color: #333; line-height: 1.6;">${text}</p>
           <div style="margin: 24px 0;">
             <a href="${ctaUrl}" style="display: inline-block; padding: 12px 24px; background: ${cadence.urgent ? '#dc2626' : '#7c3aed'}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
-              See recommendations
+              ${cadence.urgent ? 'Find a gift now' : 'See recommendation'}
             </a>
           </div>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
@@ -1124,11 +1107,11 @@ export async function runLifecycleNudges() {
         const monthAgo = new Date(now.getTime() - 30 * 86400000)
         if (!last30 || last30 < monthAgo) {
           const context = user.interests
-            ? `Suggest one surprising, thoughtful gift for someone who likes: ${user.interests}. Under $60.`
-            : `Suggest one universally impressive gift under $60 that makes people say "where did you find this?"`
+            ? `A surprising, thoughtful gift for someone who likes: ${user.interests}.`
+            : `A surprising gift people wouldn't think of on their own.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `Hey ${displayName}, I found something I think you'd like:\n\n${suggestion}\n\nWant me to save it, or tell me who you're shopping for and I'll personalize.`
+          const text = `Hey ${displayName} — ${suggestion}. Not the obvious choice, but that's what makes it good. Want me to save it?`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'Found something you might like',
@@ -1149,9 +1132,9 @@ export async function runLifecycleNudges() {
         const last60 = state.churned60Sent ? new Date(state.churned60Sent) : null
         const twoMonthsAgo = new Date(now.getTime() - 60 * 86400000)
         if (!last60 || last60 < twoMonthsAgo) {
-          const suggestion = await generateSuggestion(`Suggest one crowd-favorite gift under $50 that's trending right now. Something fresh and interesting.`)
+          const suggestion = await generateSuggestion(`A crowd-favorite gift that always impresses. Something fresh and interesting.`)
 
-          const text = `${displayName}, this is trending right now:\n\n${suggestion}\n\nJust text me anytime you need a gift — I'm here.`
+          const text = `${displayName} — ${suggestion}. Always gets a great reaction. Want me to save it or find something more personal?`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'This is trending right now',
@@ -1261,7 +1244,7 @@ export async function sendSmsReengagement() {
     const displayName = user.name || 'there'
 
     try {
-      const smsBody = `Hey ${displayName}! I found a gift you might like. Tap to see: https://wa.me/15014438478\n\nReply STOP to opt out.`
+      const smsBody = `Hey ${displayName} — I have a gift idea for you. Tell me who it's for: https://wa.me/15014438478\n\nReply STOP to opt out.`
       await sendSms(user.phone, smsBody)
 
       state.reengagementSent = new Date().toISOString()
