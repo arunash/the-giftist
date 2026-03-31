@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { smartWhatsAppSend, emailWrapper } from '@/lib/notifications'
 import { sendSms } from '@/lib/sms'
 import { sendEmail } from '@/lib/email'
+import { normalizePhone } from '@/lib/whatsapp'
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin()
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
   }
 
   const senderName = gift.sender.name || 'A friend'
-  const recipientPhone = gift.recipient?.phone || gift.recipientPhone
+  const rawPhone = gift.recipient?.phone || gift.recipientPhone
+  const recipientPhone = rawPhone ? normalizePhone(rawPhone) : null
   const recipientEmail = gift.recipient?.email
   const trackingLine = gift.trackingUrl
     ? `Track your package: ${gift.trackingUrl}`
@@ -52,12 +54,14 @@ export async function POST(request: NextRequest) {
     try {
       await smartWhatsAppSend(recipientPhone, text, 'gift_shipped', [gift.itemName, senderName], { skipTimeCheck: true })
       sent.whatsapp = true
-    } catch (err) {
-      console.error('[Resend] WhatsApp failed, trying SMS:', err)
+    } catch (err: any) {
+      console.error('[Resend] WhatsApp failed, trying SMS:', err?.message || err)
       try {
         await sendSms(recipientPhone, text)
         sent.sms = true
-      } catch {}
+      } catch (smsErr: any) {
+        console.error('[Resend] SMS also failed:', smsErr?.message || smsErr)
+      }
     }
   }
 
