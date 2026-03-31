@@ -379,7 +379,7 @@ export async function suggestGiftsFromProfile(
         }
 
         // Always create tracked link — AI fallback guarantees an image
-        if (image) {
+        if (image && targetUrl) {
           s.url = await createTrackedLink({
             productName: s.name,
             targetUrl,
