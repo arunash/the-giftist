@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell, BarChart3, Link2 } from 'lucide-react'
 
 interface Stats {
@@ -202,6 +202,57 @@ function SourceBar({ breakdown, total }: { breakdown: Record<string, number>; to
   )
 }
 
+/* ─── Sortable table utilities ─── */
+
+type SortDir = 'asc' | 'desc'
+
+function useSort<T extends string>(defaultKey: T, defaultDir: SortDir = 'desc') {
+  const [sortKey, setSortKey] = useState<T>(defaultKey)
+  const [sortDir, setSortDir] = useState<SortDir>(defaultDir)
+  const toggle = (key: T) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+  return { sortKey, sortDir, toggle }
+}
+
+function Th({ label, sortKey, active, dir, onClick, className }: {
+  label: string; sortKey: string; active: boolean; dir: SortDir; onClick: (key: string) => void; className?: string
+}) {
+  return (
+    <th
+      className={`p-3 text-xs text-muted font-medium cursor-pointer hover:text-foreground select-none transition ${className || 'text-left'}`}
+      onClick={() => onClick(sortKey)}
+    >
+      <span className="inline-flex items-center gap-0.5">
+        {label}
+        <span className={`text-[10px] ${active ? 'text-primary' : 'text-transparent'}`}>
+          {active ? (dir === 'asc' ? '▲' : '▼') : '▲'}
+        </span>
+      </span>
+    </th>
+  )
+}
+
+function sortBy<T>(data: T[], key: string, dir: SortDir): T[] {
+  return [...data].sort((a, b) => {
+    const resolve = (obj: any, path: string): any => {
+      return path.split('.').reduce((o, k) => o?.[k], obj)
+    }
+    let aVal = resolve(a, key)
+    let bVal = resolve(b, key)
+    if (aVal == null && bVal == null) return 0
+    if (aVal == null) return 1
+    if (bVal == null) return -1
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+    }
+    if (aVal instanceof Date) aVal = aVal.getTime()
+    if (bVal instanceof Date) bVal = bVal.getTime()
+    return dir === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1)
+  })
+}
+
 interface GiftOrder {
   id: string; itemName: string; itemUrl: string | null; itemImage: string | null
   amount: number; platformFee: number; totalCharged: number; status: string
@@ -290,6 +341,8 @@ function GiftFulfillmentSection() {
   }
 
   const [resending, setResending] = useState<string | null>(null)
+  const shipSort = useSort<string>('status', 'asc')
+  const allSort = useSort<string>('createdAt', 'desc')
 
   const handleResendNotification = async (orderId: string) => {
     setResending(orderId)
@@ -358,16 +411,16 @@ function GiftFulfillmentSection() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
-                    <th className="p-3 text-left text-xs text-muted font-medium">Ship to</th>
-                    <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
-                    <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
-                    <th className="p-3 text-left text-xs text-muted font-medium">Redeemed</th>
+                    <Th label="Item" sortKey="itemName" active={shipSort.sortKey === 'itemName'} dir={shipSort.sortDir} onClick={shipSort.toggle} />
+                    <Th label="Ship to" sortKey="shippingName" active={shipSort.sortKey === 'shippingName'} dir={shipSort.sortDir} onClick={shipSort.toggle} />
+                    <Th label="Amount" sortKey="amount" active={shipSort.sortKey === 'amount'} dir={shipSort.sortDir} onClick={shipSort.toggle} />
+                    <Th label="Status" sortKey="status" active={shipSort.sortKey === 'status'} dir={shipSort.sortDir} onClick={shipSort.toggle} />
+                    <Th label="Redeemed" sortKey="redeemedAt" active={shipSort.sortKey === 'redeemedAt'} dir={shipSort.sortDir} onClick={shipSort.toggle} />
                     <th className="p-3 text-left text-xs text-muted font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...pendingShip, ...shipped].map(order => (
+                  {sortBy([...pendingShip, ...shipped], shipSort.sortKey, shipSort.sortDir).map(order => (
                     <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
                       <td className="p-3">
                         <div className="flex items-center gap-2">
@@ -478,18 +531,18 @@ function GiftFulfillmentSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="p-3 text-left text-xs text-muted font-medium">Item</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">From</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">To</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">Amount</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">Method</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">Created</th>
+                  <Th label="Item" sortKey="itemName" active={allSort.sortKey === 'itemName'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="From" sortKey="senderName" active={allSort.sortKey === 'senderName'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="To" sortKey="recipientName" active={allSort.sortKey === 'recipientName'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="Amount" sortKey="amount" active={allSort.sortKey === 'amount'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="Method" sortKey="redemptionMethod" active={allSort.sortKey === 'redemptionMethod'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="Status" sortKey="status" active={allSort.sortKey === 'status'} dir={allSort.sortDir} onClick={allSort.toggle} />
+                  <Th label="Created" sortKey="createdAt" active={allSort.sortKey === 'createdAt'} dir={allSort.sortDir} onClick={allSort.toggle} />
                   <th className="p-3 text-left text-xs text-muted font-medium">Link</th>
                 </tr>
               </thead>
               <tbody>
-                {allOrders.map(order => (
+                {sortBy(allOrders, allSort.sortKey, allSort.sortDir).map(order => (
                   <tr key={order.id} className="border-b border-border/50 hover:bg-surface-hover">
                     <td className="p-3">
                       <div className="flex items-center gap-2">
@@ -546,9 +599,13 @@ function GiftFulfillmentSection() {
 }
 
 function PnLSection({ stats }: { stats: Stats }) {
+  const pnlSort = useSort<string>('createdAt', 'desc')
+
   if (!stats.pnl || stats.pnl.details.length === 0) {
     return <p className="text-muted text-sm">No gift orders with financial data yet.</p>
   }
+
+  const sortedDetails = sortBy(stats.pnl.details, pnlSort.sortKey, pnlSort.sortDir)
 
   return (
     <div className="space-y-4">
@@ -596,17 +653,17 @@ function PnLSection({ stats }: { stats: Stats }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="p-3 text-left text-xs text-muted font-medium">Gift</th>
-                  <th className="p-3 text-right text-xs text-muted font-medium">Charged</th>
-                  <th className="p-3 text-right text-xs text-muted font-medium">Platform Fee</th>
-                  <th className="p-3 text-right text-xs text-muted font-medium">Stripe Fee</th>
-                  <th className="p-3 text-right text-xs text-muted font-medium">Fulfillment</th>
-                  <th className="p-3 text-right text-xs text-muted font-medium">Net</th>
-                  <th className="p-3 text-left text-xs text-muted font-medium">Status</th>
+                  <Th label="Gift" sortKey="itemName" active={pnlSort.sortKey === 'itemName'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} />
+                  <Th label="Charged" sortKey="totalCharged" active={pnlSort.sortKey === 'totalCharged'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} className="text-right" />
+                  <Th label="Platform Fee" sortKey="platformFee" active={pnlSort.sortKey === 'platformFee'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} className="text-right" />
+                  <Th label="Stripe Fee" sortKey="stripeFee" active={pnlSort.sortKey === 'stripeFee'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} className="text-right" />
+                  <Th label="Fulfillment" sortKey="fulfillmentCost" active={pnlSort.sortKey === 'fulfillmentCost'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} className="text-right" />
+                  <Th label="Net" sortKey="netMargin" active={pnlSort.sortKey === 'netMargin'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} className="text-right" />
+                  <Th label="Status" sortKey="status" active={pnlSort.sortKey === 'status'} dir={pnlSort.sortDir} onClick={pnlSort.toggle} />
                 </tr>
               </thead>
               <tbody>
-                {stats.pnl.details.map(d => (
+                {sortedDetails.map(d => (
                   <tr key={d.id} className="border-b border-border/50 hover:bg-surface-hover">
                     <td className="p-3">
                       <p className="text-xs font-medium">{d.itemName}</p>
@@ -715,6 +772,8 @@ function AnalyticsSection({ stats }: { stats: Stats }) {
 
 function ProductLinksSection({ stats }: { stats: Stats }) {
   const links = stats.analytics.allProductClicks
+  const linkSort = useSort<string>('clicks', 'desc')
+  const sortedLinks = sortBy(links, linkSort.sortKey, linkSort.sortDir)
   return (
     <div className="space-y-4">
       {/* Summary */}
@@ -729,19 +788,19 @@ function ProductLinksSection({ stats }: { stats: Stats }) {
       <div className="bg-surface rounded-xl border border-border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-xs text-muted">
-              <th className="p-3">Product</th>
-              <th className="p-3">Source</th>
-              <th className="p-3 text-right">Price</th>
-              <th className="p-3 text-right">Clicks</th>
-              <th className="p-3">Last Referrer</th>
-              <th className="p-3">Last Clicked</th>
-              <th className="p-3">Created</th>
-              <th className="p-3">Link</th>
+            <tr className="border-b border-border">
+              <Th label="Product" sortKey="productName" active={linkSort.sortKey === 'productName'} dir={linkSort.sortDir} onClick={linkSort.toggle} />
+              <Th label="Source" sortKey="source" active={linkSort.sortKey === 'source'} dir={linkSort.sortDir} onClick={linkSort.toggle} />
+              <Th label="Price" sortKey="priceValue" active={linkSort.sortKey === 'priceValue'} dir={linkSort.sortDir} onClick={linkSort.toggle} className="text-right" />
+              <Th label="Clicks" sortKey="clicks" active={linkSort.sortKey === 'clicks'} dir={linkSort.sortDir} onClick={linkSort.toggle} className="text-right" />
+              <Th label="Last Referrer" sortKey="lastReferrer" active={linkSort.sortKey === 'lastReferrer'} dir={linkSort.sortDir} onClick={linkSort.toggle} />
+              <Th label="Last Clicked" sortKey="lastClicked" active={linkSort.sortKey === 'lastClicked'} dir={linkSort.sortDir} onClick={linkSort.toggle} />
+              <Th label="Created" sortKey="createdAt" active={linkSort.sortKey === 'createdAt'} dir={linkSort.sortDir} onClick={linkSort.toggle} />
+              <th className="p-3 text-left text-xs text-muted font-medium">Link</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {links.map(link => (
+            {sortedLinks.map(link => (
               <tr key={link.id} className="hover:bg-background/50">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
@@ -778,6 +837,12 @@ export default function AdminDashboard() {
   const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links'>('dashboard')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Sort states for dashboard tables
+  const giftSendsSort = useSort<string>('createdAt', 'desc')
+  const usersSort = useSort<string>('updatedAt', 'desc')
+  const itemsSort = useSort<string>('addedAt', 'desc')
+  const reengSort = useSort<string>('createdAt', 'desc')
 
   useEffect(() => {
     fetch('/api/admin/stats')
@@ -1017,18 +1082,18 @@ export default function AdminDashboard() {
             <div className="bg-surface rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-muted">
-                    <th className="text-left p-3 font-medium">From</th>
-                    <th className="text-left p-3 font-medium">To</th>
-                    <th className="text-left p-3 font-medium">Item</th>
-                    <th className="text-left p-3 font-medium">Amount</th>
-                    <th className="text-left p-3 font-medium">Fee</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Date</th>
+                  <tr className="border-b border-border">
+                    <Th label="From" sortKey="sender.name" active={giftSendsSort.sortKey === 'sender.name'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="To" sortKey="recipientName" active={giftSendsSort.sortKey === 'recipientName'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="Item" sortKey="itemName" active={giftSendsSort.sortKey === 'itemName'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="Amount" sortKey="totalCharged" active={giftSendsSort.sortKey === 'totalCharged'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="Fee" sortKey="platformFee" active={giftSendsSort.sortKey === 'platformFee'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="Status" sortKey="status" active={giftSendsSort.sortKey === 'status'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
+                    <Th label="Date" sortKey="createdAt" active={giftSendsSort.sortKey === 'createdAt'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.revenue.recentGiftSends.map((g) => (
+                  {sortBy(stats.revenue.recentGiftSends, giftSendsSort.sortKey, giftSendsSort.sortDir).map((g) => (
                     <tr key={g.id} className="border-b border-border/50 hover:bg-surface-hover">
                       <td className="p-3">{g.sender.name || '—'}</td>
                       <td className="p-3">{g.recipientName || '—'}</td>
@@ -1076,18 +1141,18 @@ export default function AdminDashboard() {
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
-                <th className="text-left p-3 font-medium">Name</th>
-                <th className="text-left p-3 font-medium">Phone</th>
-                <th className="text-left p-3 font-medium">Email</th>
-                <th className="text-left p-3 font-medium">Items</th>
-                <th className="text-left p-3 font-medium">Msgs Used</th>
-                <th className="text-left p-3 font-medium">Last Active</th>
-                <th className="text-left p-3 font-medium">Joined</th>
+              <tr className="border-b border-border">
+                <Th label="Name" sortKey="name" active={usersSort.sortKey === 'name'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Phone" sortKey="phone" active={usersSort.sortKey === 'phone'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Email" sortKey="email" active={usersSort.sortKey === 'email'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Items" sortKey="_count.items" active={usersSort.sortKey === '_count.items'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Msgs Used" sortKey="_count.chatMessages" active={usersSort.sortKey === '_count.chatMessages'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Last Active" sortKey="updatedAt" active={usersSort.sortKey === 'updatedAt'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
+                <Th label="Joined" sortKey="createdAt" active={usersSort.sortKey === 'createdAt'} dir={usersSort.sortDir} onClick={usersSort.toggle} />
               </tr>
             </thead>
             <tbody>
-              {stats.recentUsers.map((u) => {
+              {sortBy(stats.recentUsers, usersSort.sortKey, usersSort.sortDir).map((u) => {
                 const msgsUsed = u._count.chatMessages
                 const atLimit = msgsUsed >= 10 && u.messageCredits === 0
                 const nearLimit = msgsUsed >= 7 && msgsUsed < 10
@@ -1119,18 +1184,18 @@ export default function AdminDashboard() {
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
-                <th className="text-left p-3 font-medium">Source</th>
-                <th className="text-left p-3 font-medium">Item</th>
-                <th className="text-left p-3 font-medium">User</th>
-                <th className="text-left p-3 font-medium">Price</th>
-                <th className="text-left p-3 font-medium">Time</th>
+              <tr className="border-b border-border">
+                <Th label="Source" sortKey="source" active={itemsSort.sortKey === 'source'} dir={itemsSort.sortDir} onClick={itemsSort.toggle} />
+                <Th label="Item" sortKey="name" active={itemsSort.sortKey === 'name'} dir={itemsSort.sortDir} onClick={itemsSort.toggle} />
+                <Th label="User" sortKey="user.name" active={itemsSort.sortKey === 'user.name'} dir={itemsSort.sortDir} onClick={itemsSort.toggle} />
+                <Th label="Price" sortKey="priceValue" active={itemsSort.sortKey === 'priceValue'} dir={itemsSort.sortDir} onClick={itemsSort.toggle} />
+                <Th label="Time" sortKey="addedAt" active={itemsSort.sortKey === 'addedAt'} dir={itemsSort.sortDir} onClick={itemsSort.toggle} />
               </tr>
             </thead>
             <tbody>
               {stats.itemsAddedToday.length === 0 ? (
                 <tr><td colSpan={5} className="p-3 text-muted text-center">No items added today.</td></tr>
-              ) : stats.itemsAddedToday.map((item) => (
+              ) : sortBy(stats.itemsAddedToday, itemsSort.sortKey, itemsSort.sortDir).map((item) => (
                 <tr key={item.id} className="border-b border-border/50 hover:bg-surface-hover">
                   <td className="p-3"><SourceBadge source={item.source} /></td>
                   <td className="p-3 max-w-xs truncate">{item.name}</td>
@@ -1229,20 +1294,20 @@ export default function AdminDashboard() {
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
-                <th className="text-left p-3 font-medium">User</th>
-                <th className="text-left p-3 font-medium">Contact</th>
-                <th className="text-left p-3 font-medium">Items</th>
-                <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Channel</th>
-                <th className="text-left p-3 font-medium">Sent At</th>
-                <th className="text-left p-3 font-medium">Signed Up</th>
+              <tr className="border-b border-border">
+                <Th label="User" sortKey="name" active={reengSort.sortKey === 'name'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Contact" sortKey="phone" active={reengSort.sortKey === 'phone'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Items" sortKey="items" active={reengSort.sortKey === 'items'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Status" sortKey="status" active={reengSort.sortKey === 'status'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Channel" sortKey="channel" active={reengSort.sortKey === 'channel'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Sent At" sortKey="sentAt" active={reengSort.sortKey === 'sentAt'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
+                <Th label="Signed Up" sortKey="createdAt" active={reengSort.sortKey === 'createdAt'} dir={reengSort.sortDir} onClick={reengSort.toggle} />
               </tr>
             </thead>
             <tbody>
               {stats.reengagement.users.length === 0 ? (
                 <tr><td colSpan={7} className="p-3 text-muted text-center">No re-engagement data.</td></tr>
-              ) : stats.reengagement.users.map((u) => (
+              ) : sortBy(stats.reengagement.users, reengSort.sortKey, reengSort.sortDir).map((u) => (
                 <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover">
                   <td className="p-3 font-medium">{u.name || '—'}</td>
                   <td className="p-3 text-muted text-xs">
