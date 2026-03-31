@@ -126,15 +126,17 @@ export async function sendImageMessage(to: string, imageUrl: string, caption: st
   // Try to upload image first (avoids WhatsApp 131053 media errors)
   const mediaId = await uploadImageToWhatsApp(imageUrl)
 
-  const imagePayload = mediaId
-    ? { id: mediaId, caption }
-    : { link: imageUrl, caption }
+  if (!mediaId) {
+    // Image couldn't be uploaded — send as text with link instead of risking 131053
+    console.log(`[WhatsApp] Image upload failed for ${imageUrl}, falling back to text`)
+    return sendTextMessage(to, `${caption}\n\n${imageUrl}`)
+  }
 
   const result = await graphPost('/messages', {
     messaging_product: 'whatsapp',
     to,
     type: 'image',
-    image: imagePayload,
+    image: { id: mediaId, caption },
   })
   logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
   const waMessageId = result?.messages?.[0]?.id

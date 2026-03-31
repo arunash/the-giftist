@@ -1492,7 +1492,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
               userId,
               source: 'WHATSAPP',
             })
-            linkLine = `\n${trackedUrl}`
+            linkLine = `\n${trackedUrl}?from=wa`
           } catch {}
         }
 

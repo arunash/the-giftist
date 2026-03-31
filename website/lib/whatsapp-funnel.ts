@@ -185,7 +185,10 @@ async function queueMessage(params: {
       },
     })
   } catch (err: any) {
-    if (err?.code === 'P2002') return
+    if (err?.code === 'P2002') {
+      console.log(`[MessageQueue] Dedup collision: ${params.dedupKey} for ${params.template}`)
+      return
+    }
     throw err
   }
 }

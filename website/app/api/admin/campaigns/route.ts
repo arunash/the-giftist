@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 
-const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
-
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id || !ADMIN_USER_IDS.has(session.user.id)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function GET() {
+  const admin = await requireAdmin()
+  if (admin instanceof NextResponse) return admin
 
   const now = new Date()
   const weekAgo = new Date(now.getTime() - 7 * 86400000)
