@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/admin'
+import { requireAdmin, ADMIN_TEST_PHONES } from '@/lib/admin'
 import { prisma } from '@/lib/db'
 
 export async function GET() {
@@ -105,23 +105,22 @@ export async function GET() {
     prisma.user.count({ where: { phone: { not: null }, email: { not: null } } }),
     prisma.user.count({ where: { isActive: true } }),
     prisma.subscription.count({ where: { status: 'ACTIVE' } }),
-    prisma.item.count({ where: { source: { not: 'SEED' } } }),
-    prisma.item.count({ where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } } }),
-    prisma.item.count({ where: { addedAt: { gte: weekAgo }, source: { not: 'SEED' } } }),
+    prisma.item.count(),
+    prisma.item.count({ where: { addedAt: { gte: todayStart } } }),
+    prisma.item.count({ where: { addedAt: { gte: weekAgo } } }),
     prisma.item.groupBy({
       by: ['source'],
       _count: { id: true },
-      where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } },
+      where: { addedAt: { gte: todayStart } },
     }),
     prisma.item.groupBy({
       by: ['source'],
       _count: { id: true },
-      where: { source: { not: 'SEED' } },
     }),
-    prisma.whatsAppMessage.count({ where: { createdAt: { gte: todayStart }, phone: { not: '15550000000' } } }),
-    prisma.whatsAppMessage.count({ where: { createdAt: { gte: weekAgo }, phone: { not: '15550000000' } } }),
-    prisma.whatsAppMessage.count({ where: { status: 'FAILED', phone: { not: '15550000000' } } }),
-    prisma.whatsAppMessage.count({ where: { phone: { not: '15550000000' } } }),
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: todayStart }, phone: { notIn: ADMIN_TEST_PHONES } } }),
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: weekAgo }, phone: { notIn: ADMIN_TEST_PHONES } } }),
+    prisma.whatsAppMessage.count({ where: { status: 'FAILED', phone: { notIn: ADMIN_TEST_PHONES } } }),
+    prisma.whatsAppMessage.count({ where: { phone: { notIn: ADMIN_TEST_PHONES } } }),
     prisma.whatsAppMessage.groupBy({
       by: ['status'],
       _count: { id: true },
@@ -185,7 +184,7 @@ export async function GET() {
         email: true,
         createdAt: true,
         updatedAt: true,
-        _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+        _count: { select: { items: true } },
       },
     }),
     prisma.activityEvent.findMany({
@@ -197,7 +196,7 @@ export async function GET() {
       },
     }),
     prisma.item.findMany({
-      where: { addedAt: { gte: todayStart }, source: { not: 'SEED' } },
+      where: { addedAt: { gte: todayStart } },
       orderBy: { addedAt: 'desc' },
       take: 20,
       select: {
@@ -227,7 +226,7 @@ export async function GET() {
     prisma.whatsAppMessage.count({ where: { type: { startsWith: 'OUTBOUND' } } }),
     prisma.whatsAppMessage.groupBy({ by: ['phone'], where: { createdAt: { gte: todayStart } } }),
     // Items breakdown by source (week)
-    prisma.item.groupBy({ by: ['source'], _count: { id: true }, where: { addedAt: { gte: weekAgo }, source: { not: 'SEED' } } }),
+    prisma.item.groupBy({ by: ['source'], _count: { id: true }, where: { addedAt: { gte: weekAgo } } }),
     // Errors
     prisma.errorLog.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.errorLog.groupBy({ by: ['source'], _count: { id: true }, where: { createdAt: { gte: todayStart } } }),
@@ -249,7 +248,7 @@ export async function GET() {
         email: true,
         funnelStage: true,
         createdAt: true,
-        _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+        _count: { select: { items: true } },
       },
       orderBy: { createdAt: 'asc' },
     }),

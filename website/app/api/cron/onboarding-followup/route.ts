@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
         phone: { not: null },
         followUpStage: previousStage,
         createdAt: { gte: minTime, lte: maxTime },
-        items: { none: { source: { not: 'SEED' } } },
+        items: { none: {} },
       },
       select: { id: true, phone: true, name: true },
     })

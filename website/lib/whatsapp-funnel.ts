@@ -316,7 +316,7 @@ export async function checkAndSendFunnelMessages(userId: string, phone: string) 
       name: true,
       funnelStage: true,
       createdAt: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
+      _count: { select: { items: true, events: true, circleMembers: true } },
     },
   })
   if (!user) return
@@ -370,7 +370,7 @@ export async function runDailyEngagement() {
     select: {
       id: true, phone: true, email: true, name: true, timezone: true,
       funnelStage: true, createdAt: true, interests: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
+      _count: { select: { items: true, events: true, circleMembers: true } },
     },
   })
 
@@ -600,7 +600,7 @@ export async function runGoldDailyEngagement() {
     },
     select: {
       id: true, phone: true, name: true, interests: true, timezone: true, funnelStage: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
+      _count: { select: { items: true, events: true, circleMembers: true } },
     },
   })
 
@@ -627,7 +627,7 @@ export async function runGoldDailyEngagement() {
         })
 
         const recentItems = await prisma.item.findMany({
-          where: { userId: user.id, source: { not: 'SEED' } },
+          where: { userId: user.id },
           orderBy: { addedAt: 'desc' },
           take: 5,
           select: { name: true, price: true },
@@ -962,7 +962,7 @@ export async function runSeasonalReminders() {
       select: {
         id: true, phone: true, email: true, name: true, timezone: true, funnelStage: true,
         createdAt: true,
-        _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true, circleMembers: true } },
+        _count: { select: { items: true, events: true, circleMembers: true } },
       },
     })
 
@@ -1096,7 +1096,7 @@ export async function runLifecycleNudges() {
     select: {
       id: true, phone: true, email: true, name: true, timezone: true,
       funnelStage: true, createdAt: true, interests: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } }, events: true } },
+      _count: { select: { items: true, events: true } },
     },
   })
 
@@ -1246,7 +1246,7 @@ export async function sendSmsReengagement() {
     where: { phone: { not: null }, isActive: true, digestOptOut: false },
     select: {
       id: true, phone: true, name: true, funnelStage: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+      _count: { select: { items: true } },
     },
   })
 
@@ -1288,7 +1288,7 @@ export async function sendEmailReengagement() {
     where: { email: { not: null }, isActive: true, digestOptOut: false },
     select: {
       id: true, email: true, name: true, phone: true, funnelStage: true,
-      _count: { select: { items: { where: { source: { not: 'SEED' } } } } },
+      _count: { select: { items: true } },
     },
   })
 

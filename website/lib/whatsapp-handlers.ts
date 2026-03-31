@@ -219,7 +219,7 @@ async function sendEventReminders(userId: string, phone: string): Promise<string
 }
 
 async function getWebCTA(userId: string): Promise<string> {
-  const count = await prisma.item.count({ where: { userId, source: { not: 'SEED' } } })
+  const count = await prisma.item.count({ where: { userId } })
   // Every 3rd item: if user has 0 circle members, nudge circle instead of web CTA
   if (count > 0 && count % 3 === 0) {
     const circleMemberCount = await prisma.circleMember.count({ where: { userId } })

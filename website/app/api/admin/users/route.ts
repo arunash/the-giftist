@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         _count: {
           select: {
-            items: { where: { source: { not: 'SEED' } } },
+            items: true,
             contributions: true,
             chatMessages: true,
           },
