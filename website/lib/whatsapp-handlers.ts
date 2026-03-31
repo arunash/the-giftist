@@ -1621,7 +1621,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
     // Warn user when they have 1 free message left
     const limitWarning = remaining === 1
-      ? '\n\n⚠️ *1 free message left.* Upgrade to Gold for unlimited: giftist.ai/settings'
+      ? '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
       : ''
 
     return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + giftCheckoutLinks.join('') + chatWebCta + limitWarning
@@ -1739,7 +1739,7 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hey ${name}!` : 'Hey!'
-  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.\n\nYou have *10 free messages* to get started. Upgrade to Gold anytime for unlimited.`
+  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.\n\nYou have *10 free messages* to get started. Need more? Grab a Credit Pack ($5 for 50 messages) or upgrade to Gold ($4.99/mo) for unlimited: giftist.ai/settings`
 }
 
 export function getHelpMessage(): string {
