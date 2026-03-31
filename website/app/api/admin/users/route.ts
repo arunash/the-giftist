@@ -34,11 +34,12 @@ export async function GET(request: NextRequest) {
         phone: true,
         image: true,
         createdAt: true,
+        messageCredits: true,
         _count: {
           select: {
             items: true,
             contributions: true,
-            chatMessages: true,
+            chatMessages: { where: { role: 'USER' } },
           },
         },
       },

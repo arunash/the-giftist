@@ -11,6 +11,7 @@ export interface ChatMessage {
 export function useChatStream() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streaming, setStreaming] = useState(false)
+  const [limitWarning, setLimitWarning] = useState<string | null>(null)
 
   const sendMessage = useCallback(async (message: string) => {
     const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: 'USER', content: message }
@@ -76,6 +77,9 @@ export function useChatStream() {
                   )
                 )
               }
+              if (parsed.limitWarning) {
+                setLimitWarning(parsed.limitWarning)
+              }
             } catch {
               // Skip malformed JSON
             }
@@ -104,5 +108,5 @@ export function useChatStream() {
     setMessages(msgs)
   }, [])
 
-  return { messages, streaming, sendMessage, clearMessages, setInitialMessages }
+  return { messages, streaming, sendMessage, clearMessages, setInitialMessages, limitWarning }
 }

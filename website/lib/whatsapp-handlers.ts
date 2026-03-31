@@ -1619,7 +1619,12 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + giftCheckoutLinks.join('') + chatWebCta
+    // Warn user when they have 1 free message left
+    const limitWarning = remaining === 1
+      ? '\n\n⚠️ *1 free message left.* Upgrade to Gold for unlimited: giftist.ai/settings'
+      : ''
+
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + giftCheckoutLinks.join('') + chatWebCta + limitWarning
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
@@ -1734,7 +1739,7 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hey ${name}!` : 'Hey!'
-  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.`
+  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.\n\nYou have *10 free messages* to get started. Upgrade to Gold anytime for unlimited.`
 }
 
 export function getHelpMessage(): string {

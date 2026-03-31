@@ -53,7 +53,7 @@ interface Stats {
   costsTotalToday: number
   errors: { today: number; week: number; bySource: Record<string, number>; bySourceToday: Record<string, number> }
   recentErrors: Array<{ id: string; source: string; message: string; createdAt: string }>
-  recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; updatedAt: string; _count: { items: number } }>
+  recentUsers: Array<{ id: string; name: string | null; phone: string | null; email: string | null; createdAt: string; updatedAt: string; messageCredits: number; _count: { items: number; chatMessages: number } }>
   recentActivity: Array<{ id: string; type: string; createdAt: string; user: { name: string | null }; item: { name: string } | null; metadata: string | null }>
   itemsAddedToday: Array<{ id: string; name: string; source: string; price: string | null; priceValue: number | null; addedAt: string; user: { name: string | null } }>
   feedback: {
@@ -1081,21 +1081,33 @@ export default function AdminDashboard() {
                 <th className="text-left p-3 font-medium">Phone</th>
                 <th className="text-left p-3 font-medium">Email</th>
                 <th className="text-left p-3 font-medium">Items</th>
+                <th className="text-left p-3 font-medium">Msgs Used</th>
                 <th className="text-left p-3 font-medium">Last Active</th>
                 <th className="text-left p-3 font-medium">Joined</th>
               </tr>
             </thead>
             <tbody>
-              {stats.recentUsers.map((u) => (
+              {stats.recentUsers.map((u) => {
+                const msgsUsed = u._count.chatMessages
+                const atLimit = msgsUsed >= 10 && u.messageCredits === 0
+                const nearLimit = msgsUsed >= 7 && msgsUsed < 10
+                return (
                 <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover">
                   <td className="p-3">{u.name || '—'}</td>
                   <td className="p-3 text-muted">{u.phone || '—'}</td>
                   <td className="p-3 text-muted">{u.email || '—'}</td>
                   <td className="p-3">{u._count.items}</td>
+                  <td className="p-3">
+                    <span className={atLimit ? 'text-red-500 font-semibold' : nearLimit ? 'text-amber-500 font-medium' : ''}>
+                      {msgsUsed}/10
+                    </span>
+                    {u.messageCredits > 0 && <span className="text-xs text-muted ml-1">+{u.messageCredits}cr</span>}
+                  </td>
                   <td className="p-3 text-muted">{new Date(u.updatedAt).toLocaleDateString()}</td>
                   <td className="p-3 text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

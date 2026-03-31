@@ -177,6 +177,11 @@ export async function POST(request: NextRequest) {
             source: 'WEB',
           }).catch(() => {})
 
+          // Send limit warning if user is at 9/10 (1 remaining)
+          if (remaining === 1) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ limitWarning: "You have 1 free message left. Upgrade to Gold for unlimited." })}\n\n`))
+          }
+
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
         } catch (error) {
