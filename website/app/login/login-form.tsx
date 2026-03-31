@@ -11,11 +11,14 @@ export function LoginForm() {
   const { data: session, status } = useSession()
   const q = searchParams.get('q')
   const giftCode = searchParams.get('gift')
-  const postAuthUrl = giftCode
-    ? `/gift/${giftCode}`
-    : q
-      ? `/chat?q=${encodeURIComponent(q)}`
-      : '/feed'
+  const callbackUrl = searchParams.get('callbackUrl')
+  const postAuthUrl = callbackUrl
+    ? callbackUrl
+    : giftCode
+      ? `/gift/${giftCode}`
+      : q
+        ? `/chat?q=${encodeURIComponent(q)}`
+        : '/feed'
 
   useEffect(() => {
     if (status === 'authenticated') {

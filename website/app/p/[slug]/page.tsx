@@ -218,7 +218,14 @@ function ProductPage() {
     window.location.href = `/chat?q=${encodeURIComponent(prompt)}`
   }
 
-  if (loading) {
+  // Redirect to login if not authenticated (with return URL)
+  useEffect(() => {
+    if (isLoggedIn === false) {
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}${fromParam ? `?from=${fromParam}` : ''}`)}`
+    }
+  }, [isLoggedIn, slug, fromParam])
+
+  if (loading || isLoggedIn === null || isLoggedIn === false) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
