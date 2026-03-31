@@ -351,11 +351,11 @@ export async function suggestGiftsFromProfile(
       try {
         // Try to find a real product URL
         const found = await findProductUrl(s.name).catch(() => null)
-        const targetUrl = found?.url || `https://www.google.com/search?q=${encodeURIComponent(s.name)}`
+        const targetUrl = found?.url || null
 
         // Layer 1: Try scraping from retailer URL
         let image: string | null = null
-        if (targetUrl && !targetUrl.includes('google.com/search')) {
+        if (targetUrl) {
           try {
             const scraped = await extractProductFromUrl(targetUrl)
             if (scraped.image) image = scraped.image

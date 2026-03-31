@@ -100,6 +100,9 @@ function ProductPage() {
 
   const giftUrl = giftData ? `https://giftist.ai/gift/${giftData.redeemCode}` : ''
 
+  // Check if target URL is a real product page (not a search/category page)
+  const hasRealProductUrl = product?.targetUrl && !product.targetUrl.includes('/s?k=') && !product.targetUrl.includes('google.com/search') && !product.targetUrl.includes('/search?')
+
   const requireAuth = () => {
     if (!isLoggedIn) {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
@@ -506,19 +509,21 @@ function ProductPage() {
           </div>
         )}
 
-        {/* View on retailer */}
-        <div className="text-center py-2">
-          <button
-            onClick={() => {
-              if (requireAuth()) return
-              window.open(`/go-r/${slug}`, '_blank')
-            }}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View on {product.domain}
-          </button>
-        </div>
+        {/* View on retailer — only show if we have a real product page URL */}
+        {hasRealProductUrl && (
+          <div className="text-center py-2">
+            <button
+              onClick={() => {
+                if (requireAuth()) return
+                window.open(`/go-r/${slug}`, '_blank')
+              }}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View on {product.domain}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Recipient info modal (pre-checkout) */}

@@ -239,11 +239,9 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
     console.error(`[ProductSearch] GPT-4o search failed:`, err)
   }
 
-  // Last resort: Amazon search URL — always works, always earns affiliate commission
-  const affiliateTag = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG || 'giftist05-20'
-  const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(productName)}&tag=${affiliateTag}`
-  console.log(`[ProductSearch] Falling back to Amazon search URL for "${productName}"`)
-  return { url: amazonSearchUrl, domain: 'www.amazon.com' }
+  // No verified product URL found — return null instead of a search page
+  console.log(`[ProductSearch] No verified product URL found for "${productName}"`)
+  return null
 }
 
 // Enrich an item with a real URL, image, and price
