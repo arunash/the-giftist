@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizePhone } from '@/lib/whatsapp'
-import { createDefaultEventsForUser } from '@/lib/default-events'
+
 import { notifyWelcome } from '@/lib/notifications'
 import { logApiCall, logError } from '@/lib/api-logger'
 import { ADMIN_PHONES } from '@/lib/admin'
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
           data: { phone: normalized, name: `User ${normalized.slice(-4)}` },
         })
         isNew = true
-        createDefaultEventsForUser(user.id).catch(() => {})
+        // Seed items removed — users start with empty wishlists
         notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
       }
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           data: { email, name, image: picture },
         })
         isNew = true
-        createDefaultEventsForUser(user.id).catch(() => {})
+        // Seed items removed — users start with empty wishlists
         notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
       }
 
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
             data: { email, name: name || undefined },
           })
           isNew = true
-          createDefaultEventsForUser(user.id).catch(() => {})
+          // Seed items removed — users start with empty wishlists
           notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
         }
         // Link Apple account

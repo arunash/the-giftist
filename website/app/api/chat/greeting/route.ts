@@ -47,7 +47,7 @@ export async function GET() {
           createdAt: true,
         },
       }),
-      prisma.item.count({ where: { userId } }),
+      prisma.item.count({ where: { userId, source: { not: 'SEED' } } }),
       prisma.event.findMany({
         where: { userId, date: { gte: now, lte: twoWeeksOut } },
         orderBy: { date: 'asc' },

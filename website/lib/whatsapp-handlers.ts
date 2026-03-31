@@ -9,7 +9,7 @@ import { stripSpecialBlocks, parseChatContent, isSearchOrCategoryUrl, type Event
 import { createActivity } from '@/lib/activity'
 import { calculateGoalAmount } from '@/lib/platform-fee'
 import { enrichItem } from '@/lib/enrich-item'
-import { createDefaultEventsForUser } from '@/lib/default-events'
+
 import { logApiCall, logError } from '@/lib/api-logger'
 import { checkAndSendFunnelMessages, sendFirstItemNudge } from '@/lib/whatsapp-funnel'
 import { createTrackedLink } from '@/lib/product-link'
@@ -313,8 +313,6 @@ export async function resolveUserAndList(phone: string, profileName?: string) {
     user = await prisma.user.create({
       data: { phone, name: profileName || null },
     })
-    // Fire-and-forget: create default events for new WhatsApp user
-    createDefaultEventsForUser(user.id).catch(() => {})
   } else {
     // Touch updatedAt on every WhatsApp interaction so "last active" stays current
     const nameUpdate = (profileName && (!user.name || /^User \d{4}$/.test(user.name)))

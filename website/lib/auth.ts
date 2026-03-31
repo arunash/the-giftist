@@ -4,7 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
-import { createDefaultEventsForUser } from './default-events'
+
 import { notifyWelcome } from './notifications'
 import twilio from 'twilio'
 import crypto from 'crypto'
@@ -98,8 +98,6 @@ const adapter = {
       console.error('[Auth] createUser linking check failed:', e)
     }
     const created = await baseAdapter.createUser(user)
-    // Fire-and-forget: create default events for new user
-    createDefaultEventsForUser(created.id).catch(() => {})
     // Fire-and-forget: welcome notification
     notifyWelcome(created.id, created.email, created.phone, created.name).catch(() => {})
     // Fire-and-forget: capture UTM params from recent anonymous page views
@@ -173,8 +171,6 @@ export const authOptions: NextAuthOptions = {
               name: `User ${normalized.slice(-4)}`,
             },
           })
-          // Fire-and-forget: create default events for new user
-          createDefaultEventsForUser(user.id).catch(() => {})
           // Fire-and-forget: welcome notification
           notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
         }

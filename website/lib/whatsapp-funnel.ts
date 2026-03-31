@@ -627,7 +627,7 @@ export async function runGoldDailyEngagement() {
         })
 
         const recentItems = await prisma.item.findMany({
-          where: { userId: user.id },
+          where: { userId: user.id, source: { not: 'SEED' } },
           orderBy: { addedAt: 'desc' },
           take: 5,
           select: { name: true, price: true },

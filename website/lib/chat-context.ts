@@ -124,7 +124,7 @@ function getStartOfDayInUTC(timezone: string): Date {
 export async function buildChatContext(userId: string, channel: 'web' | 'whatsapp' = 'web'): Promise<string> {
   const [items, events, wallet, user, circleMembers, overSuggested] = await Promise.all([
     prisma.item.findMany({
-      where: { userId },
+      where: { userId, source: { not: 'SEED' } },
       orderBy: { addedAt: 'desc' },
       take: 30,
       select: {
