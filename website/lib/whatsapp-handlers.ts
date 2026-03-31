@@ -625,8 +625,8 @@ Mother's Day is May 11 — let's find something she'll love!`
     return "Something went wrong generating your share link. Please try again."
   }
 
-  // Command: view {shareId} — recipient viewing someone's wishlist
-  const viewMatch = text.match(/\bview\s+(\S+)/i)
+  // Command: view {shareId} — recipient viewing someone's wishlist (must be start of message)
+  const viewMatch = trimmed.match(/^view\s+(\S+)$/i)
   if (viewMatch) {
     const targetShareId = viewMatch[1]
     const owner = await prisma.user.findUnique({
@@ -658,8 +658,8 @@ Mother's Day is May 11 — let's find something she'll love!`
     return `Hi! Your friend ${ownerName} is sharing their gift wishlist with you for their special moment! Checkout what they have in mind on the Giftist.\n\n🎁 *${ownerName}'s Wishlist*\n\n${itemLines.join('\n')}${moreText}\n\nView the full list and contribute:\nhttps://giftist.ai/u/${targetShareId}\n\nWant to create your own wishlist? Sign up free at *giftist.ai* — save gifts from any store, create event wishlists, and share with friends!`
   }
 
-  // Command: item {itemId} — view a single item (only items the user owns or from public profiles)
-  const itemMatch = text.match(/\bitem\s+(\S+)/i)
+  // Command: item {itemId} — view a single item (must be start of message, ID looks like a CUID)
+  const itemMatch = trimmed.match(/^item\s+(c[a-z0-9]{20,})$/i)
   if (itemMatch) {
     const targetItemId = itemMatch[1]
     const item = await prisma.item.findUnique({
