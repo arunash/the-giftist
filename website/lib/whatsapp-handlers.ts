@@ -1455,7 +1455,19 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     }
 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
-    const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
+    let strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
+
+    // When products exist, Claude often writes verbose paragraph descriptions alongside [PRODUCT] blocks.
+    // Truncate to just the first line (intro) + last line (closing question) to keep it clean.
+    if (productSegments.length > 0 && productList) {
+      const lines = strippedContent.split('\n').map(l => l.trim()).filter(Boolean)
+      if (lines.length > 2) {
+        // Keep first line (intro) and last line (closing question)
+        strippedContent = lines[0] + '\n\n' + lines[lines.length - 1]
+      } else if (lines.length > 0) {
+        strippedContent = lines[0]
+      }
+    }
 
     const ateSection = addToEventConfirmations.length > 0
       ? '\n\n' + addToEventConfirmations.join('\n')
