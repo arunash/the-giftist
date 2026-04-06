@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { logError } from '@/lib/api-logger'
+import { inferCountryFromPhone, COUNTRY_NAMES } from '@/lib/chat-context'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic()
@@ -29,6 +30,7 @@ Rules:
 - No brand names, no prices, no URLs
 - Feel curated and thoughtful, not generic
 - Never suggest: mugs, candles, generic Amazon items
+- Only suggest items available in the user's country from retailers that ship there
 - Output ONLY the short description, nothing else`
 
 async function generateSuggestion(context: string): Promise<string> {
@@ -46,19 +48,20 @@ async function generateSuggestion(context: string): Promise<string> {
   }
 }
 
-async function getStageMessage(stage: number, name: string | null): Promise<string> {
+async function getStageMessage(stage: number, name: string | null, country: string = 'US'): Promise<string> {
   const n = name || 'there'
+  const countryCtx = country !== 'US' ? ` Available in ${country}.` : ''
 
   switch (stage) {
     case 1: {
       const suggestion = await generateSuggestion(
-        'A universally loved, impressive gift. Something practical but thoughtful.'
+        `A universally loved, impressive gift. Something practical but thoughtful.${countryCtx}`
       )
       return `Hey ${n} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
     }
     case 2: {
       const suggestion = await generateSuggestion(
-        'A unique experience or creative gift. Something unexpected and memorable.'
+        `A unique experience or creative gift. Something unexpected and memorable.${countryCtx}`
       )
       return `Hey ${n} — Giftist has new picks like ${suggestion}. Here whenever you need ideas!`
     }
@@ -101,7 +104,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found or has no phone' }, { status: 404 })
     }
 
-    const message = await getStageMessage(stage, user.name)
+    const country = inferCountryFromPhone(user.phone)
+    const message = await getStageMessage(stage, user.name, country)
     await sendTextMessage(user.phone!, message)
     await prisma.user.update({
       where: { id: user.id },
@@ -150,7 +154,8 @@ export async function GET(req: NextRequest) {
       await Promise.all(
         batch.map(async (user) => {
           try {
-            const message = await getStageMessage(stage, user.name)
+            const country = inferCountryFromPhone(user.phone)
+            const message = await getStageMessage(stage, user.name, country)
             await sendTextMessage(user.phone!, message)
             await prisma.user.update({
               where: { id: user.id },

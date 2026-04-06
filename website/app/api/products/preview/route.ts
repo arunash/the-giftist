@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { image, name: productName, price, resolvedUrl: giftistUrl, targetUrl },
+    { image, name: productName, price, resolvedUrl: giftistUrl },
     { headers: { 'Cache-Control': 'public, max-age=86400' } },
   )
 }

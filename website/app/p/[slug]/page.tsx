@@ -206,7 +206,6 @@ function ProductPage() {
   const handleSaveForLater = () => {
     if (requireAuth()) return
     setSaved(true)
-    // Could call an API to save, but for now just visual feedback
   }
 
   const askConcierge = (prompt: string) => {

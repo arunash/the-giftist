@@ -1788,7 +1788,9 @@ export async function handleDocumentMessage(
       })
 
       const summary = profileSummary(profile, friendName)
-      const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WHATSAPP' }).catch(() => [])
+      const { inferCountryFromPhone } = await import('@/lib/chat-context')
+      const userCountry = inferCountryFromPhone(phone)
+      const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WHATSAPP', userCountry }).catch(() => [])
       const suggestionsText = suggestions.length > 0
         ? '\n\n🎁 *Gift ideas for ' + friendName + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}${s.url ? '\n' + s.url : ''}`).join('\n')
         : ''
@@ -1889,7 +1891,8 @@ export async function handlePendingAnalysisReply(
       pending.friendName = sender.name
 
       const summary = profileSummary(profile, sender.name)
-      const suggestions = await suggestGiftsFromProfile(profile, sender.name, { userId, source: 'WHATSAPP' }).catch(() => [])
+      const { inferCountryFromPhone: inferCountry } = await import('@/lib/chat-context')
+      const suggestions = await suggestGiftsFromProfile(profile, sender.name, { userId, source: 'WHATSAPP', userCountry: inferCountry(phone) }).catch(() => [])
       const suggestionsText = suggestions.length > 0
         ? '\n\n🎁 *Gift ideas for ' + sender.name + ':*\n' + suggestions.map((s, i) => `${i + 1}. *${s.name}* (${s.price}) — ${s.reason}${s.url ? '\n' + s.url : ''}`).join('\n')
         : ''

@@ -297,7 +297,7 @@ export interface GiftSuggestion {
 export async function suggestGiftsFromProfile(
   profile: FriendProfile,
   friendName: string,
-  opts?: { userId?: string; source?: string },
+  opts?: { userId?: string; source?: string; userCountry?: string },
 ): Promise<GiftSuggestion[]> {
   const profileStr = [
     profile.interests.length ? `Interests: ${profile.interests.join(', ')}` : '',
@@ -312,10 +312,10 @@ export async function suggestGiftsFromProfile(
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,
-    system: `You suggest gifts based on someone's Gift DNA. Return exactly 3 suggestions as a JSON array. Each item: {"name":"specific real product name with brand","price":"$XX","reason":"one sentence why this fits"}. Use real, specific product names (e.g. "Yeti Rambler 26oz Bottle" not "insulated water bottle"). Return ONLY the JSON array, no markdown.`,
+    system: `You suggest gifts based on someone's Gift DNA. Return exactly 3 suggestions as a JSON array. Each item: {"name":"specific real product name with brand","price":"$XX","reason":"one sentence why this fits"}. Use real, specific product names (e.g. "Yeti Rambler 26oz Bottle" not "insulated water bottle"). ONLY suggest products from retailers that ship to the user's country. Use local currency. Return ONLY the JSON array, no markdown.`,
     messages: [{
       role: 'user',
-      content: `Suggest 3 gift ideas for ${friendName} based on this profile:\n\n${profileStr}`,
+      content: `Suggest 3 gift ideas for ${friendName} based on this profile:\n\nUser country: ${opts?.userCountry || 'US'}\n\n${profileStr}`,
     }],
   })
 

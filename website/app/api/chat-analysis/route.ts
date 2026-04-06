@@ -9,6 +9,8 @@ import {
   suggestGiftsFromProfile,
 } from '@/lib/chat-analysis'
 import { extractChatText, isSupportedChatFile } from '@/lib/extract-chat-file'
+import { prisma } from '@/lib/db'
+import { inferCountryFromPhone } from '@/lib/chat-context'
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -83,7 +85,9 @@ export async function POST(request: NextRequest) {
 
   const profile = await extractFriendProfile(filtered, friendName)
   const userId = (session.user as any).id
-  const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WEB' }).catch(() => [])
+  const userRecord = await prisma.user.findUnique({ where: { id: userId }, select: { phone: true } })
+  const userCountry = inferCountryFromPhone(userRecord?.phone || null)
+  const suggestions = await suggestGiftsFromProfile(profile, friendName, { userId, source: 'WEB', userCountry }).catch(() => [])
 
   return NextResponse.json({
     step: 'review',

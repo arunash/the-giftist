@@ -5,6 +5,7 @@ import { smartWhatsAppSend } from './notifications'
 import { sendSms } from './sms'
 import { sendEmail } from './email'
 import { getSlugForHoliday } from './holiday-slugs'
+import { inferCountryFromPhone, COUNTRY_NAMES } from './chat-context'
 
 const anthropic = new Anthropic()
 
@@ -44,15 +45,17 @@ Rules:
 - No brand names, no prices, no URLs
 - Feel curated and thoughtful, not generic
 - Never suggest: mugs, candles, generic Amazon items
+- Only suggest items available in the user's country from retailers that ship there
 - Output ONLY the short description, nothing else`
 
-async function generateSuggestion(context: string): Promise<string> {
+async function generateSuggestion(context: string, country: string = 'US'): Promise<string> {
+  const countryHint = country !== 'US' ? ` User is in ${COUNTRY_NAMES[country] || country}.` : ''
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 100,
       system: SUGGESTION_SYSTEM,
-      messages: [{ role: 'user', content: context }],
+      messages: [{ role: 'user', content: context + countryHint }],
     })
     await logApiCall({
       provider: 'ANTHROPIC',
@@ -392,6 +395,7 @@ export async function runDailyEngagement() {
       _count: user._count,
       daysSinceLastMsg: daysSinceLastMessage,
     })
+    const userCountry = inferCountryFromPhone(user.phone)
 
     try {
       // Day 3: Different angle suggestion (only if still NEW or no recent engagement)
@@ -403,7 +407,7 @@ export async function runDailyEngagement() {
           const context = user.interests
             ? `A thoughtful gift for someone who likes: ${user.interests}.`
             : `A practical but thoughtful gift that works for almost anyone.`
-          const suggestion = await generateSuggestion(context)
+          const suggestion = await generateSuggestion(context, userCountry)
 
           const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
           await queueMessage({
@@ -431,7 +435,7 @@ export async function runDailyEngagement() {
           const context = user._count.items > 0
             ? `Something different from what they already have. A unique or experiential gift.`
             : `A crowd-favorite gift. Something that always impresses.`
-          const suggestion = await generateSuggestion(context)
+          const suggestion = await generateSuggestion(context, userCountry)
 
           const text = `Hey ${displayName} — Giftist has new picks like ${suggestion}. Here whenever you need ideas!`
           await queueMessage({
@@ -456,7 +460,7 @@ export async function runDailyEngagement() {
         state.day14Reactivation = true
 
         const context = `A surprising, thoughtful gift. Something people wouldn't find on their own.`
-        const suggestion = await generateSuggestion(context)
+        const suggestion = await generateSuggestion(context, userCountry)
 
         const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
         await queueMessage({
@@ -571,6 +575,7 @@ Rules:
 - Reference their upcoming events by name when available
 - End with something soft like "here if you need ideas" — NOT "want me to save it?"
 - Never pushy, never salesy, no questions, no bullet points
+- Only suggest items from retailers that ship to the user's country
 - Example: "Hey — Giftist has picks like artisan chocolate sets. Here if you need ideas!"`
 
 export async function runGoldDailyEngagement() {
@@ -635,8 +640,10 @@ export async function runGoldDailyEngagement() {
           ? recentItems.map(i => `${i.name}${i.price ? ` ($${i.price})` : ''}`).join(', ')
           : 'none'
 
+        const goldCountry = inferCountryFromPhone(user.phone)
         const contextMsg = [
           `Name: ${displayName}`,
+          `Country: ${COUNTRY_NAMES[goldCountry] || goldCountry}`,
           `Upcoming events (next 30d): ${eventCtx}`,
           `Recent wishlist items: ${itemCtx}`,
           `Total items: ${user._count.items}, events: ${user._count.events}, circle: ${user._count.circleMembers}`,
@@ -1074,6 +1081,7 @@ export async function runLifecycleNudges() {
     if (!user.phone && !user.email) continue
     const state = parseFunnelStage(user.funnelStage)
     const displayName = user.name || 'there'
+    const userCountry = inferCountryFromPhone(user.phone)
     const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / 86400000)
 
     let daysSinceLastMsg = daysSinceSignup
@@ -1096,7 +1104,7 @@ export async function runLifecycleNudges() {
           const context = user.interests
             ? `A surprising, thoughtful gift for someone who likes: ${user.interests}.`
             : `A surprising gift people wouldn't think of on their own.`
-          const suggestion = await generateSuggestion(context)
+          const suggestion = await generateSuggestion(context, userCountry)
 
           const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Check them out anytime!`
           await queueMessage({
@@ -1119,7 +1127,7 @@ export async function runLifecycleNudges() {
         const last60 = state.churned60Sent ? new Date(state.churned60Sent) : null
         const twoMonthsAgo = new Date(now.getTime() - 60 * 86400000)
         if (!last60 || last60 < twoMonthsAgo) {
-          const suggestion = await generateSuggestion(`A crowd-favorite gift that always impresses. Something fresh and interesting.`)
+          const suggestion = await generateSuggestion(`A crowd-favorite gift that always impresses. Something fresh and interesting.`, userCountry)
 
           const text = `Hey ${displayName} — Giftist has new trending items like ${suggestion}. Here if you need gift ideas!`
           await queueMessage({
@@ -1273,7 +1281,7 @@ export async function sendEmailReengagement() {
     const displayName = user.name || 'there'
 
     try {
-      const suggestion = await generateSuggestion(`Suggest one impressive, universally loved gift under $60.`)
+      const suggestion = await generateSuggestion(`Suggest one impressive, universally loved gift under $60.`, inferCountryFromPhone(user.phone))
 
       await sendEmail({
         to: user.email,

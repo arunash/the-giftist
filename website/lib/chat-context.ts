@@ -5,6 +5,48 @@ const FREE_LIFETIME_MESSAGE_LIMIT = 10
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
 
+export const COUNTRY_NAMES: Record<string, string> = {
+  US: 'United States', IN: 'India', UK: 'United Kingdom', AU: 'Australia',
+  DE: 'Germany', FR: 'France', JP: 'Japan', BR: 'Brazil', MX: 'Mexico',
+  AE: 'UAE', SG: 'Singapore', CN: 'China', KR: 'South Korea', IT: 'Italy',
+  ES: 'Spain', NL: 'Netherlands', SE: 'Sweden', NO: 'Norway', DK: 'Denmark',
+  CH: 'Switzerland', NZ: 'New Zealand', ZA: 'South Africa', SA: 'Saudi Arabia', RU: 'Russia',
+  CA: 'Canada',
+}
+
+/** Infer ISO country code from phone number with country calling code */
+export function inferCountryFromPhone(phone: string | null): string {
+  if (!phone) return 'US'
+  const p = phone.replace(/\D/g, '')
+  // Check 3-digit codes first (more specific)
+  if (p.startsWith('971') && p.length >= 12) return 'AE'
+  if (p.startsWith('966') && p.length >= 12) return 'SA'
+  // 2-digit codes
+  if (p.startsWith('91') && p.length >= 12) return 'IN'
+  if (p.startsWith('44') && p.length >= 12) return 'UK'
+  if (p.startsWith('61') && p.length >= 11) return 'AU'
+  if (p.startsWith('49') && p.length >= 12) return 'DE'
+  if (p.startsWith('33') && p.length >= 11) return 'FR'
+  if (p.startsWith('81') && p.length >= 12) return 'JP'
+  if (p.startsWith('55') && p.length >= 12) return 'BR'
+  if (p.startsWith('52') && p.length >= 12) return 'MX'
+  if (p.startsWith('65') && p.length >= 10) return 'SG'
+  if (p.startsWith('86') && p.length >= 12) return 'CN'
+  if (p.startsWith('82') && p.length >= 12) return 'KR'
+  if (p.startsWith('39') && p.length >= 12) return 'IT'
+  if (p.startsWith('34') && p.length >= 11) return 'ES'
+  if (p.startsWith('31') && p.length >= 11) return 'NL'
+  if (p.startsWith('46') && p.length >= 11) return 'SE'
+  if (p.startsWith('47') && p.length >= 10) return 'NO'
+  if (p.startsWith('45') && p.length >= 10) return 'DK'
+  if (p.startsWith('41') && p.length >= 11) return 'CH'
+  if (p.startsWith('64') && p.length >= 11) return 'NZ'
+  if (p.startsWith('27') && p.length >= 11) return 'ZA'
+  if (p.startsWith('7') && p.length >= 11) return 'RU'
+  if (p.startsWith('1') && p.length >= 11) return 'US' // US/CA — default US
+  return 'US'
+}
+
 export async function checkChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
   if (ADMIN_USER_IDS.has(userId)) {
     return { allowed: true, remaining: Infinity }
@@ -163,6 +205,7 @@ export async function buildChatContext(userId: string, channel: 'web' | 'whatsap
       where: { id: userId },
       select: {
         name: true,
+        phone: true,
         birthday: true,
         gender: true,
         ageRange: true,
@@ -200,9 +243,12 @@ export async function buildChatContext(userId: string, channel: 'web' | 'whatsap
     return `- [#${idx + 1}] ${e.name} (${e.type}) on ${new Date(e.date).toLocaleDateString()}${itemsStr}`
   }).join('\n')
 
+  const userCountry = inferCountryFromPhone(user?.phone || null)
+
   // Build demographics section
   const demographics: string[] = []
   if (user?.name) demographics.push(`Name: ${user.name}`)
+  demographics.push(`Country: ${COUNTRY_NAMES[userCountry] || userCountry}`)
   if (user?.birthday) {
     const bday = new Date(user.birthday)
     const now = new Date()
@@ -327,7 +373,7 @@ VIOLATIONS THAT MUST NEVER HAPPEN:
 [PRODUCT] BLOCK FORMAT:
 - Format: [PRODUCT]{"name":"Exact Brand + Model Name","price":"$XX"}[/PRODUCT]
 - Use SPECIFIC names: "Gravity Weighted Blanket 15lb" NOT "weighted blanket"
-- NEVER include "url" — the system auto-finds verified purchase links
+- NEVER include "url" — the system auto-creates giftist.ai product links. NEVER output retailer URLs (amazon.com, target.com, etsy.com, etc.) — only giftist.ai links are shown to users.
 - 2-3 per message. Each one MUST have its own [PRODUCT] block.
 
 VOICE & STYLE:
@@ -352,7 +398,14 @@ PRODUCT QUALITY:
 - Prefer: Uncommon Goods, Etsy, Bookshop.org, Food52, MoMA Store, Cratejoy, MasterClass, niche DTC brands.
 - Amazon OK only for specific branded products (Kindle, AirPods, etc.) — never generic search filler.
 - Gift cards ONLY if user asks for safe/easy options or is time-constrained.
-- No repeat suggestions within a conversation. No over-suggested items.${overSuggested.length > 0 ? `\n- BLACKLISTED (over-suggested): ${overSuggested.join(', ')}` : ''}
+- No repeat suggestions within a conversation. No over-suggested items.
+
+SHIPPING & RETAILER LOCATION (CRITICAL):
+- ONLY suggest products from retailers that ship to the user's country (see USER PROFILE for country).
+- Use local retailers when possible — e.g. Amazon.in for India, Amazon.co.uk for UK, Amazon.com.au for Australia.
+- NEVER suggest a US-only retailer (e.g. Uncommon Goods, Target, Walmart) to a non-US user unless they ship internationally.
+- For non-US users: prefer global retailers (Amazon local, Etsy, international DTC brands) or country-specific retailers.
+- Currency should match the user's country (₹ for India, £ for UK, € for EU, A$ for Australia, etc.).${overSuggested.length > 0 ? `\n- BLACKLISTED (over-suggested): ${overSuggested.join(', ')}` : ''}
 
 NEW USERS:
 - First message: warm welcome (1 line) + ONE impressive [PRODUCT] suggestion + ONE action prompt.
