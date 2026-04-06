@@ -1390,6 +1390,16 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           } catch {}
         }
 
+        // Always verify real price by scraping the actual retailer page
+        if (targetUrl) {
+          try {
+            const { extractProductFromUrl } = await import('@/lib/extract')
+            const scraped = await extractProductFromUrl(targetUrl)
+            // Use scraped price if available — it's the real retailer price
+            if (scraped.price) resolvedPrice = scraped.price
+          } catch {}
+        }
+
         const price = resolvedPrice ? ` — ${resolvedPrice}` : ''
 
         // Create Giftist product page link (landing page resolves images via 3-layer system)
