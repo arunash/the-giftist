@@ -405,7 +405,7 @@ export async function runDailyEngagement() {
             : `A practical but thoughtful gift that works for almost anyone.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `Hey ${displayName} — ${suggestion}. Thoughtful and easy to love. Want me to save it for you?`
+          const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'Found something for you',
@@ -433,7 +433,7 @@ export async function runDailyEngagement() {
             : `A crowd-favorite gift. Something that always impresses.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `${displayName} — ${suggestion}. More unique than typical gifts. Want me to save it?`
+          const text = `Hey ${displayName} — Giftist has new picks like ${suggestion}. Here whenever you need ideas!`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'This caught my eye',
@@ -458,7 +458,7 @@ export async function runDailyEngagement() {
         const context = `A surprising, thoughtful gift. Something people wouldn't find on their own.`
         const suggestion = await generateSuggestion(context)
 
-        const text = `Hey ${displayName} — ${suggestion}. Tell me who it's for and I'll make it personal.`
+        const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
         await queueMessage({
           userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
           subject: 'Found something you might love',
@@ -512,37 +512,28 @@ export async function runDailyEngagement() {
         })
 
         if (days >= 21) {
-          // 30d: Suggest thoughtful starting point
-          const suggestion = await generateSuggestion(`A thoughtful gift for a "${evt.name}" event.`)
-          text = `${displayName} — ${evt.name} is ${days} days out. How about a ${suggestion}? Want me to save it?`
+          text = `Hey ${displayName} — ${evt.name} is ${days} days away. Gifting anyone? Giftist has trending items ready for you.`
         } else if (days >= 13) {
-          // 14d: Reinforce or suggest
           if (evt._count.items > 0) {
-            text = `${evt.name} is 2 weeks away. You've got ${itemNames[0]} saved — solid pick. Need anything else?`
+            text = `${evt.name} is 2 weeks away. You've got ${evt._count.items} item(s) saved. Giftist has more trending picks if you need them.`
           } else {
-            const suggestion = await generateSuggestion(`A thoughtful gift for "${evt.name}". Something that feels personal.`)
-            text = `${displayName} — ${evt.name} is 2 weeks out. A ${suggestion} could be perfect. Want me to save it?`
+            text = `Hey ${displayName} — ${evt.name} is 2 weeks out. Gifting anyone? Giftist has trending items ready for you.`
           }
         } else if (days >= 6) {
-          // 7d: Reinforce safe choice
           if (evt._count.items > 0) {
-            text = `${evt.name} is next week. You're set with ${evt._count.items} item(s). Want to swap or add anything?`
+            text = `${evt.name} is next week — you've got ${evt._count.items} item(s) ready. 👍`
           } else {
-            const suggestion = await generateSuggestion(`A safe, crowd-pleasing gift for "${evt.name}".`)
-            text = `${evt.name} is next week — ${suggestion}. Safe pick that always works. Want me to save it?`
+            text = `${evt.name} is next week. Gifting anyone? Giftist has trending items ready for you.`
           }
         } else if (days >= 2) {
-          // 3d: Quick-win gift
-          if (evt._count.items === 0) {
-            const suggestion = await generateSuggestion(`A quick-to-order gift that always impresses.`)
-            text = `${evt.name} is in ${days} days — ${suggestion}. Ships fast and always impresses. Save it?`
+          if (evt._count.items > 0) {
+            text = `${evt.name} is in ${days} days — you're all set with ${evt._count.items} item(s). 👍`
           } else {
-            text = `${evt.name} is in ${days} days. You're ready with ${evt._count.items} item(s). All good?`
+            text = `${evt.name} is in ${days} days. Need gift ideas? Giftist has trending items ready for you.`
           }
         } else {
-          // 1d: Last-minute help
           if (evt._count.items === 0) {
-            text = `${evt.name} is tomorrow — tell me your budget and who it's for. I'll find something fast.`
+            text = `${evt.name} is tomorrow! Need last-minute gift ideas? Giftist can help.`
           } else {
             text = `${evt.name} is tomorrow — you're all set. Have a great one, ${displayName}!`
           }
@@ -572,16 +563,15 @@ export async function runDailyEngagement() {
 
 // ── Gold Daily AI-Personalized Messages ──
 
-const GOLD_DAILY_SYSTEM = `You are a gift concierge sending a short daily message. Max 120-150 characters.
+const GOLD_DAILY_SYSTEM = `You are a gift concierge sending a short daily message. Max 100 characters.
 
 Rules:
-- ONE short gift idea (3-5 word description, no brand names or prices)
-- End with "Want me to save it?" or similar save prompt
-- Reference their events/items by name when available
-- Warm, opinionated, like a friend with great taste
-- Never salesy, never say "trending" or "here's what I can do"
-- No bullet points, no paragraphs
-- The message should feel like it arrived at the perfect time`
+- Mention ONE gift idea (3-5 words, no brands or prices)
+- Keep it casual and brief — like a friend's text
+- Reference their upcoming events by name when available
+- End with something soft like "here if you need ideas" — NOT "want me to save it?"
+- Never pushy, never salesy, no questions, no bullet points
+- Example: "Hey — Giftist has picks like artisan chocolate sets. Here if you need ideas!"`
 
 export async function runGoldDailyEngagement() {
   const now = new Date()
@@ -813,7 +803,7 @@ export async function runPostEventFollowUp() {
     const postEventMap = state.postEventSent || {}
     if (postEventMap[event.id]) continue
 
-    const text = `Hope ${event.name} was amazing! ${event._count.contributions} people contributed — want to send them a quick thank-you?`
+    const text = `Hope ${event.name} went well! ${event._count.contributions} people contributed. 🎉`
     await queueMessage({
       userId: event.user.id, phone: event.user.phone, email: event.user.email, timezone: event.user.timezone,
       subject: `${event.name} — send thank-yous!`,
@@ -846,7 +836,7 @@ export async function runPostEventFollowUp() {
     const postEventMap = state.postEventSent || {}
     if (postEventMap[event.id] === 'asked_feedback') continue
 
-    const text = `How did the gift land for ${event.name}? I'll get even better at picking next time.`
+    const text = `How did ${event.name} go? Here whenever you need gift ideas for next time!`
     await queueMessage({
       userId: event.user.id, phone: event.user.phone, email: event.user.email, timezone: event.user.timezone,
       subject: `How did ${event.name} go?`,
@@ -879,47 +869,47 @@ interface Holiday {
 function getHolidays(year: number): Holiday[] {
   return [
     // January
-    { name: "New Year's Day", month: 0, day: 1, message: "personalized leather journal. Fresh start energy. Want me to save it?" },
-    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "illustrated history book. Meaningful for a mentor or teacher. Want me to save it?" },
+    { name: "New Year's Day", month: 0, day: 1, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "gifting anyone? Giftist has trending items ready for you." },
     // February
-    { name: "Galentine's Day", month: 1, day: 13, message: "matching friendship bracelet set. Simple and sweet. Want me to save it?" },
-    { name: "Valentine's Day", month: 1, day: 14, message: "couples cooking class experience. Better than flowers. Want me to save it?" },
-    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "premium loose leaf tea set. Elegant and traditional. Want me to save it?" },
+    { name: "Galentine's Day", month: 1, day: 13, message: "gifting your friends? Giftist has trending items ready for you." },
+    { name: "Valentine's Day", month: 1, day: 14, message: "gifting someone special? Giftist has trending items ready for you." },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "gifting anyone? Giftist has trending items ready for you." },
     // March
-    { name: "International Women's Day", month: 2, day: 8, message: "luxe silk sleep mask set. Thoughtful for any woman in your life. Want me to save it?" },
-    { name: "St. Patrick's Day", month: 2, day: 17, message: "craft Irish whiskey sampler. A cut above the usual. Want me to save it?" },
+    { name: "International Women's Day", month: 2, day: 8, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "gifting anyone? Giftist has trending items ready for you." },
     // April
-    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "artisan chocolate truffle box. Beats a generic basket. Want me to save it?" },
-    { name: 'Earth Day', month: 3, day: 22, message: "reusable beeswax wrap set. Practical and planet-friendly. Want me to save it?" },
-    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "leather notebook and pen set. Classy without overdoing it. Want me to save it?" },
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Earth Day', month: 3, day: 22, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "gifting anyone? Giftist has trending items ready for you." },
     // May
-    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "silk pillowcase and eye mask set. Something she'd never buy herself. Want me to save it?" },
-    { name: 'Cinco de Mayo', month: 4, day: 5, message: "hand-blown Mexican glass set. Perfect for the host. Want me to save it?" },
-    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "gourmet coffee and tumbler set. Teachers always appreciate this. Want me to save it?" },
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "gifting mom? Giftist has trending items ready for you." },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "gifting a teacher? Giftist has trending items ready for you." },
     // June
-    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "portable tabletop fire pit. He'll actually use it. Want me to save it?" },
-    { name: 'Juneteenth', month: 5, day: 19, message: "luxury candle from a Black-owned brand. Meaningful and beautiful. Want me to save it?" },
-    { name: 'Graduation Season', month: 5, day: 1, message: "engraved leather luggage tag. Practical for the next chapter. Want me to save it?" },
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "gifting dad? Giftist has trending items ready for you." },
+    { name: 'Juneteenth', month: 5, day: 19, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Graduation Season', month: 5, day: 1, message: "gifting a grad? Giftist has trending items ready for you." },
     // July
-    { name: 'Independence Day', month: 6, day: 4, message: "retro cooler for the backyard. Instant party upgrade. Want me to save it?" },
+    { name: 'Independence Day', month: 6, day: 4, message: "gifting anyone? Giftist has trending items ready for you." },
     // August
-    { name: 'Back to School', month: 7, day: 15, message: "quality wireless earbuds. The one thing they'll actually use daily. Want me to save it?" },
-    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "custom photo book of your memories. More personal than anything else. Want me to save it?" },
+    { name: 'Back to School', month: 7, day: 15, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "gifting a friend? Giftist has trending items ready for you." },
     // September
-    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "luxe linen pillowcase set. The kind of thing you keep forever. Want me to save it?" },
-    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "digital picture frame. Fill it with family photos — they'll love it. Want me to save it?" },
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "gifting your grandparents? Giftist has trending items ready for you." },
     // October
-    { name: "Boss's Day", month: 9, day: 16, message: "leather card holder. Professional without being awkward. Want me to save it?" },
-    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "artisan chocolate truffle box. Sweeter than flowers. Want me to save it?" },
-    { name: 'Halloween', month: 9, day: 31, message: "spooky movie night snack basket. Fun for any age. Want me to save it?" },
+    { name: "Boss's Day", month: 9, day: 16, message: "gifting your boss? Giftist has trending items ready for you." },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "gifting someone special? Giftist has trending items ready for you." },
+    { name: 'Halloween', month: 9, day: 31, message: "gifting anyone? Giftist has trending items ready for you." },
     // November
-    { name: 'Veterans Day', month: 10, day: 11, message: "insulated tumbler and coffee set. Simple way to say thank you. Want me to save it?" },
-    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "artisan cheese board set. The host will remember this one. Want me to save it?" },
-    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "smart speaker. Great time to grab one for someone. Want me to save it?" },
+    { name: 'Veterans Day', month: 10, day: 11, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "gifting the host? Giftist has trending items ready for you." },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "gifting anyone? Giftist has great deals ready for you." },
     // December
-    { name: 'Secret Santa Season', month: 11, day: 10, message: "bluetooth tracker keychain. Useful and always a hit. Want me to save it?" },
-    { name: 'Christmas', month: 11, day: 25, message: "cozy weighted blanket. Practical but thoughtful. Want me to save it?" },
-    { name: "New Year's Eve", month: 11, day: 31, message: "cocktail shaker kit. Perfect for ringing it in. Want me to save it?" },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "need Secret Santa ideas? Giftist has trending items ready for you." },
+    { name: 'Christmas', month: 11, day: 25, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "New Year's Eve", month: 11, day: 31, message: "gifting anyone? Giftist has trending items ready for you." },
   ]
 }
 
@@ -1014,16 +1004,13 @@ export async function runSeasonalReminders() {
       let subject: string
 
       if (cadence.label === '14d') {
-        // Discovery: one strong idea
-        text = `${displayName} — ${holiday.name} is coming up. How about a ${holiday.message}`
+        text = `Hey ${displayName} — ${holiday.name} is coming up. ${holiday.message}`
         subject = `${holiday.name} is coming up`
       } else if (cadence.label === '7d') {
-        // Shortlist: reinforce with confidence
-        text = `${displayName} — ${holiday.name} is next week. A ${holiday.message} Tell me who it's for and I'll personalize.`
+        text = `${displayName} — ${holiday.name} is next week. ${holiday.message}`
         subject = `${holiday.name} is next week`
       } else {
-        // Urgent (1 day): last-minute help
-        text = `${displayName} — ${holiday.name} is tomorrow. Tell me who it's for and your budget, I'll find something fast.`
+        text = `${displayName} — ${holiday.name} is tomorrow! ${holiday.message}`
         subject = `${holiday.name} is tomorrow`
       }
 
@@ -1111,7 +1098,7 @@ export async function runLifecycleNudges() {
             : `A surprising gift people wouldn't think of on their own.`
           const suggestion = await generateSuggestion(context)
 
-          const text = `Hey ${displayName} — ${suggestion}. Not the obvious choice, but that's what makes it good. Want me to save it?`
+          const text = `Hey ${displayName} — Giftist has trending items like ${suggestion}. Check them out anytime!`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'Found something you might like',
@@ -1134,7 +1121,7 @@ export async function runLifecycleNudges() {
         if (!last60 || last60 < twoMonthsAgo) {
           const suggestion = await generateSuggestion(`A crowd-favorite gift that always impresses. Something fresh and interesting.`)
 
-          const text = `${displayName} — ${suggestion}. Always gets a great reaction. Want me to save it or find something more personal?`
+          const text = `Hey ${displayName} — Giftist has new trending items like ${suggestion}. Here if you need gift ideas!`
           await queueMessage({
             userId: user.id, phone: user.phone, email: user.email, timezone: user.timezone,
             subject: 'This is trending right now',

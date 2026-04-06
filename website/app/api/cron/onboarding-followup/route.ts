@@ -51,22 +51,19 @@ async function getStageMessage(stage: number, name: string | null): Promise<stri
 
   switch (stage) {
     case 1: {
-      // Impress: strong, widely appealing gift
       const suggestion = await generateSuggestion(
         'A universally loved, impressive gift. Something practical but thoughtful.'
       )
-      return `Hey ${n} — ${suggestion}. Practical but thoughtful. Want me to save it for you?`
+      return `Hey ${n} — Giftist has trending items like ${suggestion}. Here whenever you need gift ideas!`
     }
     case 2: {
-      // Explore: different direction, more unique
       const suggestion = await generateSuggestion(
         'A unique experience or creative gift. Something unexpected and memorable.'
       )
-      return `${n} — how about a ${suggestion}? More unique than typical gifts. Want me to save it?`
+      return `Hey ${n} — Giftist has new picks like ${suggestion}. Here whenever you need ideas!`
     }
     case 3: {
-      // Personalize: ask for context
-      return `Hey ${n} — tell me who you're shopping for and I'll find the perfect thing. "Gift for my mom who loves cooking" works great.`
+      return `Hey ${n} — need gift ideas for someone? Just tell me who and I'll find the perfect thing.`
     }
     default:
       return ''
