@@ -1359,97 +1359,102 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     // autoSavedCount removed — simplified flow
     const productImages: { image: string; caption: string }[] = []  // For sending images via WhatsApp
     if (productSegments.length > 0) {
-      const { findProductUrl } = await import('@/lib/enrich-item')
+      const { findProductUrl, verifyProductUrl } = await import('@/lib/enrich-item')
+      const { extractProductFromUrl } = await import('@/lib/extract')
+      const { findProductImage } = await import('@/lib/product-image')
+
+      // Process all products in parallel with per-product timeout (15s each)
+      const productResults = await Promise.all(
+        productSegments.map(async (seg) => {
+          const p = seg.data as import('@/lib/parse-chat-content').ProductData
+          try {
+            return await Promise.race([
+              (async () => {
+                let resolvedPrice = p.price
+                let targetUrl = p.url && !isSearchOrCategoryUrl(p.url) ? p.url : null
+                let image: string | null = null
+
+                // Verify Claude-provided URL
+                if (targetUrl) {
+                  const verified = await verifyProductUrl(targetUrl)
+                  if (!verified) targetUrl = null
+                }
+
+                // Search for real URL if none
+                if (!targetUrl) {
+                  try {
+                    const found = await findProductUrl(p.name)
+                    if (found?.url) {
+                      targetUrl = found.url
+                      if (found.price) resolvedPrice = found.price
+                    }
+                  } catch {}
+                }
+
+                // Scrape price + image in one call (not two)
+                if (targetUrl) {
+                  try {
+                    const scraped = await extractProductFromUrl(targetUrl)
+                    if (scraped.price) resolvedPrice = scraped.price
+                    if (scraped.image) image = scraped.image
+                  } catch {}
+                }
+
+                // Fallback image search if scraping didn't get one
+                if (!image) {
+                  try { image = await findProductImage(p.name) } catch {}
+                }
+
+                // Create tracked link — need a targetUrl
+                if (!targetUrl) return null
+
+                let priceVal: number | null = null
+                if (resolvedPrice) {
+                  const m = resolvedPrice.replace(/,/g, '').match(/[\d.]+/)
+                  if (m) priceVal = parseFloat(m[0])
+                }
+
+                const trackedUrl = await createTrackedLink({
+                  productName: p.name,
+                  targetUrl,
+                  price: resolvedPrice || null,
+                  priceValue: priceVal,
+                  image: image || p.image || null,
+                  userId,
+                  source: 'WHATSAPP',
+                })
+
+                return {
+                  name: p.name,
+                  price: resolvedPrice ? ` — ${resolvedPrice}` : '',
+                  link: `\n${trackedUrl}?from=wa`,
+                  image,
+                }
+              })(),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000)),
+            ])
+          } catch {
+            return null
+          }
+        })
+      )
+
+      // Log resolution results for debugging
+      const resolved = productResults.filter(Boolean).length
+      const total = productSegments.length
+      if (resolved < total) {
+        console.log(`[WhatsApp] Product link resolution: ${resolved}/${total} succeeded`)
+      }
+
       const lines: string[] = []
       let displayIdx = 0
-      for (let i = 0; i < productSegments.length; i++) {
-        const p = productSegments[i].data as import('@/lib/parse-chat-content').ProductData
-        let linkLine = ''
-        let resolvedPrice = p.price  // Will be overridden with real price if found
-
-        // Resolve a real product URL if Claude didn't provide one
-        // Strip search/category URLs — only allow direct product page links
-        const { verifyProductUrl } = await import('@/lib/enrich-item')
-        let targetUrl = p.url && !isSearchOrCategoryUrl(p.url) ? p.url : null
-
-        // Verify Claude-provided URL actually loads
-        if (targetUrl) {
-          const verified = await verifyProductUrl(targetUrl)
-          if (!verified) targetUrl = null
-        }
-
-        // Fallback: search for real URL if none provided or verification failed
-        if (!targetUrl) {
-          try {
-            const found = await findProductUrl(p.name)
-            if (found?.url) {
-              targetUrl = found.url  // already verified inside findProductUrl
-              // Use real price from web search instead of Claude's guess
-              if (found.price) resolvedPrice = found.price
-            }
-          } catch {}
-        }
-
-        // Always verify real price by scraping the actual retailer page
-        if (targetUrl) {
-          try {
-            const { extractProductFromUrl } = await import('@/lib/extract')
-            const scraped = await extractProductFromUrl(targetUrl)
-            // Use scraped price if available — it's the real retailer price
-            if (scraped.price) resolvedPrice = scraped.price
-          } catch {}
-        }
-
-        const price = resolvedPrice ? ` — ${resolvedPrice}` : ''
-
-        // Create Giftist product page link (landing page resolves images via 3-layer system)
-        if (targetUrl) {
-          try {
-            let priceVal: number | null = null
-            if (resolvedPrice) {
-              const m = resolvedPrice.replace(/,/g, '').match(/[\d.]+/)
-              if (m) priceVal = parseFloat(m[0])
-            }
-            const trackedUrl = await createTrackedLink({
-              productName: p.name,
-              targetUrl,
-              price: resolvedPrice || null,
-              priceValue: priceVal,
-              image: p.image || null,
-              userId,
-              source: 'WHATSAPP',
-            })
-            linkLine = `\n${trackedUrl}?from=wa`
-          } catch {}
-        }
-
-        // Only show products that have links
-        if (!linkLine) continue
-
+      for (const result of productResults) {
+        if (!result) continue
         displayIdx++
-        lines.push(`${displayIdx}. *${p.name}*${price}${linkLine}`)
-
-        // Try to get product image for WhatsApp (scrape from target URL or search)
-        if (targetUrl) {
-          try {
-            const { extractProductFromUrl } = await import('@/lib/extract')
-            const scraped = await extractProductFromUrl(targetUrl)
-            if (scraped.image) {
-              productImages.push({ image: scraped.image, caption: `${displayIdx}. *${p.name}*${price}` })
-            }
-          } catch {}
-          // Fallback: try Google image search
-          if (!productImages.find(pi => pi.caption.startsWith(`${displayIdx}.`))) {
-            try {
-              const { findProductImage } = await import('@/lib/product-image')
-              const img = await findProductImage(p.name)
-              if (img) {
-                productImages.push({ image: img, caption: `${displayIdx}. *${p.name}*${price}` })
-              }
-            } catch {}
-          }
+        lines.push(`${displayIdx}. *${result.name}*${result.price}${result.link}`)
+        if (result.image) {
+          productImages.push({ image: result.image, caption: `${displayIdx}. *${result.name}*${result.price}` })
         }
-
       }
       productList = lines.join('\n') + '\n\n'
     }
