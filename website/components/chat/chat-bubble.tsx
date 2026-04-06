@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { parseChatContent, type ProductData, type EventData, type AddToEventData, type SendGiftData } from '@/lib/parse-chat-content'
+import { parseChatContent, type ProductData, type EventData, type AddToEventData } from '@/lib/parse-chat-content'
 import { ProductCard } from './product-card'
-import { SendGiftCard } from './send-gift-card'
 import { Check, Calendar, Gift, Zap, Crown } from 'lucide-react'
 import Link from 'next/link'
 
@@ -12,29 +11,6 @@ interface ChatBubbleProps {
   role: 'USER' | 'ASSISTANT'
   content: string
   autoExecute?: boolean
-}
-
-async function addProductToList(product: ProductData) {
-  if (product.url) {
-    const res = await fetch('/api/items/from-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: product.url, source: 'CHAT' }),
-    })
-    if (!res.ok) throw new Error('Failed to add')
-  } else {
-    const res = await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: product.name,
-        price: product.price,
-        url: `https://www.google.com/search?q=${encodeURIComponent(product.name)}`,
-        source: 'CHAT',
-      }),
-    })
-    if (!res.ok) throw new Error('Failed to add')
-  }
 }
 
 async function savePreferences(data: Record<string, any>) {
@@ -261,13 +237,13 @@ function PreferencesConfirmation({ data, autoExecute }: { data: Record<string, a
   )
 }
 
-function ProductCarousel({ products, onAdd }: { products: ProductData[]; onAdd: (p: ProductData) => void }) {
+function ProductCarousel({ products }: { products: ProductData[] }) {
   return (
     <div className="my-2 -mx-1 overflow-x-auto scrollbar-hide">
       <div className="flex gap-2 px-1 pb-1" style={{ minWidth: 'min-content' }}>
         {products.map((product, i) => (
           <div key={i} className="w-56 flex-shrink-0">
-            <ProductCard product={product} onAdd={onAdd} />
+            <ProductCard product={product} />
           </div>
         ))}
       </div>
@@ -320,9 +296,9 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
           if (segment.type === 'products') {
             const products = segment.products
             if (products.length >= 2) {
-              return <ProductCarousel key={i} products={products} onAdd={addProductToList} />
+              return <ProductCarousel key={i} products={products} />
             }
-            return <ProductCard key={i} product={products[0]} onAdd={addProductToList} />
+            return <ProductCard key={i} product={products[0]} />
           }
           if (segment.type === 'text') {
             // Check for inline upgrade buttons
@@ -382,9 +358,6 @@ export function ChatBubble({ role, content, autoExecute = false }: ChatBubblePro
           }
           if (segment.type === 'add_to_event') {
             return <AddToEventConfirmation key={i} data={segment.data} autoExecute={autoExecute} />
-          }
-          if (segment.type === 'send_gift') {
-            return <SendGiftCard key={i} data={segment.data} autoExecute={autoExecute} />
           }
           return null
         })}

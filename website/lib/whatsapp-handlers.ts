@@ -1045,7 +1045,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     const segments = parseChatContent(fullContent)
     const eventConfirmations: string[] = []
     const addToEventConfirmations: string[] = []
-    const giftCheckoutLinks: string[] = []
+    // giftCheckoutLinks removed — simplified flow
 
     for (const seg of segments) {
       if (seg.type === 'event') {
@@ -1351,93 +1351,12 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
         }
       }
 
-      if (seg.type === 'send_gift') {
-        try {
-          const giftData = seg.data as import('@/lib/parse-chat-content').SendGiftData
-          // Resolve phone from circle member ref if needed
-          let recipientPhone = giftData.recipientPhone
-          if (!recipientPhone && giftData.recipientRef) {
-            const idx = parseInt(giftData.recipientRef.replace(/^C/i, '')) - 1
-            const members = await prisma.circleMember.findMany({
-              where: { userId },
-              orderBy: { name: 'asc' },
-              take: 20,
-            })
-            const member = members[idx]
-            if (member) recipientPhone = member.phone
-          }
-
-          if (recipientPhone) {
-            const amount = giftData.itemPrice
-            const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
-            const totalCharged = Math.round((amount + platformFee) * 100) / 100
-
-            const giftSend = await prisma.giftSend.create({
-              data: {
-                senderId: userId,
-                recipientPhone: recipientPhone.replace(/\D/g, ''),
-                recipientName: giftData.recipientName || null,
-                itemName: giftData.itemName,
-                itemPrice: amount,
-                itemUrl: giftData.itemUrl || null,
-                itemImage: giftData.itemImage || null,
-                senderMessage: giftData.senderMessage || null,
-                amount,
-                platformFee,
-                totalCharged,
-                status: 'PENDING',
-                redeemCode: crypto.randomBytes(16).toString('base64url'),
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-              },
-            })
-
-            // Create Stripe checkout link and send via WhatsApp
-            const { stripe } = await import('@/lib/stripe')
-            const stripeSession = await stripe.checkout.sessions.create({
-              mode: 'payment',
-              line_items: [{
-                price_data: {
-                  currency: 'usd',
-                  product_data: {
-                    name: `Gift: ${giftData.itemName}`,
-                    description: `Send "${giftData.itemName}" to ${giftData.recipientName || 'your friend'}`,
-                  },
-                  unit_amount: Math.round(totalCharged * 100),
-                },
-                quantity: 1,
-              }],
-              metadata: {
-                type: 'gift_send',
-                giftSendId: giftSend.id,
-                userId,
-              },
-              success_url: `https://giftist.ai/gift/sent?id={CHECKOUT_SESSION_ID}`,
-              cancel_url: 'https://giftist.ai',
-            })
-
-            await prisma.giftSend.update({
-              where: { id: giftSend.id },
-              data: { stripeSessionId: stripeSession.id },
-            })
-
-            const claimLink = `https://giftist.ai/gift/${giftSend.redeemCode}`
-
-            // Store checkout link + claim link to append to reply
-            giftCheckoutLinks.push(
-              `\n\n💳 Pay here to send the gift: ${stripeSession.url}` +
-              `\n\n🎁 After payment, share this link with ${giftData.recipientName || 'your friend'}: ${claimLink}`
-            )
-          }
-        } catch (err) {
-          console.error('WhatsApp SEND_GIFT error:', err)
-        }
-      }
     }
 
-    // Extract product blocks, create tracked links, and auto-save to wishlist
+    // Extract product blocks and create tracked links
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
-    let autoSavedCount = 0
+    // autoSavedCount removed — simplified flow
     const productImages: { image: string; caption: string }[] = []  // For sending images via WhatsApp
     if (productSegments.length > 0) {
       const { findProductUrl } = await import('@/lib/enrich-item')
@@ -1521,90 +1440,25 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           }
         }
 
-        // Auto-save: create item if it doesn't already exist (no itemRef = new suggestion)
-        if (!p.id && p.name) {
-          try {
-            const existingItem = await prisma.item.findFirst({
-              where: {
-                userId,
-                OR: [
-                  ...(p.url ? [{ url: p.url }] : []),
-                  { name: { equals: p.name, mode: 'insensitive' as const } },
-                ],
-              },
-            })
-            if (!existingItem) {
-              // Use resolved price (from web search) instead of Claude's guess
-              let savePriceValue: number | null = null
-              const savePrice = resolvedPrice || p.price
-              if (savePrice) {
-                const match = savePrice.replace(/,/g, '').match(/[\d.]+/)
-                if (match) savePriceValue = parseFloat(match[0])
-              }
-
-              const feeCalc = calculateGoalAmount(savePriceValue)
-              const newItem = await prisma.item.create({
-                data: {
-                  userId,
-                  name: p.name,
-                  price: savePrice || null,
-                  priceValue: savePriceValue,
-                  url: targetUrl || '',
-                  domain: targetUrl ? (() => { try { return new URL(targetUrl).hostname } catch { return '' } })() : '',
-                  source: 'WHATSAPP_AI',
-                  goalAmount: feeCalc.goalAmount,
-                },
-              })
-
-              // Add to user's default gift list
-              const giftList = await prisma.giftList.findFirst({
-                where: { userId, name: 'WhatsApp Saves' },
-              })
-              if (giftList) {
-                await prisma.giftListItem.create({
-                  data: { listId: giftList.id, itemId: newItem.id, addedById: userId },
-                })
-              }
-
-              // Enrich with real image in background
-              enrichItem(newItem.id, p.name).catch(() => {})
-
-              createActivity({
-                userId,
-                type: 'ITEM_ADDED',
-                visibility: 'PUBLIC',
-                itemId: newItem.id,
-                metadata: { itemName: p.name, source: 'WHATSAPP_AI' },
-              }).catch(() => {})
-
-              autoSavedCount++
-            }
-          } catch (err) {
-            console.error('WhatsApp auto-save product error:', err)
-          }
-        }
       }
       productList = lines.join('\n') + '\n\n'
     }
 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
-    const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or anything on your wishlist."
+    const strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
 
     const ateSection = addToEventConfirmations.length > 0
       ? '\n\n' + addToEventConfirmations.join('\n')
       : ''
 
-    // Auto-save confirmation
-    const autoSaveNote = autoSavedCount > 0
-      ? `\n\nView more gifts at *giftist.ai*`
-      : ''
+    const autoSaveNote = ''
 
     // Periodic web CTA — skip if we already have a giftist.ai mention from ateSection or autoSaveNote
     let chatWebCta = ''
     if (!ateSection && !autoSaveNote) {
       const msgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
       if (msgCount > 0 && msgCount % 5 === 0) {
-        chatWebCta = '\n\nFor product cards, trending gifts, and event wishlists — visit *giftist.ai*'
+        chatWebCta = '\n\nFor product cards and trending gifts — visit *giftist.ai*'
       }
     }
 
@@ -1624,7 +1478,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       ? '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
       : ''
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + giftCheckoutLinks.join('') + chatWebCta + limitWarning
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + limitWarning
   } catch (error) {
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
