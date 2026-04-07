@@ -6,6 +6,7 @@ import { findProductImage } from '@/lib/product-image'
 import { findProductUrl, verifyProductUrl } from '@/lib/enrich-item'
 import { createTrackedLink } from '@/lib/product-link'
 import { isSearchOrCategoryUrl } from '@/lib/parse-chat-content'
+import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -103,6 +104,13 @@ export async function GET(request: NextRequest) {
         userId,
         source: 'CHAT',
       })
+      // Track web chat impression
+      const slugMatch = giftistUrl.match(/\/p\/([^?]+)/)
+      if (slugMatch) {
+        prisma.clickEvent.create({
+          data: { slug: slugMatch[1], event: 'IMPRESSION', channel: 'WEB', userId },
+        }).catch(() => {})
+      }
     } catch {}
   }
 

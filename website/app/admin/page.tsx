@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell, BarChart3, Link2 } from 'lucide-react'
+import { Users, Package, MessageCircle, DollarSign, AlertTriangle, Activity, Crown, Globe, Phone, Mail, Zap, Send, Truck, ExternalLink, Loader2, Gift, Bell, BarChart3, Link2, TrendingUp, MousePointer, Eye, ArrowRight } from 'lucide-react'
 
 interface Stats {
   users: {
@@ -833,8 +833,214 @@ function ProductLinksSection({ stats }: { stats: Stats }) {
   )
 }
 
+interface FunnelData {
+  range: string
+  funnel: { recommendations: number; impressions: number; pageViews: number; retailerClicks: number; viewRate: number; clickRate: number; overallRate: number }
+  daily: Record<string, { impressions: number; page_views: number; retailer_clicks: number }>
+  topProducts: { slug: string; name: string; impressions: number; pageViews: number; retailerClicks: number }[]
+  channels: Record<string, { impressions: number; page_views: number; retailer_clicks: number }>
+  recentEvents: { id: string; event: string; channel: string; product: string; price: string | null; createdAt: string }[]
+}
+
+function FunnelSection() {
+  const [data, setData] = useState<FunnelData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [range, setRange] = useState('7d')
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/admin/funnel?range=${range}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [range])
+
+  if (loading) return <div className="flex items-center justify-center h-32"><Loader2 className="h-8 w-8 animate-spin text-muted" /></div>
+  if (!data) return <p className="text-muted">Failed to load funnel data.</p>
+
+  const f = data.funnel
+
+  return (
+    <div className="space-y-6">
+      {/* Range selector */}
+      <div className="flex items-center gap-2">
+        {['24h', '7d', '30d'].map(r => (
+          <button key={r} onClick={() => setRange(r)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${range === r ? 'bg-primary text-white' : 'bg-surface text-muted hover:text-foreground'}`}>
+            {r === '24h' ? 'Last 24h' : r === '7d' ? 'Last 7 days' : 'Last 30 days'}
+          </button>
+        ))}
+      </div>
+
+      {/* Funnel visualization */}
+      <div className="bg-surface rounded-xl border border-border p-6">
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" /> Conversion Funnel
+        </h3>
+        <div className="flex items-center gap-2">
+          {/* Recommendations */}
+          <div className="flex-1 text-center">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+              <Package className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-blue-700">{f.recommendations}</p>
+              <p className="text-xs text-blue-500 mt-0.5">Links Created</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+
+          {/* Impressions */}
+          <div className="flex-1 text-center">
+            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+              <Eye className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-purple-700">{f.impressions}</p>
+              <p className="text-xs text-purple-500 mt-0.5">Shown in Chat</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+
+          {/* Page Views */}
+          <div className="flex-1 text-center">
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+              <MousePointer className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-amber-700">{f.pageViews}</p>
+              <p className="text-xs text-amber-500 mt-0.5">Product Page Views</p>
+            </div>
+            <p className="text-xs text-muted mt-1">{f.viewRate}% of impressions</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+
+          {/* Retailer Clicks */}
+          <div className="flex-1 text-center">
+            <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+              <ExternalLink className="h-5 w-5 text-green-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-green-700">{f.retailerClicks}</p>
+              <p className="text-xs text-green-500 mt-0.5">Retailer Clicks</p>
+            </div>
+            <p className="text-xs text-muted mt-1">{f.clickRate}% of views</p>
+          </div>
+        </div>
+        <div className="mt-4 text-center">
+          <span className="text-sm font-medium text-muted">Overall: </span>
+          <span className="text-sm font-bold text-foreground">{f.overallRate}% impression → retailer click</span>
+        </div>
+      </div>
+
+      {/* Channel comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" /> By Channel
+          </h3>
+          <div className="space-y-3">
+            {Object.entries(data.channels).map(([ch, counts]) => (
+              <div key={ch} className="flex items-center justify-between text-sm">
+                <span className="font-medium">{ch}</span>
+                <div className="flex gap-4 text-xs text-muted">
+                  <span>{counts.impressions} impr</span>
+                  <span>{counts.page_views} views</span>
+                  <span className="text-foreground font-medium">{counts.retailer_clicks} clicks</span>
+                </div>
+              </div>
+            ))}
+            {Object.keys(data.channels).length === 0 && <p className="text-sm text-muted">No data yet.</p>}
+          </div>
+        </div>
+
+        {/* Daily trend */}
+        <div className="bg-surface rounded-xl border border-border p-5">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Daily Trend
+          </h3>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {Object.entries(data.daily).sort(([a], [b]) => b.localeCompare(a)).map(([day, counts]) => (
+              <div key={day} className="flex items-center justify-between text-sm">
+                <span className="text-muted w-24">{day}</span>
+                <div className="flex gap-3 text-xs">
+                  <span className="text-purple-600">{counts.impressions} impr</span>
+                  <span className="text-amber-600">{counts.page_views} views</span>
+                  <span className="text-green-600 font-medium">{counts.retailer_clicks} clicks</span>
+                </div>
+              </div>
+            ))}
+            {Object.keys(data.daily).length === 0 && <p className="text-sm text-muted">No data yet.</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Products */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h3 className="text-sm font-semibold p-4 border-b border-border flex items-center gap-2">
+          <Package className="h-4 w-4 text-primary" /> Product Performance
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="p-3 text-xs text-muted font-medium">Product</th>
+                <th className="p-3 text-xs text-muted font-medium text-right">Impressions</th>
+                <th className="p-3 text-xs text-muted font-medium text-right">Page Views</th>
+                <th className="p-3 text-xs text-muted font-medium text-right">Retailer Clicks</th>
+                <th className="p-3 text-xs text-muted font-medium text-right">View Rate</th>
+                <th className="p-3 text-xs text-muted font-medium text-right">Click Rate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {data.topProducts.map(p => {
+                const vr = p.impressions > 0 ? Math.round((p.pageViews / p.impressions) * 100) : 0
+                const cr = p.pageViews > 0 ? Math.round((p.retailerClicks / p.pageViews) * 100) : 0
+                return (
+                  <tr key={p.slug} className="hover:bg-background/50">
+                    <td className="p-3 max-w-[250px] truncate">{p.name}</td>
+                    <td className="p-3 text-right text-purple-600">{p.impressions}</td>
+                    <td className="p-3 text-right text-amber-600">{p.pageViews}</td>
+                    <td className="p-3 text-right text-green-600 font-medium">{p.retailerClicks}</td>
+                    <td className="p-3 text-right text-muted">{vr}%</td>
+                    <td className="p-3 text-right text-muted">{cr}%</td>
+                  </tr>
+                )
+              })}
+              {data.topProducts.length === 0 && (
+                <tr><td colSpan={6} className="p-4 text-center text-muted">No product data yet. Start chatting to generate recommendations!</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Events */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h3 className="text-sm font-semibold p-4 border-b border-border flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" /> Recent Events
+        </h3>
+        <div className="divide-y divide-border max-h-80 overflow-y-auto">
+          {data.recentEvents.map(e => (
+            <div key={e.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  e.event === 'IMPRESSION' ? 'bg-purple-100 text-purple-700' :
+                  e.event === 'PAGE_VIEW' ? 'bg-amber-100 text-amber-700' :
+                  'bg-green-100 text-green-700'
+                }`}>
+                  {e.event === 'IMPRESSION' ? 'Shown' : e.event === 'PAGE_VIEW' ? 'Viewed' : 'Clicked'}
+                </span>
+                <span className="truncate max-w-[200px]">{e.product}</span>
+                {e.price && <span className="text-muted text-xs">{e.price}</span>}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted flex-shrink-0">
+                <span>{e.channel || '—'}</span>
+                <span>{new Date(e.createdAt).toLocaleTimeString()}</span>
+              </div>
+            </div>
+          ))}
+          {data.recentEvents.length === 0 && <p className="p-4 text-sm text-muted text-center">No events yet.</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links'>('dashboard')
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links' | 'funnel'>('dashboard')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -908,9 +1114,20 @@ export default function AdminDashboard() {
           <Link2 className="h-3.5 w-3.5" />
           Product Links
         </button>
+        <button
+          onClick={() => setAdminTab('funnel')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+            adminTab === 'funnel' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+          }`}
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Funnel
+        </button>
       </div>
 
-      {adminTab === 'fulfillment' ? (
+      {adminTab === 'funnel' ? (
+        <FunnelSection />
+      ) : adminTab === 'fulfillment' ? (
         <GiftFulfillmentSection />
       ) : adminTab === 'pnl' ? (
         loading ? (

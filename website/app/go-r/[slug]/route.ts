@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Track click + referrer
+    // Track retailer click-through
     const referrer = request.headers.get('referer') || null
     prisma.productClick.update({
       where: { slug },
@@ -31,6 +31,15 @@ export async function GET(
         clicks: { increment: 1 },
         lastClicked: new Date(),
         lastReferrer: referrer,
+      },
+    }).catch(() => {})
+    prisma.clickEvent.create({
+      data: {
+        slug,
+        event: 'RETAILER_CLICK',
+        channel: referrer?.includes('from=wa') ? 'WHATSAPP' : 'WEB',
+        referrer,
+        userAgent: request.headers.get('user-agent') || null,
       },
     }).catch(() => {})
 

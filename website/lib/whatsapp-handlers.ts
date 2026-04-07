@@ -1457,6 +1457,18 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
         }
       }
       productList = lines.join('\n') + '\n\n'
+
+      // Track impressions (fire-and-forget)
+      for (const result of productResults) {
+        if (!result) continue
+        // Extract slug from the giftist.ai/p/SLUG link
+        const slugMatch = result.link.match(/\/p\/([^?]+)/)
+        if (slugMatch) {
+          prisma.clickEvent.create({
+            data: { slug: slugMatch[1], event: 'IMPRESSION', channel: 'WHATSAPP', userId },
+          }).catch(() => {})
+        }
+      }
     }
 
     // Strip product/preference/event blocks for WhatsApp (plain text only)

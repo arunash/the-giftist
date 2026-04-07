@@ -25,10 +25,20 @@ export async function GET(
       domain = new URL(product.targetUrl).hostname.replace(/^www\./, '')
     } catch {}
 
-    // Track view (fire-and-forget)
+    // Track page view (fire-and-forget) — separate from retailer clicks
     prisma.productClick.update({
       where: { slug },
-      data: { clicks: { increment: 1 }, lastClicked: new Date() },
+      data: { views: { increment: 1 } },
+    }).catch(() => {})
+    prisma.clickEvent.create({
+      data: {
+        slug,
+        event: 'PAGE_VIEW',
+        channel: request.nextUrl.searchParams.get('from') === 'wa' ? 'WHATSAPP' : 'WEB',
+        userId: null,
+        referrer: request.headers.get('referer') || null,
+        userAgent: request.headers.get('user-agent') || null,
+      },
     }).catch(() => {})
 
     let image = product.image

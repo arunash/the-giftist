@@ -402,11 +402,29 @@ model ProductClick {
   userId      String?
   source      String   @default("WEB") // WEB, WHATSAPP, CHAT
   clicks      Int      @default(0)
+  views       Int      @default(0)
   lastReferrer String?
   createdAt   DateTime @default(now())
   lastClicked DateTime?
+  events      ClickEvent[]
 
   @@index([slug])
+  @@index([createdAt])
+}
+
+model ClickEvent {
+  id        String   @id @default(cuid())
+  slug      String
+  event     String   // IMPRESSION, PAGE_VIEW, RETAILER_CLICK
+  channel   String?  // WEB, WHATSAPP
+  userId    String?
+  referrer  String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  product   ProductClick @relation(fields: [slug], references: [slug])
+
+  @@index([slug])
+  @@index([event])
   @@index([createdAt])
 }
 
