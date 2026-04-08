@@ -21,6 +21,6 @@ export async function requireAdmin(): Promise<any | NextResponse> {
 }
 
 // Phones to exclude from admin dashboards (test/internal accounts)
-export const ADMIN_TEST_PHONES = ['15550000000', '13034087839']
+export const ADMIN_TEST_PHONES = ['15550000000', '13034087839', '14153168720']
 
 export { ADMIN_PHONES }

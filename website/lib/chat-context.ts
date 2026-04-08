@@ -4,6 +4,7 @@ import { getOverSuggestedProducts } from './product-suggestions'
 const FREE_LIFETIME_MESSAGE_LIMIT = 10
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
+const ADMIN_PHONES = new Set(['13034087839', '14153168720'])
 
 export const COUNTRY_NAMES: Record<string, string> = {
   US: 'United States', IN: 'India', UK: 'United Kingdom', AU: 'Australia',
@@ -59,9 +60,14 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { messageCredits: true },
+      select: { messageCredits: true, phone: true },
     }),
   ])
+
+  // Admin phone bypass
+  if (user?.phone && ADMIN_PHONES.has(user.phone)) {
+    return { allowed: true, remaining: Infinity }
+  }
 
   const isGold = subscription?.status === 'ACTIVE' &&
     (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
@@ -111,9 +117,14 @@ export async function checkProfileLimit(userId: string): Promise<{ allowed: bool
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { timezone: true, profileCredits: true },
+      select: { timezone: true, profileCredits: true, phone: true },
     }),
   ])
+
+  // Admin phone bypass
+  if (user?.phone && ADMIN_PHONES.has(user.phone)) {
+    return { allowed: true, remaining: Infinity }
+  }
 
   const isGold = subscription?.status === 'ACTIVE' &&
     (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > new Date())
