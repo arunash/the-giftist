@@ -85,6 +85,12 @@ export async function GET() {
     recentGiftSends,
     fulfillmentAggregates,
     fulfillmentDetails,
+    // WhatsApp inbound engagement
+    waInboundTotal,
+    waInboundToday,
+    waInboundWeek,
+    waInboundUniquePhonestoday,
+    latestActiveUsers,
     // Analytics
     pageViewsTotal,
     pageViewsToday,
@@ -316,6 +322,27 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' },
     }),
+    // WhatsApp inbound engagement
+    prisma.whatsAppMessage.count({ where: { type: { in: ['text', 'document', 'image', 'contacts', 'audio', 'video'] } } }),
+    prisma.whatsAppMessage.count({ where: { type: { in: ['text', 'document', 'image', 'contacts', 'audio', 'video'] }, createdAt: { gte: todayStart } } }),
+    prisma.whatsAppMessage.count({ where: { type: { in: ['text', 'document', 'image', 'contacts', 'audio', 'video'] }, createdAt: { gte: weekAgo } } }),
+    prisma.whatsAppMessage.groupBy({ by: ['phone'], where: { type: { in: ['text', 'document', 'image', 'contacts', 'audio', 'video'] }, createdAt: { gte: todayStart } } }),
+    // Latest active users (combined web + WhatsApp)
+    prisma.$queryRaw<{ id: string; name: string | null; phone: string | null; last_web: Date | null; web_msgs: bigint; last_wa: Date | null; wa_msgs: bigint }[]>`
+      SELECT u.id, u.name, u.phone,
+        (SELECT MAX(cm."createdAt") FROM "ChatMessage" cm WHERE cm."userId" = u.id AND cm.role = 'USER') as last_web,
+        (SELECT COUNT(*) FROM "ChatMessage" cm WHERE cm."userId" = u.id AND cm.role = 'USER') as web_msgs,
+        (SELECT MAX(wm."createdAt") FROM "WhatsAppMessage" wm WHERE wm.phone = u.phone AND wm.type IN ('text','document','image','contacts','audio','video')) as last_wa,
+        (SELECT COUNT(*) FROM "WhatsAppMessage" wm WHERE wm.phone = u.phone AND wm.type IN ('text','document','image','contacts','audio','video')) as wa_msgs
+      FROM "User" u
+      WHERE u.phone IS NOT NULL
+        AND u.phone NOT IN ('13034087839','14153168720','15550000000','3034087839_test','919321918293')
+      ORDER BY GREATEST(
+        COALESCE((SELECT MAX(cm."createdAt") FROM "ChatMessage" cm WHERE cm."userId" = u.id), u."createdAt"),
+        COALESCE((SELECT MAX(wm."createdAt") FROM "WhatsAppMessage" wm WHERE wm.phone = u.phone AND wm.type IN ('text','document','image','contacts','audio','video')), u."createdAt")
+      ) DESC
+      LIMIT 15
+    `,
     // Analytics queries
     prisma.pageView.count(),
     prisma.pageView.count({ where: { createdAt: { gte: todayStart } } }),
@@ -508,6 +535,19 @@ export async function GET() {
       chatMessagesWeek,
       chatByRole: chatRoleBreakdown,
       uniqueChatUsersToday: uniqueChatUsersToday.length,
+      waInboundTotal,
+      waInboundToday,
+      waInboundWeek,
+      waInboundUniqueToday: waInboundUniquePhonestoday.length,
+      latestActiveUsers: latestActiveUsers.map(u => ({
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        lastWeb: u.last_web,
+        webMsgs: Number(u.web_msgs),
+        lastWa: u.last_wa,
+        waMsgs: Number(u.wa_msgs),
+      })),
     },
     costs: costsMap,
     costsTotalAll: totalCosts,

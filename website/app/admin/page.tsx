@@ -47,6 +47,15 @@ interface Stats {
     chatMessagesWeek: number
     chatByRole: Record<string, number>
     uniqueChatUsersToday: number
+    waInboundTotal: number
+    waInboundToday: number
+    waInboundWeek: number
+    waInboundUniqueToday: number
+    latestActiveUsers: Array<{
+      id: string; name: string | null; phone: string | null
+      lastWeb: string | null; webMsgs: number
+      lastWa: string | null; waMsgs: number
+    }>
   }
   costs: Record<string, { total: number; today: number; count: number; countToday: number }>
   costsTotalAll: number
@@ -1230,12 +1239,47 @@ export default function AdminDashboard() {
               { label: 'Unique users today', value: stats.engagement.uniqueChatUsersToday },
             ]} />
           </KpiCard>
+          <KpiCard icon={Phone} label="WhatsApp Inbound" value={stats.engagement.waInboundTotal} sub={`+${stats.engagement.waInboundToday} today · +${stats.engagement.waInboundWeek} this week`}>
+            <Breakdown items={[
+              { label: 'Unique users today', value: stats.engagement.waInboundUniqueToday },
+            ]} />
+          </KpiCard>
           <KpiCard icon={Activity} label="Events Created" value={stats.engagement.totalEvents} sub={`+${stats.engagement.eventsToday} today · +${stats.engagement.eventsWeek} this week`} />
           <KpiCard icon={Users} label="Circle Members" value={stats.engagement.totalCircleMembers} sub={`+${stats.engagement.circleMembersToday} today · +${stats.engagement.circleMembersWeek} this week`} />
-          <KpiCard icon={Globe} label="Items by Source (All)" value={stats.items.total}>
-            <SourceBar breakdown={stats.items.sourceBreakdownAll} total={stats.items.total} />
-          </KpiCard>
         </div>
+
+        {/* Latest Active Users */}
+        {stats.engagement.latestActiveUsers?.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-muted mb-2">Latest Active Users</h3>
+            <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted">
+                    <th className="px-4 py-2">User</th>
+                    <th className="px-4 py-2">Phone</th>
+                    <th className="px-4 py-2">Last Web</th>
+                    <th className="px-4 py-2">Web Msgs</th>
+                    <th className="px-4 py-2">Last WhatsApp</th>
+                    <th className="px-4 py-2">WA Msgs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.engagement.latestActiveUsers.map((u) => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover">
+                      <td className="px-4 py-2 font-medium">{u.name || '—'}</td>
+                      <td className="px-4 py-2 text-muted font-mono text-xs">{u.phone || '—'}</td>
+                      <td className="px-4 py-2 text-muted">{u.lastWeb ? new Date(u.lastWeb).toLocaleDateString() : '—'}</td>
+                      <td className="px-4 py-2">{u.webMsgs}</td>
+                      <td className="px-4 py-2 text-muted">{u.lastWa ? new Date(u.lastWa).toLocaleDateString() : '—'}</td>
+                      <td className="px-4 py-2">{u.waMsgs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Group Monitoring */}
