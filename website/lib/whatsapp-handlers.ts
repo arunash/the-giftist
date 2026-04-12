@@ -1406,7 +1406,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
                 }
 
                 // Create tracked link — need a targetUrl
-                if (!targetUrl) return null
+                if (!targetUrl) {
+                  console.log(`[WhatsApp] No URL found for product: "${p.name}"`)
+                  return null
+                }
 
                 let priceVal: number | null = null
                 if (resolvedPrice) {
@@ -1431,7 +1434,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
                   image,
                 }
               })(),
-              new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000)),
+              new Promise<null>((resolve) => setTimeout(() => { console.log(`[WhatsApp] Product timeout: "${p.name}"`); resolve(null) }, 25000)),
             ])
           } catch {
             return null
@@ -1443,7 +1446,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       const resolved = productResults.filter(Boolean).length
       const total = productSegments.length
       if (resolved < total) {
-        console.log(`[WhatsApp] Product link resolution: ${resolved}/${total} succeeded`)
+        const failed = productSegments
+          .filter((_, i) => !productResults[i])
+          .map(s => (s.data as any).name)
+        console.log(`[WhatsApp] Product link resolution: ${resolved}/${total} succeeded. Failed: ${failed.join(', ')}`)
       }
 
       const lines: string[] = []
