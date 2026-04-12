@@ -175,7 +175,7 @@ function getStartOfDayInUTC(timezone: string): Date {
 }
 
 export async function buildChatContext(userId: string, channel: 'web' | 'whatsapp' = 'web'): Promise<string> {
-  const [items, events, wallet, user, circleMembers, overSuggested] = await Promise.all([
+  const [items, events, wallet, user, circleMembers, overSuggested, catalogProducts] = await Promise.all([
     prisma.item.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' },
@@ -232,6 +232,23 @@ export async function buildChatContext(userId: string, channel: 'web' | 'whatsap
       take: 20,
     }),
     getOverSuggestedProducts(),
+    prisma.catalogProduct.findMany({
+      where: { isActive: true },
+      orderBy: { score: 'desc' },
+      take: 20,
+      select: {
+        name: true,
+        brand: true,
+        price: true,
+        priceTier: true,
+        retailer: true,
+        themes: true,
+        occasions: true,
+        recipients: true,
+        interests: true,
+        vibes: true,
+      },
+    }),
   ])
 
   // Use short numeric indices instead of raw DB IDs to prevent leaking internal identifiers
@@ -537,7 +554,10 @@ PREFERRED RETAILERS (we earn affiliate commission from these — ALWAYS prefer t
 - MasterClass (masterclass.com) — best for experience/learning gifts
 - Cratejoy (cratejoy.com) — best for subscription box gifts
 When suggesting products, ALWAYS use URLs from these retailers. Never link to retailers outside this list unless the product is truly unavailable elsewhere.
-GUIDELINES:
+${catalogProducts.length > 0 ? `CURATED CATALOG (verified availability & pricing — prefer these when possible):
+${catalogProducts.map(p => `- ${p.name}${p.brand ? ` by ${p.brand}` : ''} | $${p.price} (${p.priceTier}) | ${p.retailer} | for: ${p.recipients.join(', ')} | themes: ${p.themes.join(', ')} | occasions: ${p.occasions.join(', ')}`).join('\n')}
+When possible, recommend products from the curated catalog above — they have verified availability and pricing. You can still suggest other products, but catalog products are preferred.
+` : ''}GUIDELINES:
 - Items can be anything: products, experiences, subscriptions, trips, concert tickets.
 - Don't suggest items they already have. Reference their items by name to show you know their taste.
 - When the user asks to ADD items to an event, use [ADD_TO_EVENT] after they confirm — never auto-add.

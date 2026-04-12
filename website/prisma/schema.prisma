@@ -588,6 +588,40 @@ model GiftSend {
   @@index([redeemCode])
 }
 
+model CatalogProduct {
+  id            String   @id @default(cuid())
+  name          String
+  brand         String?
+  price         Float
+  priceTier     String   // BUDGET (~$20), MID (~$50), PREMIUM (~$100), LUXURY ($150+)
+  url           String   // canonical retailer URL
+  image         String?
+  retailer      String   // Amazon, Uncommon Goods, Etsy, etc.
+
+  // Dimensions / taxonomy
+  themes        String[] // e.g. ["cozy", "tech", "wellness", "foodie", "adventure"]
+  occasions     String[] // e.g. ["birthday", "christmas", "mothers_day", "housewarming", "graduation", "just_because"]
+  recipients    String[] // e.g. ["mom", "dad", "sister", "friend", "coworker", "partner"]
+  ageRange      String?  // "18-25", "25-40", "40-60", "60+"
+  gender        String?  // "any", "female", "male"
+  interests     String[] // e.g. ["cooking", "reading", "fitness", "gaming", "gardening"]
+  vibes         String[] // e.g. ["luxe", "minimalist", "playful", "nostalgic", "practical"]
+
+  // Engagement metrics (denormalized for fast queries)
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  ctr           Float    @default(0)  // clicks/impressions
+  score         Float    @default(0)  // composite ranking score
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([priceTier])
+  @@index([score])
+}
+
 model MessageQueue {
   id          String   @id @default(cuid())
   userId      String
