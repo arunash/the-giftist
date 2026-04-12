@@ -1018,7 +1018,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       max_tokens: 1024,
       system: systemPrompt,
       messages,
-    }, { timeout: 30000 })
+    }, { timeout: 45000 })
 
     if (thinkingTimer) clearTimeout(thinkingTimer)
 
@@ -1443,7 +1443,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
                   image,
                 }
               })(),
-              new Promise<null>((resolve) => setTimeout(() => { console.log(`[WhatsApp] Product timeout: "${p.name}"`); resolve(null) }, 25000)),
+              new Promise<null>((resolve) => setTimeout(() => { console.log(`[WhatsApp] Product timeout: "${p.name}"`); resolve(null) }, 40000)),
             ])
           } catch {
             return null
@@ -1491,10 +1491,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     let strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
 
     // GUARDRAIL: Never show product recommendations without giftist.ai links.
-    // When products were in [PRODUCT] blocks, only show resolved ones with links.
+    // Require minimum 2 resolved products. If fewer, don't show any — ask to retry.
     if (productSegments.length > 0) {
-      if (resolvedProductCount > 0) {
-        // Some products resolved — strip Claude's text to just intro + closing
+      if (resolvedProductCount >= 2) {
+        // Enough products resolved — strip Claude's text to just intro + closing
         const lines = strippedContent.split('\n').map(l => l.trim()).filter(Boolean)
         if (lines.length > 2) {
           strippedContent = lines[0] + '\n\n' + lines[lines.length - 1]
@@ -1502,7 +1502,8 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           strippedContent = lines[0]
         }
       } else {
-        // NONE resolved — don't show any product text at all, ask user to retry
+        // Fewer than 2 resolved — don't show partial results, ask user to retry
+        console.log(`[WhatsApp] Only ${resolvedProductCount}/${productSegments.length} products resolved — suppressing partial results`)
         strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
         productList = ''
       }
