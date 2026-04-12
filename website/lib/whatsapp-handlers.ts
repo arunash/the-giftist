@@ -1006,10 +1006,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
   // Build system prompt with user context
   const systemPrompt = await buildChatContext(userId, 'whatsapp')
 
-  // Send "thinking" indicator if response takes more than 10 seconds
-  const thinkingTimer = setTimeout(() => {
+  // Send "thinking" indicator if response takes more than 10 seconds (WhatsApp only)
+  const thinkingTimer = phone ? setTimeout(() => {
     sendTextMessage(phone, '💭 Still thinking...').catch(() => {})
-  }, 10000)
+  }, 10000) : null
 
   try {
 
@@ -1020,7 +1020,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       messages,
     }, { timeout: 30000 })
 
-    clearTimeout(thinkingTimer)
+    if (thinkingTimer) clearTimeout(thinkingTimer)
 
     logApiCall({
       provider: 'ANTHROPIC',
@@ -1364,6 +1364,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     // Extract product blocks and create tracked links
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
+    let resolvedProductCount = 0
     // autoSavedCount removed — simplified flow
     const productImages: { image: string; caption: string }[] = []  // For sending images via WhatsApp
     if (productSegments.length > 0) {
@@ -1452,6 +1453,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
       // Log resolution results for debugging
       const resolved = productResults.filter(Boolean).length
+      resolvedProductCount = resolved
       const total = productSegments.length
       if (resolved < total) {
         const failed = productSegments
@@ -1488,16 +1490,37 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     // Strip product/preference/event blocks for WhatsApp (plain text only)
     let strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
 
-    // When products exist, Claude often writes verbose paragraph descriptions alongside [PRODUCT] blocks.
-    // Truncate to just the first line (intro) + last line (closing question) to keep it clean.
-    if (productSegments.length > 0 && productList) {
-      const lines = strippedContent.split('\n').map(l => l.trim()).filter(Boolean)
-      if (lines.length > 2) {
-        // Keep first line (intro) and last line (closing question)
-        strippedContent = lines[0] + '\n\n' + lines[lines.length - 1]
-      } else if (lines.length > 0) {
-        strippedContent = lines[0]
+    // GUARDRAIL: Never show product recommendations without giftist.ai links.
+    // When products were in [PRODUCT] blocks, only show resolved ones with links.
+    if (productSegments.length > 0) {
+      if (resolvedProductCount > 0) {
+        // Some products resolved — strip Claude's text to just intro + closing
+        const lines = strippedContent.split('\n').map(l => l.trim()).filter(Boolean)
+        if (lines.length > 2) {
+          strippedContent = lines[0] + '\n\n' + lines[lines.length - 1]
+        } else if (lines.length > 0) {
+          strippedContent = lines[0]
+        }
+      } else {
+        // NONE resolved — don't show any product text at all, ask user to retry
+        strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
+        productList = ''
       }
+    }
+
+    // GUARDRAIL: Strip any remaining product-like lines from text that don't have giftist.ai links.
+    // Catches cases where Claude writes product names inline without [PRODUCT] blocks.
+    if (!productList) {
+      const cleanedLines = strippedContent.split('\n').filter(line => {
+        const l = line.trim()
+        // Remove lines that look like product recommendations without links:
+        // - Lines with dollar amounts like ($XX) or — $XX
+        // - Lines starting with "Search:" or containing "on Amazon" / "on REI" etc.
+        if (/search:/i.test(l)) return false
+        if (/\bon\s+(Amazon|REI|Target|Walmart|Etsy|Nordstrom)\b/i.test(l) && !l.includes('giftist.ai')) return false
+        return true
+      })
+      strippedContent = cleanedLines.join('\n')
     }
 
     const ateSection = addToEventConfirmations.length > 0
@@ -1533,7 +1556,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
     return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + limitWarning
   } catch (error) {
-    clearTimeout(thinkingTimer)
+    if (thinkingTimer) clearTimeout(thinkingTimer)
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return "Sorry, I couldn't process that right now. Try sending a product link, photo, or type *help* for instructions."
