@@ -1006,13 +1006,21 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
   // Build system prompt with user context
   const systemPrompt = await buildChatContext(userId, 'whatsapp')
 
+  // Send "thinking" indicator if response takes more than 10 seconds
+  const thinkingTimer = setTimeout(() => {
+    sendTextMessage(phone, '💭 Still thinking...').catch(() => {})
+  }, 10000)
+
   try {
+
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
     }, { timeout: 30000 })
+
+    clearTimeout(thinkingTimer)
 
     logApiCall({
       provider: 'ANTHROPIC',
@@ -1525,6 +1533,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
     return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + limitWarning
   } catch (error) {
+    clearTimeout(thinkingTimer)
     console.error('WhatsApp chat error:', error)
     logError({ source: 'WHATSAPP_WEBHOOK', message: String(error), stack: (error as Error)?.stack }).catch(() => {})
     return "Sorry, I couldn't process that right now. Try sending a product link, photo, or type *help* for instructions."
