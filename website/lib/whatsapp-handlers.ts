@@ -1491,10 +1491,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     let strippedContent = stripSpecialBlocks(fullContent) || "I'm your Gift Concierge — ask me about gift ideas, what's trending, or help you find the perfect gift."
 
     // GUARDRAIL: Never show product recommendations without giftist.ai links.
-    // Require minimum 2 resolved products. If fewer, don't show any — ask to retry.
+    // Show whatever resolved (minimum 1). Only suppress if NONE resolved.
     if (productSegments.length > 0) {
-      if (resolvedProductCount >= 2) {
-        // Enough products resolved — strip Claude's text to just intro + closing
+      if (resolvedProductCount > 0) {
+        // At least 1 product resolved — strip Claude's text to just intro + closing
         const lines = strippedContent.split('\n').map(l => l.trim()).filter(Boolean)
         if (lines.length > 2) {
           strippedContent = lines[0] + '\n\n' + lines[lines.length - 1]
@@ -1502,8 +1502,8 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           strippedContent = lines[0]
         }
       } else {
-        // Fewer than 2 resolved — don't show partial results, ask user to retry
-        console.log(`[WhatsApp] Only ${resolvedProductCount}/${productSegments.length} products resolved — suppressing partial results`)
+        // NONE resolved — don't show any product text at all
+        console.log(`[WhatsApp] 0/${productSegments.length} products resolved — suppressing`)
         strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
         productList = ''
       }
