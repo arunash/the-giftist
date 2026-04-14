@@ -1555,7 +1555,16 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       ? '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
       : ''
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + limitWarning
+    // Share CTA — show after successful product recommendations (every 3rd recommendation)
+    let shareCta = ''
+    if (resolvedProductCount > 0 && !limitWarning) {
+      const userMsgCount = await prisma.chatMessage.count({ where: { userId, role: 'USER' } })
+      if (userMsgCount > 1 && userMsgCount % 3 === 0) {
+        shareCta = '\n\n💌 Know someone who needs gift ideas? Share Giftist → giftist.ai'
+      }
+    }
+
+    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
   } catch (error) {
     if (thinkingTimer) clearTimeout(thinkingTimer)
     console.error('WhatsApp chat error:', error)
