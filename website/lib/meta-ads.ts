@@ -111,6 +111,8 @@ export async function createAdCreative(params: {
   text: string
   headline: string
   imageUrl?: string
+  imageHash?: string
+  link?: string
   ctaType?: string
 }): Promise<{ id: string }> {
   const { adAccountId, pageId: defaultPageId } = getConfig()
@@ -121,6 +123,7 @@ export async function createAdCreative(params: {
     link_data: {
       message: params.text,
       name: params.headline,
+      link: params.link || 'https://giftist.ai',
       call_to_action: {
         type: params.ctaType || 'WHATSAPP_MESSAGE',
         value: {
@@ -130,7 +133,9 @@ export async function createAdCreative(params: {
     },
   }
 
-  if (params.imageUrl) {
+  if (params.imageHash) {
+    objectStorySpec.link_data.image_hash = params.imageHash
+  } else if (params.imageUrl) {
     objectStorySpec.link_data.picture = params.imageUrl
   }
 
@@ -262,6 +267,7 @@ export async function createFullCampaign(params: {
   startDate: Date
   endDate?: Date
   imageUrl?: string
+  imageHash?: string
   interests?: Array<{ id: string; name: string }>
 }): Promise<{
   campaignId: string
@@ -291,6 +297,7 @@ export async function createFullCampaign(params: {
     text: params.adText,
     headline: params.headline,
     imageUrl: params.imageUrl,
+    imageHash: params.imageHash,
   })
 
   // 4. Create ad
