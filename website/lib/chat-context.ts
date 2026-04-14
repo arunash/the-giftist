@@ -3,7 +3,7 @@ import { getOverSuggestedProducts } from './product-suggestions'
 
 const FREE_LIFETIME_MESSAGE_LIMIT = 10
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
-const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32'])
+const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32', 'cmn69aeli0002kzjxk28v4mnt'])
 const ADMIN_PHONES = new Set(['13034087839', '14153168720', '919321918293'])
 
 export const COUNTRY_NAMES: Record<string, string> = {
