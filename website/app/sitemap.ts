@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { prisma } from '@/lib/db'
+import { seoSlugs } from '@/lib/seo-holidays'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://giftist.ai'
@@ -20,6 +21,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
+  // SEO holiday landing pages
+  const holidayPages: MetadataRoute.Sitemap = seoSlugs.map((slug) => ({
+    url: `${baseUrl}/c/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.8,
+  }))
+
   // Dynamic: public events
   const events = await prisma.event.findMany({
     where: { isPublic: true },
@@ -35,5 +44,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
-  return [...staticPages, ...eventPages]
+  return [...staticPages, ...holidayPages, ...eventPages]
 }
