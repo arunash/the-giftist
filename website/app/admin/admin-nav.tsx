@@ -12,6 +12,7 @@ const tabs = [
   { href: '/admin/whatsapp', label: 'Messages' },
   { href: '/admin/groups', label: 'Groups' },
   { href: '/admin/campaigns', label: 'Campaigns' },
+  { href: '/admin/ads', label: 'Ads' },
 ]
 
 export function AdminNav() {

@@ -645,3 +645,32 @@ model MessageQueue {
   @@index([scheduledAt, status])
   @@unique([userId, dedupKey])
 }
+
+model MetaCampaign {
+  id              String    @id @default(cuid())
+  metaCampaignId  String    @unique            // Meta API campaign ID
+  metaAdSetId     String?                      // Meta API ad set ID
+  metaAdId        String?                      // Meta API ad ID
+  name            String
+  objective       String    @default("ENGAGEMENT")
+  status          String    @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, ERROR
+  dailyBudget     Float                        // in USD
+  spend           Float     @default(0)
+  impressions     Int       @default(0)
+  clicks          Int       @default(0)
+  messages        Int       @default(0)        // WhatsApp message starts
+  cpc             Float     @default(0)
+  ctr             Float     @default(0)
+  cpm             Float     @default(0)
+  holidaySlug     String?                      // linked holiday (e.g. "mothers-day")
+  adText          String?
+  headline        String?
+  startDate       DateTime
+  endDate         DateTime?
+  lastSyncAt      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([holidaySlug])
+}
