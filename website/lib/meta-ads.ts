@@ -7,9 +7,9 @@ const META_API_VERSION = 'v21.0'
 const META_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`
 
 function getConfig() {
-  const token = process.env.META_ACCESS_TOKEN
-  const adAccountId = process.env.META_AD_ACCOUNT_ID
-  const pageId = process.env.META_PAGE_ID
+  const token = process.env.META_ACCESS_TOKEN?.trim()
+  const adAccountId = process.env.META_AD_ACCOUNT_ID?.trim()
+  const pageId = process.env.META_PAGE_ID?.trim()
   const whatsappNumber = process.env.META_WHATSAPP_NUMBER || '+15014438478'
 
   if (!token || !adAccountId || !pageId) {
@@ -50,7 +50,7 @@ export async function createCampaign(params: {
     method: 'POST',
     body: {
       name: params.name,
-      objective: params.objective || 'OUTCOME_ENGAGEMENT',
+      objective: params.objective || 'OUTCOME_TRAFFIC',
       status: 'PAUSED', // start paused, activate after ad set + ad
       special_ad_categories: [],
       is_adset_budget_sharing_enabled: false,
@@ -84,6 +84,8 @@ export async function createAdSet(params: {
     targeting.flexible_spec = [{ interests: params.interests }]
   }
 
+  targeting.targeting_automation = { advantage_audience: 0 }
+
   const data = await metaApi(`/act_${adAccountId}/adsets`, {
     method: 'POST',
     body: {
@@ -91,11 +93,12 @@ export async function createAdSet(params: {
       name: params.name,
       daily_budget: Math.round(params.dailyBudget * 100), // cents
       billing_event: 'IMPRESSIONS',
-      optimization_goal: 'CONVERSATIONS',
+      optimization_goal: 'LINK_CLICKS',
       start_time: params.startDate.toISOString(),
       end_time: params.endDate?.toISOString(),
       targeting,
       promoted_object: { page_id: pageId },
+      bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
       status: 'PAUSED',
     },
   })
@@ -311,9 +314,15 @@ export async function createFullCampaign(params: {
 
 // ── Common Interest IDs for gift/shopping targeting ──
 export const GIFT_INTERESTS = [
-  { id: '6003054185372', name: 'Shopping' },
-  { id: '6003384829991', name: 'Gift' },
-  { id: '6003020834693', name: 'Online shopping' },
+  { id: '6003263791114', name: 'Shopping' },
+  { id: '6003346592981', name: 'Online shopping' },
+  { id: '6003273071999', name: 'Unique Gifts' },
+]
+
+export const MOTHERS_DAY_INTERESTS = [
+  { id: '6003395917803', name: "Mother's Day" },
+  { id: '6003263791114', name: 'Shopping' },
+  { id: '6003273071999', name: 'Unique Gifts' },
 ]
 
 // ── Holiday ad copy generator ──
