@@ -5,7 +5,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './db'
 import { normalizePhone } from './whatsapp'
 
-import { notifyWelcome } from './notifications'
+import { notifyWelcome, notifyAdminSignup } from './notifications'
 import twilio from 'twilio'
 import crypto from 'crypto'
 import { ADMIN_PHONES } from './admin'
@@ -98,8 +98,9 @@ const adapter = {
       console.error('[Auth] createUser linking check failed:', e)
     }
     const created = await baseAdapter.createUser(user)
-    // Fire-and-forget: welcome notification
+    // Fire-and-forget: welcome notification + admin alert
     notifyWelcome(created.id, created.email, created.phone, created.name).catch(() => {})
+    notifyAdminSignup('web-google', created)
     // Fire-and-forget: capture UTM params from recent anonymous page views
     prisma.pageView.findFirst({
       where: { userId: null, utmSource: { not: null } },
@@ -171,8 +172,9 @@ export const authOptions: NextAuthOptions = {
               name: `User ${normalized.slice(-4)}`,
             },
           })
-          // Fire-and-forget: welcome notification
+          // Fire-and-forget: welcome notification + admin alert
           notifyWelcome(user.id, user.email, user.phone, user.name).catch(() => {})
+          notifyAdminSignup('web-phone', user)
         }
 
         if (!user.isActive) return null

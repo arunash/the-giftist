@@ -222,6 +222,30 @@ async function sendExpoPush(
 
 // ── Per-action notification helpers ──
 
+const ADMIN_EMAIL = 'arunash@gmail.com'
+
+export async function notifyAdminSignup(source: 'web-google' | 'web-phone' | 'whatsapp', user: { id: string; name?: string | null; email?: string | null; phone?: string | null }) {
+  const displayName = user.name || 'Unknown'
+  const identifier = user.email || user.phone || user.id
+  const when = new Date().toLocaleString('en-US', { timeZone: 'America/Denver', dateStyle: 'short', timeStyle: 'short' })
+
+  sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `New Giftist signup: ${displayName} (${source})`,
+    html: emailWrapper(`
+      <p style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #111;">New User Signup</p>
+      <table style="font-size: 14px; color: #444; border-collapse: collapse;">
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Name</td><td>${displayName}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Email</td><td>${user.email || '—'}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Phone</td><td>${user.phone || '—'}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Source</td><td>${source}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">Time</td><td>${when}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: 600;">User ID</td><td style="font-size: 12px; color: #888;">${user.id}</td></tr>
+      </table>
+    `),
+  }).catch((err) => console.error('[notifyAdminSignup] email failed:', err))
+}
+
 export async function notifyWelcome(userId: string, email?: string | null, phone?: string | null, name?: string | null) {
   const displayName = name || 'there'
   await notify({
