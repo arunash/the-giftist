@@ -53,6 +53,7 @@ export async function createCampaign(params: {
       objective: params.objective || 'OUTCOME_ENGAGEMENT',
       status: 'PAUSED', // start paused, activate after ad set + ad
       special_ad_categories: [],
+      is_adset_budget_sharing_enabled: false,
     },
   })
   return data

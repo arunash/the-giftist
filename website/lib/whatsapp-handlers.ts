@@ -1680,7 +1680,14 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hey ${name}!` : 'Hey!'
-  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.\n\nYou have *10 free messages* to get started. Need more? Grab a Credit Pack ($5 for 50 messages) or upgrade to Gold ($4.99/mo) for unlimited: giftist.ai/settings`
+  // Mother's Day seasonal welcome (remove after May 12, 2026)
+  const now = new Date()
+  const mothersDay = new Date(2026, 4, 11)
+  const daysUntil = Math.ceil((mothersDay.getTime() - now.getTime()) / 86400000)
+  const seasonal = daysUntil > 0 && daysUntil <= 30
+    ? `\n\n🌸 *Mother's Day is ${daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`}!* Need gift ideas for Mom? Just say "gift for my mom" and I'll find something she'll love.`
+    : ''
+  return `${greeting} I'm your Giftist concierge — tell me who you're shopping for and I'll find something they'll love.${seasonal}\n\nYou have *10 free messages* to get started. Need more? Grab a Credit Pack ($5 for 50 messages) or upgrade to Gold ($4.99/mo) for unlimited: giftist.ai/settings`
 }
 
 export function getHelpMessage(): string {

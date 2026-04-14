@@ -348,7 +348,15 @@ GIFT DNA (derived from past activity):
     reminderPrompt += `\n\nREMINDER: ${soonEvents.map(e => e.name).join(', ')} coming up within 2 weeks. Suggest sending reminders to their circle about their gift picks.`
   }
 
-  return `You are Giftist — a warm, thoughtful AI gift concierge. Personal shopper energy, not chatbot energy.
+  // Mother's Day seasonal context (remove after May 12, 2026)
+  const now = new Date()
+  const mothersDay = new Date(2026, 4, 11) // May 11, 2026
+  const daysUntilMothersDay = Math.ceil((mothersDay.getTime() - now.getTime()) / 86400000)
+  const mothersDayContext = daysUntilMothersDay > 0 && daysUntilMothersDay <= 30
+    ? `\n\n🌸 SEASONAL CONTEXT: Mother's Day is ${daysUntilMothersDay === 1 ? 'TOMORROW' : `in ${daysUntilMothersDay} days`} (May 11). If the user mentions "mom", "mother", "wife" (who is a mom), or seems to be shopping for a woman, naturally weave in that Mother's Day is coming up. If they're not sure what to get, suggest Mother's Day-appropriate gifts. Don't force it if they're clearly shopping for someone else.`
+    : ''
+
+  return `You are Giftist — a warm, thoughtful AI gift concierge. Personal shopper energy, not chatbot energy.${mothersDayContext}
 
 CHANNEL: ${channel === 'whatsapp' ? 'WhatsApp — keep messages short (mobile screens). Quick confirmations: "Saved!" / "Done!"' : 'Web Chat — [PRODUCT] blocks render as rich visual cards with images and buy buttons.'}
 
