@@ -876,47 +876,47 @@ interface Holiday {
 function getHolidays(year: number): Holiday[] {
   return [
     // January
-    { name: "New Year's Day", month: 0, day: 1, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "New Year's Day", month: 0, day: 1, message: "Start the year with a thoughtful gift — I have recommendations picked just for you." },
+    { name: 'MLK Day', month: 0, day: getNthWeekday(year, 0, 1, 3), message: "Celebrate with a meaningful gift — I have ideas curated for you." },
     // February
-    { name: "Galentine's Day", month: 1, day: 13, message: "gifting your friends? Giftist has trending items ready for you." },
-    { name: "Valentine's Day", month: 1, day: 14, message: "gifting someone special? Giftist has trending items ready for you." },
-    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "Galentine's Day", month: 1, day: 13, message: "Celebrate your friendships with gifts that feel personal and fun — I have picks ready." },
+    { name: "Valentine's Day", month: 1, day: 14, message: "Find something they'll actually love — I have thoughtful gifts curated at every price point." },
+    { name: 'Lunar New Year', month: getLunarNewYear(year).month, day: getLunarNewYear(year).day, message: "Ring in the new year with a gift that feels special — I have curated picks ready." },
     // March
-    { name: "International Women's Day", month: 2, day: 8, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: "St. Patrick's Day", month: 2, day: 17, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "International Women's Day", month: 2, day: 8, message: "Celebrate the women in your life with gifts that feel personal — I have picks ready." },
+    { name: "St. Patrick's Day", month: 2, day: 17, message: "Surprise someone with a fun, festive gift — I have curated ideas for you." },
     // April
-    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Earth Day', month: 3, day: 22, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Easter', month: getEaster(year).month, day: getEaster(year).day, message: "Find the perfect Easter gift — I have thoughtful picks beyond the basics." },
+    { name: 'Earth Day', month: 3, day: 22, message: "Gift something sustainable and thoughtful — I have eco-friendly picks curated for you." },
+    { name: 'Admin Professionals Day', month: 3, day: getLastWeekday(year, 3, 3), message: "Thank someone who keeps things running — I have curated gift ideas ready." },
     // May
-    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "gifting mom? Giftist has trending items ready for you." },
-    { name: 'Cinco de Mayo', month: 4, day: 5, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "gifting a teacher? Giftist has trending items ready for you." },
+    { name: "Mother's Day", month: 4, day: getNthWeekday(year, 4, 0, 2), message: "Celebrate Mom with thoughtful gifts, carefully curated to feel personal and be treasured." },
+    { name: 'Cinco de Mayo', month: 4, day: 5, message: "Surprise someone with a festive gift — I have fun picks curated for you." },
+    { name: 'Teacher Appreciation', month: 4, day: getNthWeekday(year, 4, 1, 1) + 1, message: "Show a teacher they're valued — I have meaningful gift ideas beyond gift cards." },
     // June
-    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "gifting dad? Giftist has trending items ready for you." },
-    { name: 'Juneteenth', month: 5, day: 19, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Graduation Season', month: 5, day: 1, message: "gifting a grad? Giftist has trending items ready for you." },
+    { name: "Father's Day", month: 5, day: getNthWeekday(year, 5, 0, 3), message: "Find Dad something he'll actually use — I have curated picks at every price point." },
+    { name: 'Juneteenth', month: 5, day: 19, message: "Celebrate with a meaningful gift — I have curated recommendations ready." },
+    { name: 'Graduation Season', month: 5, day: 1, message: "Give a grad something they'll remember — I have curated picks for every budget." },
     // July
-    { name: 'Independence Day', month: 6, day: 4, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Independence Day', month: 6, day: 4, message: "Celebrate with a gift that stands out — I have fun, curated picks ready." },
     // August
-    { name: 'Back to School', month: 7, day: 15, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "gifting a friend? Giftist has trending items ready for you." },
+    { name: 'Back to School', month: 7, day: 15, message: "Send them off with something thoughtful — I have curated picks ready." },
+    { name: 'Friendship Day', month: 7, day: getNthWeekday(year, 7, 0, 1), message: "Celebrate your friendships with gifts that feel personal — I have picks curated for you." },
     // September
-    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "gifting your grandparents? Giftist has trending items ready for you." },
+    { name: 'Labor Day', month: 8, day: getNthWeekday(year, 8, 1, 1), message: "Treat someone to a thoughtful gift — I have curated ideas at every price point." },
+    { name: "Grandparents' Day", month: 8, day: getNthWeekday(year, 8, 1, 1) + 6, message: "Show your grandparents some love — I have meaningful gift picks ready." },
     // October
-    { name: "Boss's Day", month: 9, day: 16, message: "gifting your boss? Giftist has trending items ready for you." },
-    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "gifting someone special? Giftist has trending items ready for you." },
-    { name: 'Halloween', month: 9, day: 31, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: "Boss's Day", month: 9, day: 16, message: "Thank your boss with something thoughtful — I have curated picks that hit the right note." },
+    { name: 'Sweetest Day', month: 9, day: getNthWeekday(year, 9, 6, 3), message: "Surprise someone special with a gift that feels personal — I have picks ready." },
+    { name: 'Halloween', month: 9, day: 31, message: "Treat someone to a fun, festive gift — I have curated ideas ready." },
     // November
-    { name: 'Veterans Day', month: 10, day: 11, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "gifting the host? Giftist has trending items ready for you." },
-    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "gifting anyone? Giftist has great deals ready for you." },
+    { name: 'Veterans Day', month: 10, day: 11, message: "Honor someone who served with a meaningful gift — I have curated picks ready." },
+    { name: 'Thanksgiving', month: 10, day: getNthWeekday(year, 10, 4, 4), message: "Thank the host with a gift they'll love — I have thoughtful picks at every price point." },
+    { name: 'Black Friday', month: 10, day: getNthWeekday(year, 10, 4, 4) + 1, message: "Skip the noise — I have curated gift picks at the best prices, ready for you." },
     // December
-    { name: 'Secret Santa Season', month: 11, day: 10, message: "need Secret Santa ideas? Giftist has trending items ready for you." },
-    { name: 'Christmas', month: 11, day: 25, message: "gifting anyone? Giftist has trending items ready for you." },
-    { name: "New Year's Eve", month: 11, day: 31, message: "gifting anyone? Giftist has trending items ready for you." },
+    { name: 'Secret Santa Season', month: 11, day: 10, message: "Nail your Secret Santa — I have curated picks at every budget that feel personal." },
+    { name: 'Christmas', month: 11, day: 25, message: "Find gifts they'll actually love — I have thoughtful picks curated at every price point." },
+    { name: "New Year's Eve", month: 11, day: 31, message: "Ring in the new year with a thoughtful gift — I have curated picks ready for you." },
   ]
 }
 
@@ -1011,13 +1011,13 @@ export async function runSeasonalReminders() {
       let subject: string
 
       if (cadence.label === '14d') {
-        text = `Hey ${displayName} — ${holiday.name} is coming up. ${holiday.message}`
+        text = `Hey ${displayName} — ${holiday.name} is coming up. ${holiday.message}\n\n${ctaUrl}`
         subject = `${holiday.name} is coming up`
       } else if (cadence.label === '7d') {
-        text = `${displayName} — ${holiday.name} is next week. ${holiday.message}`
+        text = `${displayName} — ${holiday.name} is next week. ${holiday.message}\n\n${ctaUrl}`
         subject = `${holiday.name} is next week`
       } else {
-        text = `${displayName} — ${holiday.name} is tomorrow! ${holiday.message}`
+        text = `${displayName} — ${holiday.name} is tomorrow! ${holiday.message}\n\n${ctaUrl}`
         subject = `${holiday.name} is tomorrow`
       }
 
