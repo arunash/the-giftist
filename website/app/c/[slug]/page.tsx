@@ -3,24 +3,75 @@ import { headers } from 'next/headers'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Metadata } from 'next'
-import { ArrowRight, MessageCircle, Heart, Gift, Sparkles, ChevronDown } from 'lucide-react'
+import { ArrowRight, Send, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { holidaySlugs } from '@/lib/holiday-slugs'
-import { seoHolidays } from '@/lib/seo-holidays'
+import { seoHolidays, type HolidaySeo } from '@/lib/seo-holidays'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
-const CHAT_URL = 'https://giftist.ai/chat'
 
-const COLOR_MAP: Record<string, { bg: string; text: string; light: string; border: string; gradient: string; shadow: string; button: string; buttonHover: string }> = {
-  pink:    { bg: 'bg-pink-500',    text: 'text-pink-500',    light: 'bg-pink-50',    border: 'border-pink-200', gradient: 'from-pink-50 via-white to-rose-50',       shadow: 'shadow-pink-500/20',    button: 'bg-pink-500',    buttonHover: 'hover:bg-pink-600' },
-  blue:    { bg: 'bg-blue-500',    text: 'text-blue-500',    light: 'bg-blue-50',    border: 'border-blue-200', gradient: 'from-blue-50 via-white to-sky-50',        shadow: 'shadow-blue-500/20',    button: 'bg-blue-500',    buttonHover: 'hover:bg-blue-600' },
-  rose:    { bg: 'bg-rose-500',    text: 'text-rose-500',    light: 'bg-rose-50',    border: 'border-rose-200', gradient: 'from-rose-50 via-white to-pink-50',       shadow: 'shadow-rose-500/20',    button: 'bg-rose-500',    buttonHover: 'hover:bg-rose-600' },
-  emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200', gradient: 'from-emerald-50 via-white to-green-50', shadow: 'shadow-emerald-600/20', button: 'bg-emerald-600', buttonHover: 'hover:bg-emerald-700' },
-  amber:   { bg: 'bg-amber-500',   text: 'text-amber-500',   light: 'bg-amber-50',   border: 'border-amber-200', gradient: 'from-amber-50 via-white to-yellow-50',   shadow: 'shadow-amber-500/20',   button: 'bg-amber-500',   buttonHover: 'hover:bg-amber-600' },
-  orange:  { bg: 'bg-orange-500',  text: 'text-orange-500',  light: 'bg-orange-50',  border: 'border-orange-200', gradient: 'from-orange-50 via-white to-amber-50',   shadow: 'shadow-orange-500/20',  button: 'bg-orange-500',  buttonHover: 'hover:bg-orange-600' },
-  violet:  { bg: 'bg-violet-500',  text: 'text-violet-500',  light: 'bg-violet-50',  border: 'border-violet-200', gradient: 'from-violet-50 via-white to-purple-50',   shadow: 'shadow-violet-500/20',  button: 'bg-violet-500',  buttonHover: 'hover:bg-violet-600' },
-  teal:    { bg: 'bg-teal-500',    text: 'text-teal-500',    light: 'bg-teal-50',    border: 'border-teal-200', gradient: 'from-teal-50 via-white to-cyan-50',       shadow: 'shadow-teal-500/20',    button: 'bg-teal-500',    buttonHover: 'hover:bg-teal-600' },
-  red:     { bg: 'bg-red-500',     text: 'text-red-500',     light: 'bg-red-50',     border: 'border-red-200', gradient: 'from-red-50 via-white to-rose-50',         shadow: 'shadow-red-500/20',     button: 'bg-red-500',     buttonHover: 'hover:bg-red-600' },
+// Curated products per holiday — shown as "concierge picks" in the chat UI
+// Each links to /chat?q=... which gates on signup, then auto-sends the message
+const HOLIDAY_PRODUCTS: Record<string, Array<{
+  name: string
+  brand: string
+  price: string
+  image: string
+  why: string
+  chatPrompt: string
+}>> = {
+  'mothers-day': [
+    {
+      name: 'Ember Mug 2',
+      brand: 'Ember',
+      price: '$129.95',
+      image: 'https://m.media-amazon.com/images/I/61nRJpijSpL._AC_SL1500_.jpg',
+      why: 'Keeps her coffee at the perfect temperature all morning',
+      chatPrompt: "I'm interested in the Ember Mug 2 for my mom for Mother's Day. Can you find me the best deal?",
+    },
+    {
+      name: 'Birthdate Candle',
+      brand: 'Birthdate Co.',
+      price: '$48',
+      image: 'https://m.media-amazon.com/images/I/51dVjsrMATL._AC_SL1000_.jpg',
+      why: 'A candle personalized to her exact birthday — scent, tarot card, and all',
+      chatPrompt: "I want to get a Birthdate Candle for my mom for Mother's Day. Can you help me find it?",
+    },
+    {
+      name: 'Luxe Spa Gift Set',
+      brand: 'Herbivore Botanicals',
+      price: '$68',
+      image: 'https://m.media-amazon.com/images/I/71mRkXL5SQL._SL1500_.jpg',
+      why: 'A full self-care ritual she\'d never buy herself',
+      chatPrompt: "I'm looking at the Herbivore Botanicals spa gift set for my mom. Can you find a good link?",
+    },
+  ],
+  'fathers-day': [
+    {
+      name: 'Yeti Rambler 26oz',
+      brand: 'YETI',
+      price: '$40',
+      image: 'https://m.media-amazon.com/images/I/51pCi-JnHzL._AC_SL1500_.jpg',
+      why: 'Keeps drinks ice-cold through any adventure',
+      chatPrompt: "I want the Yeti Rambler for my dad for Father's Day. Can you find the best price?",
+    },
+    {
+      name: 'Kindle Paperwhite',
+      brand: 'Amazon',
+      price: '$149.99',
+      image: 'https://m.media-amazon.com/images/I/51QCk32KXWL._AC_SL1000_.jpg',
+      why: 'For the dad who reads but won\'t upgrade himself',
+      chatPrompt: "I'm interested in a Kindle Paperwhite for my dad for Father's Day. Help me find it?",
+    },
+    {
+      name: 'Premium Grilling Set',
+      brand: 'Weber',
+      price: '$89',
+      image: 'https://m.media-amazon.com/images/I/81xIMstLgrL._AC_SL1500_.jpg',
+      why: 'Elevates every backyard cookout',
+      chatPrompt: "I want a premium grilling set for my dad for Father's Day. Can you help?",
+    },
+  ],
 }
 
 // ── Metadata ──
@@ -83,11 +134,8 @@ export default async function SlugPage({ params }: { params: { slug: string } })
     },
   }).catch(() => {})
 
-  const prompt = holidaySlugs[params.slug] || ''
-  const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(prompt)}`
-  const chatLink = `${CHAT_URL}?q=${encodeURIComponent(prompt)}`
-  const c = COLOR_MAP[seo.color] || COLOR_MAP.violet
-  const titleLines = seo.title.split('\n')
+  const products = HOLIDAY_PRODUCTS[params.slug]
+  const hasProducts = products && products.length > 0
 
   // Schema.org structured data
   const jsonLd = {
@@ -111,218 +159,153 @@ export default async function SlugPage({ params }: { params: { slug: string } })
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 pt-4">
-          <div className="flex justify-between items-center h-14 px-6 bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/50 shadow-2xl shadow-black/5">
-            <Link href="/" className="flex items-center gap-2.5">
-              <Image src="/logo-light.png" alt="Giftist" width={28} height={28} className="rounded-lg" />
-              <span className="text-lg font-bold text-gray-900 tracking-tight">The Giftist</span>
-            </Link>
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`text-sm font-medium ${c.button} text-white px-5 py-2 rounded-xl ${c.buttonHover} transition`}
-            >
-              Text Us Now
-            </a>
-          </div>
+      {/* Minimal Nav */}
+      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 flex items-center justify-between h-14">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo-light.png" alt="Giftist" width={28} height={28} className="rounded-lg" />
+            <span className="text-base font-bold text-gray-900">The Giftist</span>
+          </Link>
+          <span className="text-xs text-gray-400">AI Gift Concierge</span>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${c.gradient}`} />
-        <div className="relative max-w-3xl mx-auto px-6 pt-36 pb-24 text-center">
-          {seo.date && (
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 ${c.bg}/10 border ${c.border} rounded-full mb-8`}>
-              <span className="text-base">{seo.emoji}</span>
-              <span className={`text-xs font-semibold ${c.text} tracking-wide uppercase`}>{seo.date}</span>
-            </div>
-          )}
+      {/* Chat-style body */}
+      <div className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 flex flex-col gap-4">
 
-          <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] mb-4">
-            {titleLines[0]}<br />
-            <span className={c.text}>{titleLines[1]}</span>
-          </h1>
-
-          <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-10">
-            {seo.heroSubtitle}
+        {/* Bot greeting */}
+        <ChatBubble>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Hey! {seo.emoji} {seo.date && <span className="font-semibold">{seo.date.split(',')[0]}</span>}{seo.date && " is coming up. "}
+            I found a few gifts that moms are loving right now — take a look:
           </p>
+        </ChatBubble>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center justify-center gap-2 ${c.button} text-white px-8 py-4 rounded-xl font-semibold text-lg ${c.buttonHover} transition shadow-lg ${c.shadow}`}
-            >
-              <MessageCircle className="h-5 w-5" />
-              {seo.ctaText} on WhatsApp
-            </a>
-            <Link
-              href={chatLink}
-              className="inline-flex items-center justify-center gap-2 bg-white text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg border border-gray-200 hover:border-gray-300 transition"
-            >
-              Or use Web Chat
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-          </div>
-
-          <p className="text-xs text-gray-400 mt-4">Free. No app download. No sign-up required.</p>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-24 border-t border-gray-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-              How it works
-            </h2>
-            <p className="text-gray-500 max-w-lg mx-auto">Three steps. Under a minute.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            <StepCard number="01" title="Text the bot" description="Open WhatsApp and message The Giftist. No app to install, no account to create." color={c} />
-            <StepCard number="02" title="Describe the person" description="Tell us what they're into — hobbies, style, budget. Even vague is fine." color={c} />
-            <StepCard number="03" title="Get gift suggestions" description="Receive personalized ideas with prices and direct buy links. Add to cart in one tap." color={c} />
-          </div>
-        </div>
-      </section>
-
-      {/* Gift ideas */}
-      <section className="py-24 border-t border-gray-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className={`inline-flex items-center gap-2 px-3 py-1 ${c.bg}/10 border ${c.border} rounded-full mb-6`}>
-              <Sparkles className={`h-3.5 w-3.5 ${c.text}`} />
-              <span className={`text-xs font-semibold ${c.text} uppercase tracking-wide`}>Popular picks</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-              Gifts people are loving
-            </h2>
-            <p className="text-gray-500 max-w-lg mx-auto">
-              Our concierge finds gifts like these — personalized to the person you're shopping for.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {seo.sampleGifts.map((g) => (
-              <GiftCard key={g.name} {...g} color={c} />
+        {/* Product cards */}
+        {hasProducts && (
+          <div className="ml-10 flex gap-3 overflow-x-auto pb-2 -mr-4 pr-4 snap-x">
+            {products.map((p) => (
+              <Link
+                key={p.name}
+                href={`/login?q=${encodeURIComponent(p.chatPrompt)}`}
+                className="flex-shrink-0 w-56 bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 hover:shadow-md transition-all duration-200 snap-start group"
+              >
+                <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[10px] font-bold text-gray-900 px-2 py-0.5 rounded-full">
+                    {p.price}
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{p.brand}</p>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5">{p.name}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-snug">{p.why}</p>
+                  <div className="flex items-center gap-1 mt-2.5 text-xs font-semibold text-pink-500 group-hover:text-pink-600">
+                    View &amp; Buy
+                    <ExternalLink className="h-3 w-3" />
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
-          <p className="text-center text-sm text-gray-400 mt-8">
-            These are examples. Your concierge suggests gifts based on <em>your</em> description.
+        )}
+
+        {/* Bot follow-up */}
+        <ChatBubble>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            These are just starting points! Tell me a bit about your mom — what does she love? What&apos;s she into? — and I&apos;ll find something even more personal.
+          </p>
+        </ChatBubble>
+
+        {/* Suggestion chips */}
+        <div className="ml-10 flex flex-wrap gap-2">
+          {[
+            "My mom loves cooking and gardening",
+            "She's into skincare and wellness",
+            "She's hard to shop for",
+            "Budget is under $75",
+          ].map((chip) => (
+            <Link
+              key={chip}
+              href={`/login?q=${encodeURIComponent(chip)}`}
+              className="text-xs bg-white border border-gray-200 text-gray-600 px-3.5 py-2 rounded-full hover:bg-gray-50 hover:border-gray-300 transition"
+            >
+              {chip}
+            </Link>
+          ))}
+        </div>
+
+        {/* Social proof */}
+        <div className="ml-10 mt-2">
+          <p className="text-[11px] text-gray-400">
+            2,400+ gift recommendations made this week
           </p>
         </div>
-      </section>
 
-      {/* FAQ */}
+        {/* Spacer for input bar */}
+        <div className="h-20" />
+      </div>
+
+      {/* Fixed input bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href={`/login?q=${encodeURIComponent(`I need ${seo.ctaText?.toLowerCase() || 'gift'} ideas`)}`}
+            className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-100 hover:border-gray-300 transition group"
+          >
+            <span className="flex-1 text-sm text-gray-400 group-hover:text-gray-500">
+              Tell me about who you&apos;re shopping for...
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400 hidden sm:block">Free</span>
+              <div className="w-8 h-8 bg-gray-900 rounded-xl flex items-center justify-center group-hover:bg-gray-800">
+                <Send className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* FAQ section (good for SEO) */}
       {seo.faq?.length > 0 && (
-        <section className="py-24 border-t border-gray-200">
-          <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-12 text-center">
-              Frequently asked questions
-            </h2>
+        <div className="bg-white border-t border-gray-200 pb-24">
+          <div className="max-w-2xl mx-auto px-4 py-12">
+            <h2 className="text-lg font-bold text-gray-900 mb-6">Frequently asked questions</h2>
             <div className="space-y-4">
               {seo.faq.map((f) => (
-                <details key={f.q} className="group bg-white border border-gray-200 rounded-xl">
-                  <summary className="flex items-center justify-between px-6 py-4 cursor-pointer list-none">
-                    <span className="text-sm font-semibold text-gray-900 pr-4">{f.q}</span>
-                    <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0 group-open:rotate-180 transition-transform" />
+                <details key={f.q} className="group">
+                  <summary className="flex items-center justify-between cursor-pointer list-none text-sm font-medium text-gray-900 py-2">
+                    {f.q}
+                    <ArrowRight className="h-3.5 w-3.5 text-gray-400 group-open:rotate-90 transition-transform flex-shrink-0 ml-4" />
                   </summary>
-                  <div className="px-6 pb-4 text-sm text-gray-500 leading-relaxed">{f.a}</div>
+                  <p className="text-sm text-gray-500 leading-relaxed pb-2">{f.a}</p>
                 </details>
               ))}
             </div>
           </div>
-        </section>
+        </div>
       )}
-
-      {/* Final CTA */}
-      <section className="py-24 border-t border-gray-200">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="text-3xl sm:text-5xl font-bold text-gray-900 tracking-tight mb-6">
-            Stop scrolling.<br />
-            <span className={c.text}>Start gifting.</span>
-          </h2>
-          <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto">
-            Text our concierge and have the perfect gift picked out in under a minute.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center justify-center gap-2 ${c.button} text-white px-8 py-4 rounded-xl font-semibold text-lg ${c.buttonHover} transition shadow-lg ${c.shadow}`}
-            >
-              <MessageCircle className="h-5 w-5" />
-              {seo.ctaText} Now
-              <ArrowRight className="h-5 w-5" />
-            </a>
-            <Link
-              href={chatLink}
-              className="inline-flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700 transition text-sm"
-            >
-              Or use web chat →
-            </Link>
-          </div>
-          <p className="text-xs text-gray-400 mt-4">Free forever. No app download needed.</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 py-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Image src="/logo-light.png" alt="Giftist" width={22} height={22} className="rounded-md" />
-              <span className="text-sm font-semibold text-gray-900">The Giftist</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-900 transition">Terms</Link>
-              <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-900 transition">Privacy</Link>
-            </div>
-            <p className="text-xs text-gray-400">&copy; 2026 Giftist.ai. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
 
-function StepCard({ number, title, description, color }: {
-  number: string; title: string; description: string; color: { bg: string; text: string; light: string }
-}) {
+function ChatBubble({ children }: { children: React.ReactNode }) {
   return (
-    <div className="group relative bg-white rounded-2xl border border-gray-200 p-8 hover:border-gray-300 transition-all duration-300 shadow-sm">
-      <span className="absolute top-6 right-6 text-5xl font-bold text-gray-100 group-hover:text-gray-200 transition">{number}</span>
-      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${color.light} mb-5`}>
-        {number === '01' ? <MessageCircle className={`h-6 w-6 ${color.text}`} /> :
-         number === '02' ? <Heart className={`h-6 w-6 ${color.text}`} /> :
-         <Gift className={`h-6 w-6 ${color.text}`} />}
+    <div className="flex gap-2.5 items-start">
+      <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Image src="/logo-light.png" alt="" width={18} height={18} className="rounded-sm" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
-    </div>
-  )
-}
-
-function GiftCard({ name, subtitle, price, tag, color }: {
-  name: string; subtitle: string; price: string; tag: string; color: { light: string; text: string; border: string }
-}) {
-  return (
-    <div className={`bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:${color.border} transition`}>
-      <div className={`aspect-square ${color.light} rounded-xl mb-4 flex items-center justify-center`}>
-        <Gift className={`h-10 w-10 ${color.text} opacity-40`} />
+      <div className="bg-white rounded-2xl rounded-tl-md border border-gray-200 px-4 py-3 max-w-[85%] shadow-sm">
+        {children}
       </div>
-      <p className={`text-[10px] ${color.text} font-semibold uppercase tracking-wider mb-1`}>{tag}</p>
-      <h3 className="font-semibold text-gray-900 text-sm mb-0.5">{name}</h3>
-      <p className="text-xs text-gray-400 mb-2">{subtitle}</p>
-      <p className="text-sm font-semibold text-gray-900">{price}</p>
     </div>
   )
 }
