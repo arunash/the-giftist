@@ -149,17 +149,18 @@ export async function POST(request: NextRequest) {
     // Resolve user and list
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
 
-    // Detect if first message is product-specific (from landing page)
+    // Detect if first message is a gift request (from landing page or ad ice breakers)
+    // Skip the long welcome — process their request immediately, send free-message info after
     const firstMessageText = message.text?.body || ''
-    const isProductSpecific = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find/i.test(firstMessageText)
+    const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day/i.test(firstMessageText)
 
-    if (isNewUser && !isProductSpecific) {
+    if (isNewUser && !isGiftRequest) {
       await sendTextMessage(phone, getWelcomeMessage(profileName))
       sendContactMessage(phone).catch(() => {})
       // Continue processing — don't drop the first message
     }
 
-    if (isNewUser && isProductSpecific) {
+    if (isNewUser && isGiftRequest) {
       sendContactMessage(phone).catch(() => {})
     }
 
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
       }
 
       // For product-specific first messages, send free-message info AFTER the helpful reply
-      if (isProductSpecific) {
+      if (isGiftRequest) {
         const name = profileName ? ` ${profileName}` : ''
         sendTextMessage(phone, `By the way${name} — you have *10 free messages* to chat with me. Need more? Grab a Credit Pack or upgrade to Gold at giftist.ai/settings`).catch(() => {})
       }
