@@ -149,10 +149,18 @@ export async function POST(request: NextRequest) {
     // Resolve user and list
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
 
-    if (isNewUser) {
+    // Detect if first message is product-specific (from landing page)
+    const firstMessageText = message.text?.body || ''
+    const isProductSpecific = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find/i.test(firstMessageText)
+
+    if (isNewUser && !isProductSpecific) {
       await sendTextMessage(phone, getWelcomeMessage(profileName))
       sendContactMessage(phone).catch(() => {})
       // Continue processing — don't drop the first message
+    }
+
+    if (isNewUser && isProductSpecific) {
+      sendContactMessage(phone).catch(() => {})
     }
 
     let reply = ''
@@ -188,6 +196,12 @@ export async function POST(request: NextRequest) {
       // Send reply (empty string means handler already sent a reply)
       if (reply) {
         await sendTextMessage(phone, reply)
+      }
+
+      // For product-specific first messages, send free-message info AFTER the helpful reply
+      if (isProductSpecific) {
+        const name = profileName ? ` ${profileName}` : ''
+        sendTextMessage(phone, `By the way${name} — you have *10 free messages* to chat with me. Need more? Grab a Credit Pack or upgrade to Gold at giftist.ai/settings`).catch(() => {})
       }
 
       // Update audit record

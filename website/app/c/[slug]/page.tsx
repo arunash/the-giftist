@@ -11,7 +11,7 @@ import { seoHolidays, type HolidaySeo } from '@/lib/seo-holidays'
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
 // Curated products per holiday — shown as "concierge picks" in the chat UI
-// Each links to /chat?q=... which gates on signup, then auto-sends the message
+// Each links to wa.me with a pre-filled message for instant WhatsApp conversation
 const HOLIDAY_PRODUCTS: Record<string, Array<{
   name: string
   brand: string
@@ -188,9 +188,11 @@ export default async function SlugPage({ params }: { params: { slug: string } })
         {hasProducts && (
           <div className="ml-10 flex gap-3 overflow-x-auto pb-2 -mr-4 pr-4 snap-x">
             {products.map((p) => (
-              <Link
+              <a
                 key={p.name}
-                href={`/login?q=${encodeURIComponent(p.chatPrompt)}`}
+                href={`${WHATSAPP_URL}?text=${encodeURIComponent(p.chatPrompt)}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex-shrink-0 w-56 bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 hover:shadow-md transition-all duration-200 snap-start group"
               >
                 <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -213,7 +215,7 @@ export default async function SlugPage({ params }: { params: { slug: string } })
                     <ExternalLink className="h-3 w-3" />
                   </div>
                 </div>
-              </Link>
+              </a>
             ))}
           </div>
         )}
@@ -228,18 +230,20 @@ export default async function SlugPage({ params }: { params: { slug: string } })
         {/* Suggestion chips */}
         <div className="ml-10 flex flex-wrap gap-2">
           {[
-            "My mom loves cooking and gardening",
-            "She's into skincare and wellness",
-            "She's hard to shop for",
-            "Budget is under $75",
+            "My mom loves cooking and gardening — what should I get her for Mother's Day?",
+            "She's into skincare and wellness — gift ideas for Mother's Day?",
+            "She's hard to shop for — help me find a Mother's Day gift",
+            "Budget is under $75 — what's a great Mother's Day gift?",
           ].map((chip) => (
-            <Link
+            <a
               key={chip}
-              href={`/login?q=${encodeURIComponent(chip)}`}
+              href={`${WHATSAPP_URL}?text=${encodeURIComponent(chip)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-xs bg-white border border-gray-200 text-gray-600 px-3.5 py-2 rounded-full hover:bg-gray-50 hover:border-gray-300 transition"
             >
-              {chip}
-            </Link>
+              {chip.split('—')[0].trim()}
+            </a>
           ))}
         </div>
 
@@ -257,8 +261,10 @@ export default async function SlugPage({ params }: { params: { slug: string } })
       {/* Fixed input bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3">
         <div className="max-w-2xl mx-auto">
-          <Link
-            href={`/login?q=${encodeURIComponent(`I need ${seo.ctaText?.toLowerCase() || 'gift'} ideas`)}`}
+          <a
+            href={`${WHATSAPP_URL}?text=${encodeURIComponent(`I need ${seo.ctaText?.toLowerCase() || 'gift'} ideas for Mother's Day`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 hover:bg-gray-100 hover:border-gray-300 transition group"
           >
             <span className="flex-1 text-sm text-gray-400 group-hover:text-gray-500">
@@ -266,11 +272,11 @@ export default async function SlugPage({ params }: { params: { slug: string } })
             </span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-gray-400 hidden sm:block">Free</span>
-              <div className="w-8 h-8 bg-gray-900 rounded-xl flex items-center justify-center group-hover:bg-gray-800">
+              <div className="w-8 h-8 bg-[#25D366] rounded-xl flex items-center justify-center group-hover:bg-[#20bd5a]">
                 <Send className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
-          </Link>
+          </a>
         </div>
       </div>
 
