@@ -10,6 +10,7 @@ import {
   getWelcomeMessage,
 } from '@/lib/whatsapp-handlers'
 import { handleGroupMessage } from '@/lib/group-monitor'
+import { scheduleOnboardingNudges, cancelOnboardingNudges } from '@/lib/whatsapp-funnel'
 import { logError } from '@/lib/api-logger'
 
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
@@ -164,6 +165,14 @@ export async function POST(request: NextRequest) {
 
     // Resolve user and list
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
+
+    // New user: schedule 4h/12h/20h onboarding nudges (cancelled if they engage)
+    // Returning user: cancel any pending onboarding nudges (they're back!)
+    if (isNewUser) {
+      scheduleOnboardingNudges(userId, phone, null).catch(() => {})
+    } else {
+      cancelOnboardingNudges(userId).catch(() => {})
+    }
 
     // Detect if first message is a gift request (from landing page or ad ice breakers)
     // Skip the long welcome — process their request immediately

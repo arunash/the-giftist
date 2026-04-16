@@ -193,11 +193,78 @@ async function queueMessage(params: {
   }
 }
 
+// ── First-24-Hour Onboarding Nudges ──
+// Schedule 3 follow-up messages for new users who don't engage after first interaction.
+// These bypass the weekly cap (template starts with 'onboard_') since they're time-critical.
+// Each nudge only fires if the user hasn't sent a message since signup.
+
+export async function scheduleOnboardingNudges(userId: string, phone: string, timezone: string | null) {
+  const now = new Date()
+
+  const nudges = [
+    {
+      delayHours: 4,
+      template: 'onboard_4h',
+      text: `Still thinking about that gift? 🤔 Just tell me who it's for — even something like "gift for my dad, he likes golf" — and I'll send you 3 ideas instantly.`,
+    },
+    {
+      delayHours: 12,
+      template: 'onboard_12h',
+      text: `🎁 Quick reminder — I'm here whenever you need gift help. Just describe the person (interests, age, occasion) and I'll find the perfect gift. No browsing required!`,
+    },
+    {
+      delayHours: 20,
+      template: 'onboard_20h',
+      text: `Last one from me for now! Here's a tip: the more you tell me about the person, the better my picks get.\n\nTry something like: _"Anniversary gift for my wife, she loves cooking and travel, budget $75"_\n\nI'll be here whenever you need me ✨`,
+    },
+  ]
+
+  for (const nudge of nudges) {
+    const scheduledAt = new Date(now.getTime() + nudge.delayHours * 3600000)
+    try {
+      await prisma.messageQueue.create({
+        data: {
+          userId,
+          phone,
+          email: null,
+          subject: 'Onboarding nudge',
+          text: nudge.text,
+          template: nudge.template,
+          vars: JSON.stringify([]),
+          priority: 2,  // Higher than regular engagement
+          scheduledAt,
+          dedupKey: `${nudge.template}_${userId}`,
+        },
+      })
+    } catch (err: any) {
+      if (err?.code === 'P2002') continue  // Dedup — already scheduled
+      console.error(`[Onboarding] Failed to queue ${nudge.template}:`, err)
+    }
+  }
+  console.log(`[Onboarding] Scheduled 3 nudges for ${phone} at +4h, +12h, +20h`)
+}
+
+// Cancel onboarding nudges if user engages (called when they send a 2nd message)
+export async function cancelOnboardingNudges(userId: string) {
+  const { count } = await prisma.messageQueue.updateMany({
+    where: {
+      userId,
+      template: { startsWith: 'onboard_' },
+      status: 'QUEUED',
+    },
+    data: { status: 'SKIPPED' },
+  })
+  if (count > 0) {
+    console.log(`[Onboarding] Cancelled ${count} pending nudges for user ${userId} — they engaged!`)
+  }
+}
+
 // ── Message Queue Processor ──
 // Rules:
 // 1. Max 2 messages per week (Mon-Sun), min 24h apart
 // 2. Holiday messages (expiresAt) bypass weekly cap if expiring before next Monday
 // 3. Expired messages auto-skip
+// 4. Onboarding messages (template starts with 'onboard_') bypass weekly cap
 
 export async function processMessageQueue() {
   const now = new Date()
@@ -240,14 +307,33 @@ export async function processMessageQueue() {
     })
 
     const rateLimitOk = hoursSinceLastSent >= 24 && sentThisWeek < 2
+    const onboarding = messages.filter(m => m.template.startsWith('onboard_'))
     const urgent = messages.filter(m => m.expiresAt != null)
-    const deferrable = messages.filter(m => m.expiresAt == null)
+    const deferrable = messages.filter(m => m.expiresAt == null && !m.template.startsWith('onboard_'))
 
     let toSend: typeof messages[0] | null = null
 
-    if (rateLimitOk) {
+    // Onboarding nudges bypass rate limits but check if user engaged first
+    if (onboarding.length > 0) {
+      // Check if user sent any messages since the onboarding was scheduled
+      const userMsgCount = await prisma.whatsAppMessage.count({
+        where: { phone: onboarding[0].phone!, type: 'text', createdAt: { gte: onboarding[0].createdAt } },
+      })
+      if (userMsgCount > 0) {
+        // User engaged — skip all onboarding nudges
+        for (const msg of onboarding) {
+          await prisma.messageQueue.update({ where: { id: msg.id }, data: { status: 'SKIPPED' } })
+        }
+        console.log(`[MessageQueue] Skipped ${onboarding.length} onboarding nudges — user engaged`)
+      } else {
+        // User hasn't engaged — send the first onboarding nudge
+        toSend = onboarding[0]
+      }
+    }
+
+    if (!toSend && rateLimitOk) {
       toSend = messages[0]
-    } else if (hoursSinceLastSent >= 24 && urgent.length > 0) {
+    } else if (!toSend && hoursSinceLastSent >= 24 && urgent.length > 0) {
       const nextMonday = getNextMonday5pm(now, tz)
       const expiringBeforeNextWeek = urgent.filter(m => m.expiresAt! < nextMonday)
       if (expiringBeforeNextWeek.length > 0) {
