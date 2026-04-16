@@ -150,14 +150,30 @@ export async function POST(request: NextRequest) {
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
 
     // Detect if first message is a gift request (from landing page or ad ice breakers)
-    // Skip the long welcome — process their request immediately, send free-message info after
+    // Skip the long welcome — process their request immediately
     const firstMessageText = message.text?.body || ''
-    const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day/i.test(firstMessageText)
+    const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day|need a gift|need gift|shopping for/i.test(firstMessageText)
 
     if (isNewUser && !isGiftRequest) {
+      // Vague first message (like "hello", "info", "do you ship?")
+      // Don't forward to Claude — they'll get a confused response.
+      // Instead, send welcome + inject a gift request to demo the product.
       await sendTextMessage(phone, getWelcomeMessage(profileName))
       sendContactMessage(phone).catch(() => {})
-      // Continue processing — don't drop the first message
+
+      // Auto-demo: process "gift for my mom" to show them what we do
+      // This gives them an immediate taste of the product — 3 real recommendations
+      const demoReply = await handleTextMessage(userId, listId, 'gift ideas for my mom', phone)
+      if (demoReply) {
+        await sendTextMessage(phone, demoReply)
+      }
+
+      // Mark as processed and return — don't double-process their original message
+      await prisma.whatsAppMessage.update({
+        where: { id: waMsg.id },
+        data: { status: 'PROCESSED', processedAt: new Date() },
+      })
+      return NextResponse.json({ success: true })
     }
 
     if (isNewUser && isGiftRequest) {

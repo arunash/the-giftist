@@ -1682,14 +1682,7 @@ export async function handleImageMessage(
 
 export function getWelcomeMessage(name?: string): string {
   const greeting = name ? `Hey ${name}! 👋` : 'Hey! 👋'
-  // Mother's Day seasonal welcome (remove after May 12, 2026)
-  const now = new Date()
-  const mothersDay = new Date(2026, 4, 11)
-  const daysUntil = Math.ceil((mothersDay.getTime() - now.getTime()) / 86400000)
-  const seasonal = daysUntil > 0 && daysUntil <= 30
-    ? `\n\n🌸 *Mother's Day is ${daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`}!* I have great gift ideas for Mom — just say "gift for my mom" and I'll send you 3 picks.`
-    : ''
-  return `${greeting} I'm your AI gift concierge. Tell me who you're shopping for — I'll send you 3 personalized gift ideas in seconds.${seasonal}\n\nTry: _"birthday gift for my sister, she loves cooking"_`
+  return `${greeting} I'm your AI gift concierge — I find the perfect gift for anyone in seconds.\n\nHere's a quick demo with gift ideas for a mom 👇`
 }
 
 export function getHelpMessage(): string {
