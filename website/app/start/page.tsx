@@ -202,7 +202,7 @@ export default function StartPage({
   const catalog = PRODUCTS[config.catalog] || PRODUCTS.default
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] text-white flex flex-col">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
       {/* Nav */}
       <nav className="px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function StartPage({
           {config.headline}
         </h1>
 
-        <p className="text-sm sm:text-base text-gray-400 leading-relaxed max-w-md mx-auto">
+        <p className="text-sm sm:text-base text-gray-500 leading-relaxed max-w-md mx-auto">
           {config.subtext}
         </p>
       </div>
@@ -238,8 +238,8 @@ export default function StartPage({
           <div className="w-8 h-8 rounded-full bg-[#6C63FF] flex items-center justify-center flex-shrink-0 mt-0.5">
             <Image src="/logo-light.png" alt="" width={16} height={16} className="rounded-sm" />
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-tl-md px-4 py-3 max-w-[85%]">
-            <p className="text-sm text-gray-300 leading-relaxed">
+          <div className="bg-white rounded-2xl rounded-tl-md border border-gray-200 px-4 py-3 max-w-[85%] shadow-sm">
+            <p className="text-sm text-gray-600 leading-relaxed">
               {catalog.greeting}
             </p>
           </div>
@@ -253,16 +253,16 @@ export default function StartPage({
               href={`${WHATSAPP_URL}?text=${encodeURIComponent(p.prompt)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 w-52 bg-white/[0.07] backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden hover:border-white/25 hover:bg-white/10 transition-all duration-200 snap-start group"
+              className="flex-shrink-0 w-52 bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 hover:shadow-md transition-all duration-200 snap-start group"
             >
-              <div className="aspect-square bg-white/5 relative overflow-hidden">
+              <div className="aspect-square bg-gray-100 relative overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={p.image}
                   alt={p.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-[11px] font-bold text-white px-2.5 py-1 rounded-full">
+                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[11px] font-bold text-gray-900 px-2.5 py-1 rounded-full">
                   {p.price}
                 </div>
                 {p.tag && (
@@ -272,9 +272,9 @@ export default function StartPage({
                 )}
               </div>
               <div className="p-3">
-                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">{p.brand}</p>
-                <p className="text-sm font-semibold text-white leading-tight mt-0.5">{p.name}</p>
-                <p className="text-xs text-gray-400 mt-1 leading-snug">{p.why}</p>
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{p.brand}</p>
+                <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5">{p.name}</p>
+                <p className="text-xs text-gray-500 mt-1 leading-snug">{p.why}</p>
                 <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-[#25D366] group-hover:text-[#30e676]">
                   <MessageCircle className="h-3 w-3" />
                   Get this on WhatsApp
@@ -289,8 +289,8 @@ export default function StartPage({
           <div className="w-8 h-8 rounded-full bg-[#6C63FF] flex items-center justify-center flex-shrink-0 mt-0.5">
             <Image src="/logo-light.png" alt="" width={16} height={16} className="rounded-sm" />
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-tl-md px-4 py-3 max-w-[85%]">
-            <p className="text-sm text-gray-300 leading-relaxed">
+          <div className="bg-white rounded-2xl rounded-tl-md border border-gray-200 px-4 py-3 max-w-[85%] shadow-sm">
+            <p className="text-sm text-gray-600 leading-relaxed">
               These are just starting points! Tell me about who you&apos;re shopping for and I&apos;ll find something more personal 👇
             </p>
           </div>
@@ -306,7 +306,7 @@ export default function StartPage({
               href={`${WHATSAPP_URL}?text=${encodeURIComponent(p.label)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[13px] bg-white/5 border border-white/10 text-gray-300 px-3.5 py-2 rounded-xl hover:bg-white/10 hover:border-white/20 transition"
+              className="text-[13px] bg-white border border-gray-200 text-gray-600 px-3.5 py-2 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition"
             >
               {p.icon} {p.label}
             </a>
@@ -331,9 +331,9 @@ export default function StartPage({
       </div>
 
       {/* ── How it works ── */}
-      <div className="bg-white/[0.03] border-t border-white/10">
+      <div className="bg-white border-t border-gray-200">
         <div className="max-w-lg mx-auto px-5 py-10">
-          <h2 className="text-base font-bold text-center mb-6 text-gray-300">How it works</h2>
+          <h2 className="text-base font-bold text-center mb-6 text-gray-900">How it works</h2>
 
           <div className="space-y-5">
             <Step number="1" text="Tell us who you're shopping for — their interests, age, the occasion" />
@@ -439,16 +439,16 @@ function Step({ number, text }: { number: string; text: string }) {
       <div className="w-7 h-7 rounded-full bg-[#6C63FF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
         <span className="text-xs font-bold text-[#6C63FF]">{number}</span>
       </div>
-      <p className="text-sm text-gray-400 leading-relaxed pt-0.5">{text}</p>
+      <p className="text-sm text-gray-600 leading-relaxed pt-0.5">{text}</p>
     </div>
   )
 }
 
 function TrustItem({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2.5">
+    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
       <span className="text-sm">{icon}</span>
-      <span className="text-xs text-gray-400">{text}</span>
+      <span className="text-xs text-gray-600">{text}</span>
     </div>
   )
 }

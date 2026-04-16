@@ -182,20 +182,22 @@ export async function POST(request: NextRequest) {
     if (isNewUser && !isGiftRequest) {
       // Vague first message (like "hello", "info", "do you ship?")
       // Don't forward to Claude — they'll get a confused response.
-      // Instead, send welcome + inject a gift request to demo the product.
+      // Instead, send welcome + hardcoded demo products (never fails).
       await sendTextMessage(phone, getWelcomeMessage(profileName))
       sendContactMessage(phone).catch(() => {})
 
-      // Auto-demo: process "gift for my mom" to show them what we do
-      // This gives them an immediate taste of the product — 3 real recommendations
-      const demoReply = await handleTextMessage(userId, listId, 'gift ideas for my mom', phone)
-      if (demoReply) {
-        await sendTextMessage(phone, demoReply)
-      }
+      // Hardcoded demo — same products as the landing page, with verified URLs.
+      // This NEVER fails (no Claude call, no URL resolution needed).
+      const demoProducts = `Here are gifts moms are loving right now:\n\n` +
+        `1. *Mejuri Bold Hoops* — $65\nhttps://www.mejuri.com/products/bold-hoops\nEveryday gold hoops she'll wear with everything\n\n` +
+        `2. *Tatcha Dewy Skin Set* — $68\nhttps://www.tatcha.com/product/dewy-skin-set\nA luxury skincare ritual she'd never buy herself\n\n` +
+        `3. *Le Labo Santal 33* — $220\nhttps://www.lelabofragrances.com/santal-33-702.html\nThe iconic scent — woody, warm, unforgettable\n\n` +
+        `Tap any link to view & buy! 🎁`
+      await sendTextMessage(phone, demoProducts)
 
       // Follow-up nudge after demo
       setTimeout(() => {
-        sendTextMessage(phone, `That was a demo! Now tell me who *you're* shopping for — I'll find something perfect for them 🎁`).catch(() => {})
+        sendTextMessage(phone, `That was just a sample! Now tell me who *you're* shopping for — their interests, age, occasion — and I'll find something perfect for them 🎁`).catch(() => {})
       }, 5000)
 
       // Mark as processed and return — don't double-process their original message
