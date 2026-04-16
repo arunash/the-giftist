@@ -149,16 +149,29 @@ export interface ProductUrlResult {
 
 // Find a verified product URL using GPT-4o web search (with local cache)
 export async function findProductUrl(productName: string): Promise<ProductUrlResult | null> {
-  // Check cache first
+  // 1. Check cache first (instant)
   const cached = await getCachedProductUrl(productName)
   if (cached) {
     console.log(`[ProductCache] HIT: "${productName}" → ${cached.url} (${cached.price || 'no price'})`)
     return { url: cached.url, domain: cached.domain, price: cached.price }
   }
 
+  // 2. Try direct lookup — instant, no API calls, 100% reliable
+  const { findDirectProductUrl } = await import('@/lib/direct-product-urls')
+  const direct = findDirectProductUrl(productName)
+  if (direct) {
+    console.log(`[ProductDirect] HIT: "${productName}" → ${direct.url} (${direct.price})`)
+    // Cache it for future lookups
+    cacheProductUrl(productName, direct.url, direct.domain, {
+      price: direct.price,
+      priceValue: direct.priceValue,
+    }).catch(() => {})
+    return { url: direct.url, domain: direct.domain, price: direct.price, priceValue: direct.priceValue }
+  }
+
   console.log(`[ProductSearch] Searching for: "${productName}"`)
 
-  // Use GPT-4o with web search to find real product URLs + current prices
+  // 3. Use Perplexity/GPT-4o with web search to find real product URLs
   try {
     const { results, bestResult } = await searchRetailers(productName, null, null)
 
