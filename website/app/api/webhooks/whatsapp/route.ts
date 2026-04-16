@@ -101,6 +101,21 @@ export async function POST(request: NextRequest) {
 
     const phone = normalizePhone(rawPhone)
 
+    // Capture CTWA ad referral data (click-to-WhatsApp ads include this)
+    const referral = message.referral
+    const adSource = referral ? {
+      source_url: referral.source_url,
+      source_id: referral.source_id,
+      source_type: referral.source_type,  // 'ad' for CTWA
+      headline: referral.headline,
+      body: referral.body,
+      ctwa_clid: referral.ctwa_clid,  // Click-to-WhatsApp click ID
+    } : null
+
+    if (adSource) {
+      console.log(`[WA] CTWA referral from ${phone}: ad=${adSource.source_id}, headline="${adSource.headline}"`)
+    }
+
     // Dedup check
     const existing = await prisma.whatsAppMessage.findUnique({
       where: { waMessageId },
@@ -132,14 +147,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ok' })
     }
 
-    // Create audit record
+    // Create audit record (include ad referral data if present)
     const waMsg = await prisma.whatsAppMessage.create({
       data: {
         waMessageId,
         phone,
-        type: messageType,
+        type: adSource ? 'CTWA_CLICK' : messageType,
         content: message.text?.body || message.caption || null,
         status: 'RECEIVED',
+        ...(adSource ? { error: JSON.stringify(adSource) } : {}),  // Store referral in error field (reuse existing column)
       },
     })
 
@@ -168,6 +184,11 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, demoReply)
       }
 
+      // Follow-up nudge after demo
+      setTimeout(() => {
+        sendTextMessage(phone, `That was a demo! Now tell me who *you're* shopping for — I'll find something perfect for them 🎁`).catch(() => {})
+      }, 5000)
+
       // Mark as processed and return — don't double-process their original message
       await prisma.whatsAppMessage.update({
         where: { id: waMsg.id },
@@ -178,6 +199,10 @@ export async function POST(request: NextRequest) {
 
     if (isNewUser && isGiftRequest) {
       sendContactMessage(phone).catch(() => {})
+      // After the AI reply is sent (below), send a follow-up nudge to keep the conversation going
+      setTimeout(() => {
+        sendTextMessage(phone, `💡 *Quick tip:* Reply with more details (hobbies, budget, age) and I'll refine my picks. Or just say "more like #1" to see similar options!`).catch(() => {})
+      }, 8000)  // 8 second delay so it arrives after the product images + text
     }
 
     let reply = ''
