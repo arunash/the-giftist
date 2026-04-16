@@ -76,13 +76,23 @@ export async function GET(req: Request) {
     orderBy: { createdAt: 'desc' },
   })
 
-  // Real WhatsApp conversations: users with phone who sent 2+ messages (actual engagement, not just thread opens)
+  // Real WhatsApp conversations: users with phone who sent messages
   const realConversations = await prisma.user.count({
     where: {
       phone: { not: null },
       chatMessages: { some: { role: 'USER' } },
     },
   })
+
+  // Engaged users: sent 2+ messages (had a real back-and-forth)
+  const engagedUsers = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) as count FROM (
+      SELECT u.id FROM "User" u
+      JOIN "ChatMessage" cm ON cm."userId" = u.id
+      WHERE u.phone IS NOT NULL AND cm.role = 'USER'
+      GROUP BY u.id HAVING COUNT(*) >= 2
+    ) sub
+  `
 
   // New WA users today
   const today = new Date()
@@ -94,18 +104,53 @@ export async function GET(req: Request) {
     },
   })
 
+  // Conversations today (users who signed up today AND chatted)
+  const conversationsToday = await prisma.user.count({
+    where: {
+      phone: { not: null },
+      createdAt: { gte: today },
+      chatMessages: { some: { role: 'USER' } },
+    },
+  })
+
+  // Recent conversations with details
+  const recentConversations = await prisma.user.findMany({
+    where: {
+      phone: { not: null },
+      chatMessages: { some: { role: 'USER' } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      createdAt: true,
+      _count: { select: { chatMessages: true, items: true } },
+      chatMessages: {
+        where: { role: 'USER' },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { content: true },
+      },
+    },
+  })
+
   // Account-level totals
+  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0)
   const totals = {
-    totalSpend: campaigns.reduce((s, c) => s + c.spend, 0),
+    totalSpend,
     totalImpressions: campaigns.reduce((s, c) => s + c.impressions, 0),
     totalClicks: campaigns.reduce((s, c) => s + c.clicks, 0),
     totalMessages: campaigns.reduce((s, c) => s + c.messages, 0),
     realConversations,
+    engagedUsers: Number(engagedUsers[0]?.count || 0),
     newWaUsersToday,
+    conversationsToday,
     activeCampaigns: campaigns.filter((c) => c.status === 'ACTIVE').length,
     avgCpc: 0,
     avgCtr: 0,
-    costPerRealConversation: 0,
+    costPerRealConversation: realConversations > 0 ? totalSpend / realConversations : 0,
   }
 
   if (totals.totalClicks > 0) {
@@ -114,11 +159,19 @@ export async function GET(req: Request) {
   if (totals.totalImpressions > 0) {
     totals.avgCtr = (totals.totalClicks / totals.totalImpressions) * 100
   }
-  if (realConversations > 0) {
-    totals.costPerRealConversation = totals.totalSpend / realConversations
-  }
 
-  return NextResponse.json({ campaigns, totals })
+  // Mask phone numbers for privacy
+  const conversations = recentConversations.map((u) => ({
+    id: u.id,
+    name: u.name || 'Unknown',
+    phone: u.phone ? `...${u.phone.slice(-4)}` : '?',
+    createdAt: u.createdAt,
+    messageCount: u._count.chatMessages,
+    itemsSaved: u._count.items,
+    firstMessage: u.chatMessages[0]?.content?.slice(0, 100) || '',
+  }))
+
+  return NextResponse.json({ campaigns, totals, conversations })
 }
 
 // POST: Create a new campaign or perform an action

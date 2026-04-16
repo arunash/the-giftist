@@ -25,15 +25,28 @@ interface MetaCampaign {
   createdAt: string
 }
 
+interface Conversation {
+  id: string
+  name: string
+  phone: string
+  createdAt: string
+  messageCount: number
+  itemsSaved: number
+  firstMessage: string
+}
+
 interface AdsData {
   campaigns: MetaCampaign[]
+  conversations: Conversation[]
   totals: {
     totalSpend: number
     totalImpressions: number
     totalClicks: number
     totalMessages: number
     realConversations: number
+    engagedUsers: number
     newWaUsersToday: number
+    conversationsToday: number
     activeCampaigns: number
     avgCpc: number
     avgCtr: number
@@ -176,16 +189,49 @@ export default function AdsPage() {
         </div>
       </div>
 
-      {/* KPIs — Real conversations is the primary metric */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
-        <KpiCard icon={MessageCircle} label="Real Conversations" value={String(t?.realConversations || 0)} sub="Users who actually chatted" />
-        <KpiCard icon={MessageCircle} label="New Today" value={String(t?.newWaUsersToday || 0)} sub="WA users today" />
-        <KpiCard icon={DollarSign} label="Cost / Conversation" value={`$${(t?.costPerRealConversation || 0).toFixed(2)}`} />
-        <KpiCard icon={DollarSign} label="Total Spend" value={`$${(t?.totalSpend || 0).toFixed(2)}`} />
-        <KpiCard icon={TrendingUp} label="Active" value={String(t?.activeCampaigns || 0)} />
+      {/* Primary metrics — Conversations */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+          <div className="flex items-center gap-2 text-sm text-green-700 mb-1">
+            <MessageCircle className="h-4 w-4" />
+            Conversations Today
+          </div>
+          <div className="text-3xl font-bold text-green-700">{t?.conversationsToday || 0}</div>
+          <div className="text-xs text-green-600 mt-1">{t?.newWaUsersToday || 0} new WA users</div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+          <div className="flex items-center gap-2 text-sm text-green-700 mb-1">
+            <MessageCircle className="h-4 w-4" />
+            Total Real Conversations
+          </div>
+          <div className="text-3xl font-bold text-green-700">{t?.realConversations || 0}</div>
+          <div className="text-xs text-green-600 mt-1">{t?.engagedUsers || 0} engaged (2+ msgs)</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <DollarSign className="h-4 w-4" />
+            Cost / Conversation
+          </div>
+          <div className="text-3xl font-bold">${(t?.costPerRealConversation || 0).toFixed(2)}</div>
+          <div className="text-xs text-gray-400 mt-1">Target: $2.50</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <DollarSign className="h-4 w-4" />
+            Total Spend
+          </div>
+          <div className="text-3xl font-bold">${(t?.totalSpend || 0).toFixed(2)}</div>
+          <div className="text-xs text-gray-400 mt-1">{t?.activeCampaigns || 0} active campaigns</div>
+        </div>
+      </div>
+
+      {/* Secondary metrics — Ad performance */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
         <KpiCard icon={Eye} label="Impressions" value={(t?.totalImpressions || 0).toLocaleString()} />
         <KpiCard icon={MousePointer} label="Clicks" value={(t?.totalClicks || 0).toLocaleString()} />
-        <KpiCard icon={TrendingUp} label="Avg CTR" value={`${(t?.avgCtr || 0).toFixed(2)}%`} />
+        <KpiCard icon={TrendingUp} label="CTR" value={`${(t?.avgCtr || 0).toFixed(2)}%`} />
+        <KpiCard icon={DollarSign} label="Avg CPC" value={`$${(t?.avgCpc || 0).toFixed(2)}`} />
+        <KpiCard icon={MessageCircle} label="Meta WA (inflated)" value={(t?.totalMessages || 0).toLocaleString()} sub="Thread opens, not real convos" />
       </div>
 
       {/* Create Campaign Form */}
@@ -365,6 +411,59 @@ export default function AdsPage() {
           Last synced: {data.campaigns[0]?.lastSyncAt ? new Date(data.campaigns[0].lastSyncAt).toLocaleString() : 'Never'}
         </div>
       ) : null}
+
+      {/* Conversations Table */}
+      {data?.conversations && data.conversations.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold mb-4">Recent Conversations</h2>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Messages</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items Saved</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">First Message</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {data.conversations.map((conv) => {
+                  const isToday = new Date(conv.createdAt).toDateString() === new Date().toDateString()
+                  return (
+                    <tr key={conv.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium">{conv.name}</div>
+                        <div className="text-xs text-gray-400">{conv.phone}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm">{new Date(conv.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-400">{new Date(conv.createdAt).toLocaleTimeString()}</div>
+                        {isToday && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Today</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-sm font-medium ${conv.messageCount >= 4 ? 'text-green-600' : conv.messageCount >= 2 ? 'text-amber-600' : 'text-gray-500'}`}>
+                          {conv.messageCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-sm ${conv.itemsSaved > 0 ? 'font-medium text-violet-600' : 'text-gray-400'}`}>
+                          {conv.itemsSaved}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-gray-500 max-w-xs truncate italic">
+                          &quot;{conv.firstMessage}&quot;
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
