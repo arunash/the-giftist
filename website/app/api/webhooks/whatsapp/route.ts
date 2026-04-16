@@ -199,11 +199,8 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, reply)
       }
 
-      // For product-specific first messages, send free-message info AFTER the helpful reply
-      if (isGiftRequest) {
-        const name = profileName ? ` ${profileName}` : ''
-        sendTextMessage(phone, `By the way${name} — you have *10 free messages* to chat with me. Need more? Grab a Credit Pack or upgrade to Gold at giftist.ai/settings`).catch(() => {})
-      }
+      // For product-specific first messages, DON'T mention credits yet — let them experience the value first.
+      // Credits info is shown after their 3rd message via the existing credit check logic.
 
       // Update audit record
       await prisma.whatsAppMessage.update({
