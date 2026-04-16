@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/db'
-import { normalizePhone, sendTextMessage, sendContactMessage, markAsRead } from '@/lib/whatsapp'
+import { normalizePhone, sendTextMessage, sendContactMessage, sendButtonMessage, sendImageMessage, markAsRead } from '@/lib/whatsapp'
 import {
   resolveUserAndList,
   handleTextMessage,
@@ -148,13 +148,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ok' })
     }
 
+    // Extract content from any message type
+    const messageContent = message.text?.body
+      || message.caption
+      || message.interactive?.button_reply?.title
+      || null
+
     // Create audit record (include ad referral data if present)
     const waMsg = await prisma.whatsAppMessage.create({
       data: {
         waMessageId,
         phone,
         type: adSource ? 'CTWA_CLICK' : messageType,
-        content: message.text?.body || message.caption || null,
+        content: messageContent,
         status: 'RECEIVED',
         ...(adSource ? { error: JSON.stringify(adSource) } : {}),  // Store referral in error field (reuse existing column)
       },
@@ -180,25 +186,37 @@ export async function POST(request: NextRequest) {
     const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day|need a gift|need gift|shopping for/i.test(firstMessageText)
 
     if (isNewUser && !isGiftRequest) {
-      // Vague first message (like "hello", "info", "do you ship?")
-      // Don't forward to Claude — they'll get a confused response.
-      // Instead, send welcome + hardcoded demo products (never fails).
-      await sendTextMessage(phone, getWelcomeMessage(profileName))
+      // Vague first message — delight them with a visual demo + interactive buttons.
+      // Show what Giftist does through experience, not explanation.
+
+      // 1. Welcome with product image (visual delight)
+      await sendImageMessage(
+        phone,
+        'https://images.mejuri.com/images/f_auto,q_auto/at5g2jx9g1flfq84pxpa/Bold-Hoops-Gold-Plated-1-Updated.png',
+        `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I'm your AI gift concierge.\n\nHere's what I found for someone shopping for Mom:\n\n✨ *Mejuri Bold Hoops* — $65\nEveryday gold hoops she'll wear with everything`,
+      )
+
+      // 2. Two more picks as text
+      await sendTextMessage(phone,
+        `Two more ideas at different price points:\n\n` +
+        `💆 *Tatcha Dewy Skin Set* — $68\nLuxury skincare ritual she'd never buy herself\nhttps://www.tatcha.com/product/dewy-skin-set\n\n` +
+        `🌿 *Le Labo Santal 33* — $220\nThe iconic scent — woody, warm, unforgettable\nhttps://www.lelabofragrances.com/santal-33-702.html`,
+      )
+
+      // 3. Interactive buttons — let them tap instead of type
+      await sendButtonMessage(
+        phone,
+        `That was just a demo! Now tell me who *you're* shopping for — or tap a button to get started 👇`,
+        [
+          { id: 'gift_mom', title: '🎁 Gift for Mom' },
+          { id: 'gift_birthday', title: '🎂 Birthday gift' },
+          { id: 'gift_partner', title: '💝 Gift for partner' },
+        ],
+        undefined,
+        'Free · Powered by AI',
+      )
+
       sendContactMessage(phone).catch(() => {})
-
-      // Hardcoded demo — same products as the landing page, with verified URLs.
-      // This NEVER fails (no Claude call, no URL resolution needed).
-      const demoProducts = `Here are gifts moms are loving right now:\n\n` +
-        `1. *Mejuri Bold Hoops* — $65\nhttps://www.mejuri.com/products/bold-hoops\nEveryday gold hoops she'll wear with everything\n\n` +
-        `2. *Tatcha Dewy Skin Set* — $68\nhttps://www.tatcha.com/product/dewy-skin-set\nA luxury skincare ritual she'd never buy herself\n\n` +
-        `3. *Le Labo Santal 33* — $220\nhttps://www.lelabofragrances.com/santal-33-702.html\nThe iconic scent — woody, warm, unforgettable\n\n` +
-        `Tap any link to view & buy! 🎁`
-      await sendTextMessage(phone, demoProducts)
-
-      // Follow-up nudge after demo
-      setTimeout(() => {
-        sendTextMessage(phone, `That was just a sample! Now tell me who *you're* shopping for — their interests, age, occasion — and I'll find something perfect for them 🎁`).catch(() => {})
-      }, 5000)
 
       // Mark as processed and return — don't double-process their original message
       await prisma.whatsAppMessage.update({
@@ -219,8 +237,20 @@ export async function POST(request: NextRequest) {
     let reply = ''
     let itemId: string | undefined
 
+    // Map interactive button replies to text messages
+    const buttonReplyMap: Record<string, string> = {
+      'gift_mom': "Gift ideas for my mom",
+      'gift_birthday': "I need a birthday gift",
+      'gift_partner': "Gift ideas for my partner",
+    }
+
     try {
-      if (messageType === 'text') {
+      if (messageType === 'interactive') {
+        // Handle button reply — translate to text and process through Claude
+        const buttonId = message.interactive?.button_reply?.id || ''
+        const mappedText = buttonReplyMap[buttonId] || message.interactive?.button_reply?.title || 'gift ideas'
+        reply = await handleTextMessage(userId, listId, mappedText, phone)
+      } else if (messageType === 'text') {
         reply = await handleTextMessage(userId, listId, message.text.body, phone)
       } else if (messageType === 'image') {
         const media = message.image

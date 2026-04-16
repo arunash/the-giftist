@@ -49,6 +49,44 @@ export async function sendTextMessage(to: string, body: string) {
   return result
 }
 
+/** Send an interactive message with quick-reply buttons (max 3 buttons) */
+export async function sendButtonMessage(
+  to: string,
+  body: string,
+  buttons: Array<{ id: string; title: string }>,
+  header?: string,
+  footer?: string,
+) {
+  if (isBlocked(to)) return { messages: [] }
+  const interactive: any = {
+    type: 'button',
+    body: { text: body },
+    action: {
+      buttons: buttons.slice(0, 3).map((b) => ({
+        type: 'reply',
+        reply: { id: b.id, title: b.title.slice(0, 20) },
+      })),
+    },
+  }
+  if (header) interactive.header = { type: 'text', text: header }
+  if (footer) interactive.footer = { text: footer }
+
+  const result = await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'interactive',
+    interactive,
+  })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND', content: body, status: 'SENT' },
+    }).catch(() => {})
+  }
+  return result
+}
+
 export async function sendTemplateMessage(to: string, templateName: string, parameters: string[]) {
   if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {
