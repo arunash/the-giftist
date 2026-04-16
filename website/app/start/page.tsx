@@ -317,7 +317,7 @@ export default function StartPage({
       {/* ── Primary CTA ── */}
       <div className="px-5 pb-8">
         <a
-          href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi! I need help finding a gift")}`}
+          href={`${WHATSAPP_URL}?text=${encodeURIComponent(getMainCTA(config.catalog))}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#20bd5a] text-white px-8 py-4 rounded-2xl font-semibold text-base transition shadow-lg shadow-[#25D366]/25 w-full"
@@ -376,7 +376,7 @@ export default function StartPage({
 
           {/* Final CTA */}
           <a
-            href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi! I need help finding a gift")}`}
+            href={`${WHATSAPP_URL}?text=${encodeURIComponent(getMainCTA(config.catalog))}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-8 flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#20bd5a] text-white px-8 py-4 rounded-2xl font-semibold text-base transition shadow-lg shadow-[#25D366]/25 w-full"
@@ -396,28 +396,38 @@ export default function StartPage({
 
 // ── Prompt chips per catalog ──
 
+function getMainCTA(catalog: string): string {
+  if (catalog === 'mothers') {
+    return "I need a Mother's Day gift for my mom — she loves "
+  }
+  if (catalog === 'birthday') {
+    return "I need a birthday gift — it's for my "
+  }
+  return "I need a gift idea — it's for my "
+}
+
 function getPrompts(catalog: string) {
   if (catalog === 'mothers') {
     return [
-      { icon: '👩‍🍳', label: "She loves cooking and gardening" },
-      { icon: '💆', label: "She's into skincare and wellness" },
-      { icon: '🤷', label: "She's hard to shop for — help!" },
-      { icon: '💰', label: "Budget is under $75" },
+      { icon: '👩‍🍳', label: "Gift for my mom — she loves cooking and gardening" },
+      { icon: '💆', label: "Mother's Day gift — she's into skincare and wellness" },
+      { icon: '🤷', label: "Mother's Day gift — she's hard to shop for, budget $75" },
+      { icon: '🎨', label: "Gift for my mom — she's creative and artsy" },
     ]
   }
   if (catalog === 'birthday') {
     return [
-      { icon: '👨', label: "Birthday gift for my dad" },
-      { icon: '👩', label: "Gift for my best friend" },
-      { icon: '💑', label: "Something for my partner" },
-      { icon: '⏰', label: "Need it by this weekend" },
+      { icon: '👨', label: "Birthday gift for my dad — he's into tech and outdoors" },
+      { icon: '👩', label: "Birthday gift for my best friend — she loves fashion" },
+      { icon: '💑', label: "Birthday gift for my partner, budget around $50" },
+      { icon: '⏰', label: "I need a birthday gift by this weekend — help!" },
     ]
   }
   return [
-    { icon: '🎂', label: "Birthday coming up" },
-    { icon: '💝', label: "Gift for my partner, ~$50" },
-    { icon: '⏰', label: "Need a last-minute idea" },
-    { icon: '💍', label: "Wedding gift" },
+    { icon: '🎂', label: "Birthday gift for my sister — she loves cooking" },
+    { icon: '💝', label: "Gift for my partner — budget around $50" },
+    { icon: '⏰', label: "I need a last-minute gift for a friend" },
+    { icon: '💍', label: "Wedding gift for my best friend — budget $100" },
   ]
 }
 
