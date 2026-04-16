@@ -1504,10 +1504,54 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           strippedContent = lines[0]
         }
       } else {
-        // NONE resolved — don't show any product text at all
-        console.log(`[WhatsApp] 0/${productSegments.length} products resolved — suppressing`)
-        strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
-        productList = ''
+        // NONE resolved — fall back to products from the catalog cache
+        console.log(`[WhatsApp] 0/${productSegments.length} products resolved — falling back to catalog`)
+        try {
+          const fallbacks = await prisma.productUrlCache.findMany({
+            where: { priceValue: { gt: 0 }, url: { not: null } },
+            orderBy: { verifiedAt: 'desc' },
+            take: 50,
+          })
+
+          if (fallbacks.length >= 3) {
+            // Pick 3 at different price points
+            const sorted = fallbacks.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0))
+            const low = sorted.find(p => (p.priceValue || 0) >= 10 && (p.priceValue || 0) <= 30)
+            const mid = sorted.find(p => (p.priceValue || 0) >= 40 && (p.priceValue || 0) <= 80)
+            const high = sorted.find(p => (p.priceValue || 0) >= 90 && (p.priceValue || 0) <= 200)
+            const picks = [low, mid, high].filter(Boolean)
+
+            if (picks.length >= 2) {
+              const fallbackLines: string[] = []
+              for (let i = 0; i < picks.length; i++) {
+                const p = picks[i]!
+                const trackedUrl = await createTrackedLink({
+                  productName: p.productName,
+                  targetUrl: p.url,
+                  price: p.price,
+                  priceValue: p.priceValue,
+                  image: p.image,
+                  userId,
+                  source: 'WHATSAPP',
+                })
+                fallbackLines.push(`${i + 1}. *${p.productName}* — ${p.price}\n${trackedUrl}?from=wa`)
+              }
+              strippedContent = "Here are some popular picks while I sort out the links for my original suggestions:"
+              productList = fallbackLines.join('\n') + '\n\n'
+              resolvedProductCount = picks.length
+            } else {
+              strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
+              productList = ''
+            }
+          } else {
+            strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
+            productList = ''
+          }
+        } catch (fallbackErr) {
+          console.error('[WhatsApp] Catalog fallback failed:', fallbackErr)
+          strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
+          productList = ''
+        }
       }
     }
 
