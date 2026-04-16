@@ -22,7 +22,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: 'Meta API not configured, skipping' })
   }
 
-  const results = { synced: 0, created: 0, paused: 0, errors: [] as string[] }
+  const results = { synced: 0, created: 0, paused: 0, realConversations: 0, errors: [] as string[] }
+
+  // ── 0. Count real WhatsApp conversations (users who sent 2+ messages) ──
+  try {
+    const realConvos = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(DISTINCT u.id) as count
+      FROM "User" u
+      WHERE u.phone IS NOT NULL
+      AND u."createdAt" >= NOW() - INTERVAL '1 day'
+      AND (
+        SELECT COUNT(*) FROM "ChatMessage" cm
+        WHERE cm."userId" = u.id AND cm.role = 'USER'
+      ) >= 2
+    `
+    results.realConversations = Number(realConvos[0]?.count || 0)
+  } catch (err: any) {
+    results.errors.push(`Real conversations count: ${err.message}`)
+  }
 
   // ── 1. Sync existing campaign performance ──
   try {

@@ -76,15 +76,36 @@ export async function GET(req: Request) {
     orderBy: { createdAt: 'desc' },
   })
 
+  // Real WhatsApp conversations: users with phone who sent 2+ messages (actual engagement, not just thread opens)
+  const realConversations = await prisma.user.count({
+    where: {
+      phone: { not: null },
+      chatMessages: { some: { role: 'USER' } },
+    },
+  })
+
+  // New WA users today
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const newWaUsersToday = await prisma.user.count({
+    where: {
+      phone: { not: null },
+      createdAt: { gte: today },
+    },
+  })
+
   // Account-level totals
   const totals = {
     totalSpend: campaigns.reduce((s, c) => s + c.spend, 0),
     totalImpressions: campaigns.reduce((s, c) => s + c.impressions, 0),
     totalClicks: campaigns.reduce((s, c) => s + c.clicks, 0),
     totalMessages: campaigns.reduce((s, c) => s + c.messages, 0),
+    realConversations,
+    newWaUsersToday,
     activeCampaigns: campaigns.filter((c) => c.status === 'ACTIVE').length,
     avgCpc: 0,
     avgCtr: 0,
+    costPerRealConversation: 0,
   }
 
   if (totals.totalClicks > 0) {
@@ -92,6 +113,9 @@ export async function GET(req: Request) {
   }
   if (totals.totalImpressions > 0) {
     totals.avgCtr = (totals.totalClicks / totals.totalImpressions) * 100
+  }
+  if (realConversations > 0) {
+    totals.costPerRealConversation = totals.totalSpend / realConversations
   }
 
   return NextResponse.json({ campaigns, totals })

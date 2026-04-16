@@ -32,9 +32,12 @@ interface AdsData {
     totalImpressions: number
     totalClicks: number
     totalMessages: number
+    realConversations: number
+    newWaUsersToday: number
     activeCampaigns: number
     avgCpc: number
     avgCtr: number
+    costPerRealConversation: number
   }
 }
 
@@ -173,14 +176,15 @@ export default function AdsPage() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-        <KpiCard icon={TrendingUp} label="Active" value={String(t?.activeCampaigns || 0)} />
+      {/* KPIs — Real conversations is the primary metric */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+        <KpiCard icon={MessageCircle} label="Real Conversations" value={String(t?.realConversations || 0)} sub="Users who actually chatted" />
+        <KpiCard icon={MessageCircle} label="New Today" value={String(t?.newWaUsersToday || 0)} sub="WA users today" />
+        <KpiCard icon={DollarSign} label="Cost / Conversation" value={`$${(t?.costPerRealConversation || 0).toFixed(2)}`} />
         <KpiCard icon={DollarSign} label="Total Spend" value={`$${(t?.totalSpend || 0).toFixed(2)}`} />
+        <KpiCard icon={TrendingUp} label="Active" value={String(t?.activeCampaigns || 0)} />
         <KpiCard icon={Eye} label="Impressions" value={(t?.totalImpressions || 0).toLocaleString()} />
         <KpiCard icon={MousePointer} label="Clicks" value={(t?.totalClicks || 0).toLocaleString()} />
-        <KpiCard icon={MessageCircle} label="Messages" value={(t?.totalMessages || 0).toLocaleString()} />
-        <KpiCard icon={DollarSign} label="Avg CPC" value={`$${(t?.avgCpc || 0).toFixed(2)}`} />
         <KpiCard icon={TrendingUp} label="Avg CTR" value={`${(t?.avgCtr || 0).toFixed(2)}%`} />
       </div>
 
@@ -301,7 +305,7 @@ export default function AdsPage() {
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Spend</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Impr.</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Clicks</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Msgs</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Meta Msgs</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CPC</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CTR</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
