@@ -196,6 +196,19 @@ export async function sendLocationMessage(to: string, lat: number, lng: number, 
   })
 }
 
+/** Send a video message (for GIFs — use Giphy's .mp4 URLs) */
+export async function sendVideoMessage(to: string, videoUrl: string, caption?: string) {
+  if (isBlocked(to)) return { messages: [] }
+  const result = await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'video',
+    video: { link: videoUrl, caption },
+  })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  return result
+}
+
 export async function sendTemplateMessage(to: string, templateName: string, parameters: string[]) {
   if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {

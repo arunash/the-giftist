@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/db'
-import { normalizePhone, sendTextMessage, sendContactMessage, sendButtonMessage, sendImageMessage, sendReaction, sendListMessage, sendCtaUrlMessage, markAsRead } from '@/lib/whatsapp'
+import { normalizePhone, sendTextMessage, sendContactMessage, sendButtonMessage, sendImageMessage, sendVideoMessage, sendReaction, sendListMessage, sendCtaUrlMessage, markAsRead } from '@/lib/whatsapp'
 import {
   resolveUserAndList,
   handleTextMessage,
@@ -250,17 +250,17 @@ export async function POST(request: NextRequest) {
           || message.interactive?.list_reply?.id
           || ''
 
-        // "Found it!" — celebrate with a GIF
+        // "Found it!" — celebrate with a GIF (sent as MP4 video — WhatsApp doesn't support .gif)
         if (buttonId === 'satisfaction_yes') {
           const memes = [
-            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif', caption: "That's what I like to hear! 🎉" },
-            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', caption: "Gift concierge coming through! 💪" },
-            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif', caption: "Another perfect gift found! 🎁" },
-            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif', caption: "Nailed it! 🎯" },
-            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif', caption: "Mission accomplished! 🚀" },
+            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.mp4', caption: "That's what I like to hear! 🎉" },
+            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.mp4', caption: "Gift concierge coming through! 💪" },
+            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.mp4', caption: "Another perfect gift found! 🎁" },
+            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.mp4', caption: "Nailed it! 🎯" },
+            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.mp4', caption: "Mission accomplished! 🚀" },
           ]
           const meme = memes[Math.floor(Math.random() * memes.length)]
-          sendImageMessage(phone, meme.url, meme.caption).catch(() => {})
+          sendVideoMessage(phone, meme.url, meme.caption).catch(() => {})
           reply = "I'm here whenever you need gift ideas again — just text me anytime! 🎁"
         } else {
           // Buttons + list items → translate to text and process through Claude
