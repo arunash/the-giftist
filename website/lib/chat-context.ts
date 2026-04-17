@@ -1,7 +1,10 @@
 import { prisma } from './db'
 import { getOverSuggestedProducts } from './product-suggestions'
 
-const FREE_LIFETIME_MESSAGE_LIMIT = 10
+// First 2 messages are the "demo" experience (welcome + first interaction).
+// The 10 free messages start counting from message 3.
+const FREE_DEMO_MESSAGES = 2
+const FREE_LIFETIME_MESSAGE_LIMIT = 10 + FREE_DEMO_MESSAGES  // 12 total messages before limit
 const FREE_PROFILE_LIMIT = 2  // lifetime, not daily
 const ADMIN_USER_IDS = new Set(['cmliwct6c00009zxu0g7rns32', 'cmn69aeli0002kzjxk28v4mnt'])
 const ADMIN_PHONES = new Set(['13034087839', '14153168720', '919321918293'])
@@ -84,14 +87,16 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
     },
   })
 
+  // Show remaining as "10 free messages" even though first 2 are uncounted demo
   const freeRemaining = Math.max(0, FREE_LIFETIME_MESSAGE_LIMIT - totalCount)
+  const displayRemaining = Math.max(0, freeRemaining - FREE_DEMO_MESSAGES + Math.min(FREE_DEMO_MESSAGES, totalCount))
 
   // If free lifetime limit not exhausted, allow
   if (totalCount < FREE_LIFETIME_MESSAGE_LIMIT) {
     return { allowed: true, remaining: freeRemaining }
   }
 
-  // Check purchased credits
+  // Check purchased credits (includes bonus credits)
   const credits = user?.messageCredits ?? 0
   if (credits > 0) {
     // Deduct one credit
@@ -100,6 +105,41 @@ export async function checkChatLimit(userId: string): Promise<{ allowed: boolean
       data: { messageCredits: { decrement: 1 } },
     })
     return { allowed: true, remaining: credits - 1 }
+  }
+
+  // Check if user has been offered the 48-hour bonus yet
+  const userFull = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { funnelStage: true },
+  })
+  const funnel = userFull?.funnelStage ? JSON.parse(userFull.funnelStage as string) : {}
+
+  if (!funnel.bonusOffered) {
+    // First time hitting the limit — grant 10 bonus messages expiring in 48h
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        messageCredits: 10,
+        funnelStage: JSON.stringify({
+          ...funnel,
+          bonusOffered: true,
+          bonusExpiresAt: new Date(Date.now() + 48 * 3600000).toISOString(),
+        }),
+      },
+    })
+    return { allowed: true, remaining: 10, bonus: true } as any
+  }
+
+  // Check if bonus credits expired
+  if (funnel.bonusExpiresAt && new Date(funnel.bonusExpiresAt) < new Date()) {
+    // Bonus expired — wipe any remaining bonus credits
+    if (credits > 0) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { messageCredits: 0 },
+      })
+    }
+    return { allowed: false, remaining: 0 }
   }
 
   return { allowed: false, remaining: 0 }

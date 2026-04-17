@@ -958,7 +958,29 @@ async function handleInstagramLink(
 
 async function handleChatMessage(userId: string, text: string, phone?: string): Promise<string> {
   // Check message limit for free users
-  const { allowed, remaining } = await checkChatLimit(userId)
+  const result = await checkChatLimit(userId)
+  const { allowed, remaining } = result
+  const isBonus = (result as any).bonus === true
+
+  // Just got 10 bonus messages — celebrate, don't block
+  if (isBonus) {
+    if (phone) {
+      const { sendButtonMessage } = await import('@/lib/whatsapp')
+      sendButtonMessage(
+        phone,
+        `🎁 *You've unlocked 10 bonus messages!*\n\nYou've been loving Giftist, so here's 10 more on us — they expire in 48 hours.\n\nKeep chatting and find the perfect gifts!`,
+        [
+          { id: 'gift_mom', title: '🎁 Gift for Mom' },
+          { id: 'gift_birthday', title: '🎂 Birthday gift' },
+          { id: 'gift_partner', title: '💝 Gift for partner' },
+        ],
+        undefined,
+        '48 hours to use them',
+      ).catch(() => {})
+    }
+    // Continue processing their message normally below
+  }
+
   if (!allowed) {
     // Generate inline checkout link
     try {
@@ -980,9 +1002,9 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
         success_url: 'https://giftist.ai/settings?credits=success',
         cancel_url: 'https://giftist.ai',
       })
-      return `You've used your 10 free messages.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 Gift DNA analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
+      return `Your bonus messages have expired.\n\n💳 *Buy a Credit Pack* ($5 for 50 messages + 5 Gift DNA analyses):\n${sess.url}\n\nOr upgrade to *Gold* ($4.99/mo) for unlimited: giftist.ai/settings`
     } catch {
-      return "You've used your 10 free messages. Visit giftist.ai/settings to buy a Credit Pack ($5 for 50 messages) or upgrade to Gold for unlimited!"
+      return "Your bonus messages have expired. Visit giftist.ai/settings to buy a Credit Pack ($5 for 50 messages) or upgrade to Gold for unlimited!"
     }
   }
 
@@ -1596,12 +1618,12 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    // Gentle credit awareness at message 3 (remaining = 7), warning at message 9 (remaining = 1)
+    // Credit awareness: gentle at message 5 (remaining=7), warning at message 11 (remaining=1)
     let limitWarning = ''
     if (remaining === 7) {
-      limitWarning = `\n\n💬 You have ${remaining} free messages left. Need more? Credit Pack ($5 for 50) → giftist.ai/settings`
+      limitWarning = '\n\n💬 You have 7 free messages left. After that, I\'ll give you 10 bonus messages to keep going!'
     } else if (remaining === 1) {
-      limitWarning = '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
+      limitWarning = '\n\n⚠️ *Last free message!* Don\'t worry — you\'ll get 10 bonus messages next.'
     }
 
     // Share CTA — show after successful product recommendations (every 3rd recommendation)
