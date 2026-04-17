@@ -1553,7 +1553,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
         try {
           const fallbacks = await prisma.productUrlCache.findMany({
-            where: { priceValue: { gt: 0 }, url: { not: null } },
+            where: { priceValue: { gt: 0 }, url: { not: '' } },
             orderBy: { verifiedAt: 'desc' },
             take: 50,
           })
