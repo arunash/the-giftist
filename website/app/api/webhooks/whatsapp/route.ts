@@ -253,11 +253,11 @@ export async function POST(request: NextRequest) {
         // "Found it!" — celebrate with a GIF (sent as MP4 video — WhatsApp doesn't support .gif)
         if (buttonId === 'satisfaction_yes') {
           const memes = [
-            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.mp4', caption: "That's what I like to hear! 🎉" },
-            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.mp4', caption: "Gift concierge coming through! 💪" },
-            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.mp4', caption: "Another perfect gift found! 🎁" },
-            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.mp4', caption: "Nailed it! 🎯" },
-            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.mp4', caption: "Mission accomplished! 🚀" },
+            { url: 'https://media.giphy.com/media/xT0xezQGU5xCDJuCPe/giphy.mp4', caption: "Congratulations! 🎉" },
+            { url: 'https://media.giphy.com/media/l0MYJnJQ4EiYLxvQ4/giphy.mp4', caption: "Nailed it! 👏" },
+            { url: 'https://media.giphy.com/media/3oEjI5VtIhHvK37WYo/giphy.mp4', caption: "Great job! 🎯" },
+            { url: 'https://media.giphy.com/media/fdyZ3qI0GVZC0/giphy.mp4', caption: "Mission accomplished! 🚀" },
+            { url: 'https://media.giphy.com/media/xT5LMHxhOfscxPfIfm/giphy.mp4', caption: "That's what I like to hear! 🎁" },
           ]
           const meme = memes[Math.floor(Math.random() * memes.length)]
           sendVideoMessage(phone, meme.url, meme.caption).catch(() => {})
