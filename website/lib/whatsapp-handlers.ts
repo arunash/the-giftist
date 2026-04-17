@@ -1488,19 +1488,15 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
       const lines: string[] = []
       let displayIdx = 0
-      let topProductUrl: string | null = null
-      let topProductName: string | null = null
+      const productCtaButtons: { name: string; url: string; price: string }[] = []
       for (const result of productResults) {
         if (!result) continue
         displayIdx++
         lines.push(`${displayIdx}. *${result.name}*${result.price}${result.link}`)
-        if (!topProductUrl) {
-          // Extract the giftist.ai URL for CTA button
-          const urlMatch = result.link.match(/(https:\/\/giftist\.ai\/p\/[^\s?]+)/)
-          if (urlMatch) {
-            topProductUrl = urlMatch[1]
-            topProductName = result.name
-          }
+        // Collect CTA button data for each product
+        const urlMatch = result.link.match(/(https:\/\/giftist\.ai\/p\/[^\s?]+)/)
+        if (urlMatch) {
+          productCtaButtons.push({ name: result.name, url: urlMatch[1], price: result.price || '' })
         }
         if (result.image) {
           productImages.push({ image: result.image, caption: `${displayIdx}. *${result.name}*${result.price}` })
@@ -1508,15 +1504,18 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
       productList = lines.join('\n') + '\n\n'
 
-      // Send CTA URL button for the top product (if on WhatsApp)
-      if (topProductUrl && phone) {
+      // Send a CTA URL button for EACH product (way more visible than text links)
+      if (productCtaButtons.length > 0 && phone) {
         const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-        sendCtaUrlMessage(
-          phone,
-          `👆 Tap to view the top pick`,
-          `View ${(topProductName || 'product').split(' ').slice(0, 3).join(' ')}`,
-          topProductUrl,
-        ).catch(() => {})
+        for (const btn of productCtaButtons) {
+          const shortName = btn.name.split(' ').slice(0, 4).join(' ')
+          sendCtaUrlMessage(
+            phone,
+            `*${btn.name}*${btn.price}\nTap below to view & buy:`,
+            `View ${shortName}`,
+            btn.url,
+          ).catch(() => {})
+        }
       }
 
       // Track impressions (fire-and-forget)

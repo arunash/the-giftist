@@ -292,8 +292,37 @@ export async function POST(request: NextRequest) {
           doc.filename,
           phone,
         )
+      } else if (messageType === 'audio') {
+        // Voice note support — transcribe with Whisper, then process as text
+        const audioId = message.audio?.id
+        if (audioId) {
+          try {
+            const { downloadMedia } = await import('@/lib/whatsapp')
+            const audioBuffer = await downloadMedia(audioId)
+
+            // Transcribe with OpenAI Whisper
+            const OpenAI = (await import('openai')).default
+            const openai = new OpenAI()
+            const audioFile = new File([audioBuffer], 'voice.ogg', { type: 'audio/ogg' })
+            const transcription = await openai.audio.transcriptions.create({
+              file: audioFile,
+              model: 'whisper-1',
+            })
+
+            const text = transcription.text
+            if (text) {
+              await sendTextMessage(phone, `🎤 I heard: _"${text}"_`)
+              reply = await handleTextMessage(userId, listId, text, phone)
+            } else {
+              reply = "I couldn't catch that — could you try typing your request instead?"
+            }
+          } catch (err) {
+            console.error('Voice note error:', err)
+            reply = "I couldn't process that voice note — try typing your request or sending it as text!"
+          }
+        }
       } else {
-        reply = "I can process links, photos, and WhatsApp chat exports (.txt). Send me a product URL, image, or exported chat!"
+        reply = "I can help with gifts! Just type who you're shopping for, send a photo, or use a voice note 🎤"
       }
 
       // Send reply (empty string means handler already sent a reply)
