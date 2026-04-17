@@ -242,14 +242,23 @@ export async function POST(request: NextRequest) {
       'gift_mom': "Gift ideas for my mom",
       'gift_birthday': "I need a birthday gift",
       'gift_partner': "Gift ideas for my partner",
+      'satisfaction_yes': "Thanks, I found what I needed!",
+      'satisfaction_more': "Show me more options",
+      'satisfaction_different': "I want something completely different",
     }
 
     try {
       if (messageType === 'interactive') {
-        // Handle button reply — translate to text and process through Claude
         const buttonId = message.interactive?.button_reply?.id || ''
-        const mappedText = buttonReplyMap[buttonId] || message.interactive?.button_reply?.title || 'gift ideas'
-        reply = await handleTextMessage(userId, listId, mappedText, phone)
+
+        // "Found it!" — celebrate, don't send to Claude
+        if (buttonId === 'satisfaction_yes') {
+          reply = "Amazing! 🎉 Glad I could help. I'm here whenever you need gift ideas again — just text me anytime!"
+        } else {
+          // Other buttons — translate to text and process through Claude
+          const mappedText = buttonReplyMap[buttonId] || message.interactive?.button_reply?.title || 'gift ideas'
+          reply = await handleTextMessage(userId, listId, mappedText, phone)
+        }
       } else if (messageType === 'text') {
         reply = await handleTextMessage(userId, listId, message.text.body, phone)
       } else if (messageType === 'image') {
@@ -281,8 +290,20 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, reply)
       }
 
-      // For product-specific first messages, DON'T mention credits yet — let them experience the value first.
-      // Credits info is shown after their 3rd message via the existing credit check logic.
+      // Send satisfaction buttons 30s after product recommendations
+      if (reply && reply.includes('giftist.ai/p/')) {
+        setTimeout(() => {
+          sendButtonMessage(
+            phone,
+            'Did any of those work for you?',
+            [
+              { id: 'satisfaction_yes', title: '✅ Found it!' },
+              { id: 'satisfaction_more', title: '🔄 Show me more' },
+              { id: 'satisfaction_different', title: '↩️ Something else' },
+            ],
+          ).catch(() => {})
+        }, 30000)
+      }
 
       // Update audit record
       await prisma.whatsAppMessage.update({
