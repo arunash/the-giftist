@@ -302,13 +302,15 @@ export async function POST(request: NextRequest) {
 
             // Transcribe with OpenAI Whisper
             const OpenAI = (await import('openai')).default
+            const { writeFileSync, unlinkSync, createReadStream } = await import('fs')
+            const tmpPath = `/tmp/voice_${Date.now()}.ogg`
+            writeFileSync(tmpPath, audioBuffer)
             const openai = new OpenAI()
-            const uint8 = new Uint8Array(audioBuffer.buffer, audioBuffer.byteOffset, audioBuffer.byteLength)
-            const audioFile = new File([uint8], 'voice.ogg', { type: 'audio/ogg' })
             const transcription = await openai.audio.transcriptions.create({
-              file: audioFile,
+              file: createReadStream(tmpPath) as any,
               model: 'whisper-1',
             })
+            unlinkSync(tmpPath)
 
             const text = transcription.text
             if (text) {
