@@ -27,44 +27,50 @@ export async function GET(req: Request) {
   // If sync requested, pull latest from Meta API
   if (sync && process.env.META_ACCESS_TOKEN) {
     try {
+      // Step 1: Get campaign list
       const metaCampaigns = await listCampaigns()
 
+      // Step 2: Pull ALL insights at campaign level in one call (much faster + works with ad-set budgets)
+      const token = process.env.META_ACCESS_TOKEN!.trim()
+      const adAccountId = process.env.META_AD_ACCOUNT_ID!.trim()
+      const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10) // last 30 days
+      const until = new Date().toISOString().slice(0, 10)
+      const insightsRes = await fetch(
+        `https://graph.facebook.com/v21.0/act_${adAccountId}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,actions&level=campaign&time_range={"since":"${since}","until":"${until}"}&limit=100&access_token=${token}`
+      )
+      const insightsData = await insightsRes.json()
+      const insightsByCampaign = new Map<string, any>()
+      for (const row of insightsData.data || []) {
+        insightsByCampaign.set(row.campaign_id, row)
+      }
+
+      // Step 3: Clear old entries and rebuild from scratch (avoids duplicates)
+      await prisma.metaCampaign.deleteMany({})
+
       for (const mc of metaCampaigns) {
-        const insights = await getCampaignInsights(mc.id)
+        const insights = insightsByCampaign.get(mc.id)
         const messageActions = insights?.actions?.find(
-          (a) => a.action_type === 'onsite_conversion.messaging_conversation_started_7d'
+          (a: any) => a.action_type === 'onsite_conversion.messaging_conversation_started_7d'
         )
 
-        const existing = localCampaigns.find((l) => l.metaCampaignId === mc.id)
-        const updateData = {
-          name: mc.name,
-          status: mc.status,
-          spend: insights?.spend || 0,
-          impressions: insights?.impressions || 0,
-          clicks: insights?.clicks || 0,
-          messages: messageActions ? parseInt(messageActions.value) : 0,
-          cpc: insights?.cpc || 0,
-          ctr: insights?.ctr || 0,
-          cpm: insights?.cpm || 0,
-          lastSyncAt: new Date(),
-        }
-
-        if (existing) {
-          await prisma.metaCampaign.update({
-            where: { id: existing.id },
-            data: updateData,
-          })
-        } else {
-          await prisma.metaCampaign.create({
-            data: {
-              metaCampaignId: mc.id,
-              objective: mc.objective || 'ENGAGEMENT',
-              dailyBudget: mc.daily_budget ? parseInt(mc.daily_budget) / 100 : 5,
-              startDate: new Date(),
-              ...updateData,
-            },
-          })
-        }
+        await prisma.metaCampaign.create({
+          data: {
+            metaCampaignId: mc.id,
+            name: mc.name,
+            objective: mc.objective || 'ENGAGEMENT',
+            status: mc.status,
+            dailyBudget: mc.daily_budget ? parseInt(mc.daily_budget) / 100 : 5,
+            spend: insights ? parseFloat(insights.spend) : 0,
+            impressions: insights ? parseInt(insights.impressions) : 0,
+            clicks: insights ? parseInt(insights.clicks) : 0,
+            messages: messageActions ? parseInt(messageActions.value) : 0,
+            cpc: insights?.cpc ? parseFloat(insights.cpc) : 0,
+            ctr: insights?.ctr ? parseFloat(insights.ctr) : 0,
+            cpm: insights?.cpm ? parseFloat(insights.cpm) : 0,
+            startDate: mc.created_time ? new Date(mc.created_time) : new Date(),
+            lastSyncAt: new Date(),
+          },
+        })
       }
     } catch (err: any) {
       console.error('Meta sync error:', err.message)

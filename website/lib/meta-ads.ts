@@ -251,9 +251,9 @@ export async function getAccountInsights(dateRange?: { start: string; end: strin
   }
 }
 
-export async function listCampaigns(): Promise<Array<{ id: string; name: string; status: string; daily_budget: string; objective: string }>> {
+export async function listCampaigns(): Promise<Array<{ id: string; name: string; status: string; daily_budget: string; objective: string; created_time?: string }>> {
   const { adAccountId } = getConfig()
-  const data = await metaApi(`/act_${adAccountId}/campaigns?fields=id,name,status,daily_budget,objective&limit=50`)
+  const data = await metaApi(`/act_${adAccountId}/campaigns?fields=id,name,status,daily_budget,objective,created_time&limit=50`)
   return data.data || []
 }
 
