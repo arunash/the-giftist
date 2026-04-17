@@ -301,8 +301,22 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, reply)
       }
 
-      // Send satisfaction buttons right after product recommendations (no delay — serverless can't setTimeout)
-      if (reply && reply.includes('giftist.ai/p/')) {
+      // Send satisfaction buttons after ANY reply that contains product recommendations
+      // Detect by: product links OR numbered product list format ("1. *Product Name*")
+      const hasProducts = reply && (
+        reply.includes('giftist.ai/p/') ||
+        reply.includes('amazon.com/dp/') ||
+        reply.includes('amazon.com/') ||
+        reply.includes('mejuri.com/') ||
+        reply.includes('tatcha.com/') ||
+        reply.includes('target.com/p/') ||
+        reply.includes('nordstrom.com/s/') ||
+        reply.includes('walmart.com/ip/') ||
+        reply.includes('bestbuy.com/') ||
+        /\d\.\s\*[A-Z]/.test(reply)  // numbered list with bold product names: "1. *Product..."
+      )
+
+      if (hasProducts) {
         await sendButtonMessage(
           phone,
           'Did any of those work for you?',
@@ -314,7 +328,7 @@ export async function POST(request: NextRequest) {
         ).catch(() => {})
       }
 
-      // First gift request nudge — send after the reply (not setTimeout)
+      // First gift request nudge — for new users only
       if (isNewUser && isGiftRequest && reply) {
         await sendTextMessage(phone, `💡 *Quick tip:* Reply with more details (hobbies, budget, age) and I'll refine my picks. Or just say "more like #1" to see similar options!`).catch(() => {})
       }

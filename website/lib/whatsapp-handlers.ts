@@ -1598,6 +1598,17 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
             `2. *Tatcha Dewy Skin Set* — $68\nhttps://www.tatcha.com/product/dewy-skin-set\nLuxury skincare ritual\n\n` +
             `3. *Kindle Paperwhite* — $150\nhttps://www.amazon.com/dp/B09TMN58KL\nPerfect for the reader in your life\n\n`
           resolvedProductCount = 3
+
+          // CTA button for hardcoded top pick
+          if (phone) {
+            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+            sendCtaUrlMessage(
+              phone,
+              '👆 Tap to view the top pick',
+              'View Mejuri Hoops',
+              'https://www.mejuri.com/products/bold-hoops',
+            ).catch(() => {})
+          }
         }
       }
     }
