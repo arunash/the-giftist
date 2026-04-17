@@ -303,8 +303,8 @@ export async function POST(request: NextRequest) {
             // Transcribe with OpenAI Whisper
             const OpenAI = (await import('openai')).default
             const openai = new OpenAI()
-            const blob = new Blob([audioBuffer], { type: 'audio/ogg' })
-            const audioFile = new File([blob], 'voice.ogg', { type: 'audio/ogg' })
+            const uint8 = new Uint8Array(audioBuffer.buffer, audioBuffer.byteOffset, audioBuffer.byteLength)
+            const audioFile = new File([uint8], 'voice.ogg', { type: 'audio/ogg' })
             const transcription = await openai.audio.transcriptions.create({
               file: audioFile,
               model: 'whisper-1',
