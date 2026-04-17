@@ -1596,10 +1596,13 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    // Warn user when they have 1 free message left
-    const limitWarning = remaining === 1
-      ? '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
-      : ''
+    // Gentle credit awareness at message 3 (remaining = 7), warning at message 9 (remaining = 1)
+    let limitWarning = ''
+    if (remaining === 7) {
+      limitWarning = `\n\n💬 You have ${remaining} free messages left. Need more? Credit Pack ($5 for 50) → giftist.ai/settings`
+    } else if (remaining === 1) {
+      limitWarning = '\n\n⚠️ *1 free message left.* Credit Pack: $5 for 50 msgs | Gold: $4.99/mo unlimited → giftist.ai/settings'
+    }
 
     // Share CTA — show after successful product recommendations (every 3rd recommendation)
     let shareCta = ''
