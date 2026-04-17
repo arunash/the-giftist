@@ -1488,15 +1488,36 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
       const lines: string[] = []
       let displayIdx = 0
+      let topProductUrl: string | null = null
+      let topProductName: string | null = null
       for (const result of productResults) {
         if (!result) continue
         displayIdx++
         lines.push(`${displayIdx}. *${result.name}*${result.price}${result.link}`)
+        if (!topProductUrl) {
+          // Extract the giftist.ai URL for CTA button
+          const urlMatch = result.link.match(/(https:\/\/giftist\.ai\/p\/[^\s?]+)/)
+          if (urlMatch) {
+            topProductUrl = urlMatch[1]
+            topProductName = result.name
+          }
+        }
         if (result.image) {
           productImages.push({ image: result.image, caption: `${displayIdx}. *${result.name}*${result.price}` })
         }
       }
       productList = lines.join('\n') + '\n\n'
+
+      // Send CTA URL button for the top product (if on WhatsApp)
+      if (topProductUrl && phone) {
+        const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+        sendCtaUrlMessage(
+          phone,
+          `👆 Tap to view the top pick`,
+          `View ${(topProductName || 'product').split(' ').slice(0, 3).join(' ')}`,
+          topProductUrl,
+        ).catch(() => {})
+      }
 
       // Track impressions (fire-and-forget)
       for (const result of productResults) {

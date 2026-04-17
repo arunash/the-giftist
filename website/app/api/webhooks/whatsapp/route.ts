@@ -189,50 +189,19 @@ export async function POST(request: NextRequest) {
     const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day|need a gift|need gift|shopping for/i.test(firstMessageText)
 
     if (isNewUser && !isGiftRequest) {
-      // Vague first message — delight them with a visual demo + interactive buttons.
-      // Show what Giftist does through experience, not explanation.
+      // Vague first message — one clean message + buttons. Don't overwhelm.
+      // The ad already told them what we do. Just ask what they need.
 
-      // 1. Welcome with product image (visual delight)
-      await sendImageMessage(
+      await sendButtonMessage(
         phone,
-        'https://images.mejuri.com/images/f_auto,q_auto/at5g2jx9g1flfq84pxpa/Bold-Hoops-Gold-Plated-1-Updated.png',
-        `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I'm your AI gift concierge.\n\nHere's what I found for someone shopping for Mom:\n\n✨ *Mejuri Bold Hoops* — $65\nEveryday gold hoops she'll wear with everything`,
-      )
-
-      // 2. Two more picks as text
-      await sendTextMessage(phone,
-        `Two more ideas at different price points:\n\n` +
-        `💆 *Tatcha Dewy Skin Set* — $68\nLuxury skincare ritual she'd never buy herself\nhttps://www.tatcha.com/product/dewy-skin-set\n\n` +
-        `🌿 *Le Labo Santal 33* — $220\nThe iconic scent — woody, warm, unforgettable\nhttps://www.lelabofragrances.com/santal-33-702.html`,
-      )
-
-      // 3. Interactive list — all occasions in a tappable dropdown
-      await sendListMessage(
-        phone,
-        `That was just a demo! Now tell me who *you're* shopping for — or pick an occasion 👇`,
-        'Pick an occasion',
+        `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I find the perfect gift for anyone in seconds.\n\nJust tell me *who it's for* and *what they're into* — I'll send you 3 great options with prices and links.\n\nOr tap below to get started:`,
         [
-          {
-            title: 'Popular',
-            rows: [
-              { id: 'list_mom', title: '🌸 Mother\'s Day', description: 'Gifts moms actually love' },
-              { id: 'list_birthday', title: '🎂 Birthday', description: 'Tell me about the birthday person' },
-              { id: 'list_partner', title: '💝 Partner / Anniversary', description: 'Thoughtful + romantic' },
-            ],
-          },
-          {
-            title: 'More occasions',
-            rows: [
-              { id: 'list_wedding', title: '💍 Wedding', description: 'For the happy couple' },
-              { id: 'list_baby', title: '👶 Baby shower / new baby', description: 'Practical + cute' },
-              { id: 'list_graduation', title: '🎓 Graduation', description: 'Milestone-worthy gifts' },
-              { id: 'list_thankyou', title: '🙏 Thank you / host gift', description: 'Show appreciation' },
-              { id: 'list_selfcare', title: '🧖 Treat myself', description: 'You deserve it too' },
-            ],
-          },
+          { id: 'list_mom', title: '🌸 Gift for Mom' },
+          { id: 'list_birthday', title: '🎂 Birthday gift' },
+          { id: 'list_partner', title: '💝 Gift for partner' },
         ],
         undefined,
-        'Free · Powered by AI',
+        'Free · Reply in seconds',
       )
 
       sendContactMessage(phone).catch(() => {})
