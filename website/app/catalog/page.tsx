@@ -25,7 +25,7 @@ export default async function GiftsPage() {
   const products = await prisma.productUrlCache.findMany({
     where: {
       priceValue: { gt: 0 },
-      url: { not: null },
+      url: { not: '' },
     },
     orderBy: { verifiedAt: 'desc' },
     take: 100,
