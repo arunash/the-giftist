@@ -228,10 +228,7 @@ export async function POST(request: NextRequest) {
 
     if (isNewUser && isGiftRequest) {
       sendContactMessage(phone).catch(() => {})
-      // After the AI reply is sent (below), send a follow-up nudge to keep the conversation going
-      setTimeout(() => {
-        sendTextMessage(phone, `💡 *Quick tip:* Reply with more details (hobbies, budget, age) and I'll refine my picks. Or just say "more like #1" to see similar options!`).catch(() => {})
-      }, 8000)  // 8 second delay so it arrives after the product images + text
+      // Nudge is sent after the reply below (can't setTimeout on serverless)
     }
 
     let reply = ''
@@ -299,19 +296,22 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, reply)
       }
 
-      // Send satisfaction buttons 30s after product recommendations
+      // Send satisfaction buttons right after product recommendations (no delay — serverless can't setTimeout)
       if (reply && reply.includes('giftist.ai/p/')) {
-        setTimeout(() => {
-          sendButtonMessage(
-            phone,
-            'Did any of those work for you?',
-            [
-              { id: 'satisfaction_yes', title: '✅ Found it!' },
-              { id: 'satisfaction_more', title: '🔄 Show me more' },
-              { id: 'satisfaction_different', title: '↩️ Something else' },
-            ],
-          ).catch(() => {})
-        }, 30000)
+        await sendButtonMessage(
+          phone,
+          'Did any of those work for you?',
+          [
+            { id: 'satisfaction_yes', title: '✅ Found it!' },
+            { id: 'satisfaction_more', title: '🔄 Show me more' },
+            { id: 'satisfaction_different', title: '↩️ Something else' },
+          ],
+        ).catch(() => {})
+      }
+
+      // First gift request nudge — send after the reply (not setTimeout)
+      if (isNewUser && isGiftRequest && reply) {
+        await sendTextMessage(phone, `💡 *Quick tip:* Reply with more details (hobbies, budget, age) and I'll refine my picks. Or just say "more like #1" to see similar options!`).catch(() => {})
       }
 
       // Update audit record
