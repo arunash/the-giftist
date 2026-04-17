@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/db'
-import { normalizePhone, sendTextMessage, sendContactMessage, sendButtonMessage, sendImageMessage, markAsRead } from '@/lib/whatsapp'
+import { normalizePhone, sendTextMessage, sendContactMessage, sendButtonMessage, sendImageMessage, sendReaction, sendListMessage, sendCtaUrlMessage, markAsRead } from '@/lib/whatsapp'
 import {
   resolveUserAndList,
   handleTextMessage,
@@ -166,8 +166,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Mark as read
+    // Mark as read + react immediately so user sees we're working on it
     markAsRead(waMessageId).catch(() => {})
+    if (messageType === 'text' || messageType === 'interactive') {
+      sendReaction(phone, waMessageId, '🎁').catch(() => {})
+    }
 
     // Resolve user and list
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
@@ -203,14 +206,30 @@ export async function POST(request: NextRequest) {
         `🌿 *Le Labo Santal 33* — $220\nThe iconic scent — woody, warm, unforgettable\nhttps://www.lelabofragrances.com/santal-33-702.html`,
       )
 
-      // 3. Interactive buttons — let them tap instead of type
-      await sendButtonMessage(
+      // 3. Interactive list — all occasions in a tappable dropdown
+      await sendListMessage(
         phone,
-        `That was just a demo! Now tell me who *you're* shopping for — or tap a button to get started 👇`,
+        `That was just a demo! Now tell me who *you're* shopping for — or pick an occasion 👇`,
+        'Pick an occasion',
         [
-          { id: 'gift_mom', title: '🎁 Gift for Mom' },
-          { id: 'gift_birthday', title: '🎂 Birthday gift' },
-          { id: 'gift_partner', title: '💝 Gift for partner' },
+          {
+            title: 'Popular',
+            rows: [
+              { id: 'list_mom', title: '🌸 Mother\'s Day', description: 'Gifts moms actually love' },
+              { id: 'list_birthday', title: '🎂 Birthday', description: 'Tell me about the birthday person' },
+              { id: 'list_partner', title: '💝 Partner / Anniversary', description: 'Thoughtful + romantic' },
+            ],
+          },
+          {
+            title: 'More occasions',
+            rows: [
+              { id: 'list_wedding', title: '💍 Wedding', description: 'For the happy couple' },
+              { id: 'list_baby', title: '👶 Baby shower / new baby', description: 'Practical + cute' },
+              { id: 'list_graduation', title: '🎓 Graduation', description: 'Milestone-worthy gifts' },
+              { id: 'list_thankyou', title: '🙏 Thank you / host gift', description: 'Show appreciation' },
+              { id: 'list_selfcare', title: '🧖 Treat myself', description: 'You deserve it too' },
+            ],
+          },
         ],
         undefined,
         'Free · Powered by AI',
@@ -234,35 +253,52 @@ export async function POST(request: NextRequest) {
     let reply = ''
     let itemId: string | undefined
 
-    // Map interactive button replies to text messages
+    // Map interactive button + list replies to text messages
     const buttonReplyMap: Record<string, string> = {
+      // Welcome buttons
       'gift_mom': "Gift ideas for my mom",
       'gift_birthday': "I need a birthday gift",
       'gift_partner': "Gift ideas for my partner",
+      // Satisfaction buttons
       'satisfaction_yes': "Thanks, I found what I needed!",
       'satisfaction_more': "Show me more options",
       'satisfaction_different': "I want something completely different",
+      // Occasion list items
+      'list_mom': "Gift ideas for my mom for Mother's Day",
+      'list_birthday': "I need a birthday gift",
+      'list_partner': "Gift for my partner for our anniversary",
+      'list_wedding': "Wedding gift for a couple",
+      'list_baby': "Gift for a baby shower",
+      'list_graduation': "Graduation gift",
+      'list_thankyou': "Thank you gift for a host",
+      'list_selfcare': "I want to treat myself — what do you recommend?",
     }
 
     try {
       if (messageType === 'interactive') {
-        const buttonId = message.interactive?.button_reply?.id || ''
+        // Handle button replies, list replies
+        const buttonId = message.interactive?.button_reply?.id
+          || message.interactive?.list_reply?.id
+          || ''
 
-        // "Found it!" — celebrate with a meme + message
+        // "Found it!" — celebrate with a GIF
         if (buttonId === 'satisfaction_yes') {
           const memes = [
-            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif', caption: "That's what I like to hear! 🎉" },  // celebration dance
-            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', caption: "Gift concierge coming through! 💪" },  // mic drop
-            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif', caption: "Another perfect gift found! 🎁" },  // excited
-            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif', caption: "Nailed it! 🎯" },  // success kid
-            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif', caption: "Mission accomplished! 🚀" },  // fireworks
+            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif', caption: "That's what I like to hear! 🎉" },
+            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', caption: "Gift concierge coming through! 💪" },
+            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif', caption: "Another perfect gift found! 🎁" },
+            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif', caption: "Nailed it! 🎯" },
+            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif', caption: "Mission accomplished! 🚀" },
           ]
           const meme = memes[Math.floor(Math.random() * memes.length)]
           sendImageMessage(phone, meme.url, meme.caption).catch(() => {})
           reply = "I'm here whenever you need gift ideas again — just text me anytime! 🎁"
         } else {
-          // Other buttons — translate to text and process through Claude
-          const mappedText = buttonReplyMap[buttonId] || message.interactive?.button_reply?.title || 'gift ideas'
+          // Buttons + list items → translate to text and process through Claude
+          const mappedText = buttonReplyMap[buttonId]
+            || message.interactive?.button_reply?.title
+            || message.interactive?.list_reply?.title
+            || 'gift ideas'
           reply = await handleTextMessage(userId, listId, mappedText, phone)
         }
       } else if (messageType === 'text') {

@@ -87,6 +87,115 @@ export async function sendButtonMessage(
   return result
 }
 
+/** React to a message with an emoji — instant acknowledgment */
+export async function sendReaction(to: string, messageId: string, emoji: string) {
+  if (isBlocked(to)) return
+  await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'reaction',
+    reaction: { message_id: messageId, emoji },
+  }).catch(() => {})
+}
+
+/** Send a list message with sections (up to 10 sections, 10 items each) */
+export async function sendListMessage(
+  to: string,
+  body: string,
+  buttonText: string,
+  sections: Array<{
+    title: string
+    rows: Array<{ id: string; title: string; description?: string }>
+  }>,
+  header?: string,
+  footer?: string,
+) {
+  if (isBlocked(to)) return { messages: [] }
+  const interactive: any = {
+    type: 'list',
+    body: { text: body },
+    action: {
+      button: buttonText.slice(0, 20),
+      sections: sections.map((s) => ({
+        title: s.title.slice(0, 24),
+        rows: s.rows.slice(0, 10).map((r) => ({
+          id: r.id,
+          title: r.title.slice(0, 24),
+          description: r.description?.slice(0, 72),
+        })),
+      })),
+    },
+  }
+  if (header) interactive.header = { type: 'text', text: header }
+  if (footer) interactive.footer = { text: footer }
+
+  const result = await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'interactive',
+    interactive,
+  })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND', content: body, status: 'SENT' },
+    }).catch(() => {})
+  }
+  return result
+}
+
+/** Send a CTA URL button — tappable link button */
+export async function sendCtaUrlMessage(
+  to: string,
+  body: string,
+  buttonText: string,
+  url: string,
+  header?: string,
+  footer?: string,
+) {
+  if (isBlocked(to)) return { messages: [] }
+  const interactive: any = {
+    type: 'cta_url',
+    body: { text: body },
+    action: {
+      name: 'cta_url',
+      parameters: {
+        display_text: buttonText.slice(0, 20),
+        url,
+      },
+    },
+  }
+  if (header) interactive.header = { type: 'text', text: header }
+  if (footer) interactive.footer = { text: footer }
+
+  const result = await graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'interactive',
+    interactive,
+  })
+  logApiCall({ provider: 'WHATSAPP', endpoint: '/messages', source: 'WHATSAPP' }).catch(() => {})
+  const waMessageId = result?.messages?.[0]?.id
+  if (waMessageId) {
+    prisma.whatsAppMessage.create({
+      data: { waMessageId, phone: to, type: 'OUTBOUND', content: body, status: 'SENT' },
+    }).catch(() => {})
+  }
+  return result
+}
+
+/** Send a location message */
+export async function sendLocationMessage(to: string, lat: number, lng: number, name?: string, address?: string) {
+  if (isBlocked(to)) return { messages: [] }
+  return graphPost('/messages', {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'location',
+    location: { latitude: lat, longitude: lng, name, address },
+  })
+}
+
 export async function sendTemplateMessage(to: string, templateName: string, parameters: string[]) {
   if (isBlocked(to)) return { messages: [] }
   const result = await graphPost('/messages', {
