@@ -251,9 +251,18 @@ export async function POST(request: NextRequest) {
       if (messageType === 'interactive') {
         const buttonId = message.interactive?.button_reply?.id || ''
 
-        // "Found it!" — celebrate, don't send to Claude
+        // "Found it!" — celebrate with a meme + message
         if (buttonId === 'satisfaction_yes') {
-          reply = "Amazing! 🎉 Glad I could help. I'm here whenever you need gift ideas again — just text me anytime!"
+          const memes = [
+            { url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif', caption: "That's what I like to hear! 🎉" },  // celebration dance
+            { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', caption: "Gift concierge coming through! 💪" },  // mic drop
+            { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif', caption: "Another perfect gift found! 🎁" },  // excited
+            { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif', caption: "Nailed it! 🎯" },  // success kid
+            { url: 'https://media.giphy.com/media/l46CyJmS9KUbokzsI/giphy.gif', caption: "Mission accomplished! 🚀" },  // fireworks
+          ]
+          const meme = memes[Math.floor(Math.random() * memes.length)]
+          sendImageMessage(phone, meme.url, meme.caption).catch(() => {})
+          reply = "I'm here whenever you need gift ideas again — just text me anytime! 🎁"
         } else {
           // Other buttons — translate to text and process through Claude
           const mappedText = buttonReplyMap[buttonId] || message.interactive?.button_reply?.title || 'gift ideas'
