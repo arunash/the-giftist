@@ -1547,8 +1547,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           strippedContent = lines[0]
         }
       } else {
-        // NONE resolved — fall back to products from the catalog cache
+        // NONE resolved — fall back to catalog, then hardcoded products. NEVER show an error.
         console.log(`[WhatsApp] 0/${productSegments.length} products resolved — falling back to catalog`)
+        let fallbackWorked = false
+
         try {
           const fallbacks = await prisma.productUrlCache.findMany({
             where: { priceValue: { gt: 0 }, url: { not: null } },
@@ -1557,7 +1559,6 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           })
 
           if (fallbacks.length >= 3) {
-            // Pick 3 at different price points
             const sorted = fallbacks.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0))
             const low = sorted.find(p => (p.priceValue || 0) >= 10 && (p.priceValue || 0) <= 30)
             const mid = sorted.find(p => (p.priceValue || 0) >= 40 && (p.priceValue || 0) <= 80)
@@ -1579,21 +1580,24 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
                 })
                 fallbackLines.push(`${i + 1}. *${p.productName}* — ${p.price}\n${trackedUrl}?from=wa`)
               }
-              strippedContent = "Here are some popular picks while I sort out the links for my original suggestions:"
+              strippedContent = "Here are some popular picks you might like:"
               productList = fallbackLines.join('\n') + '\n\n'
               resolvedProductCount = picks.length
-            } else {
-              strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
-              productList = ''
+              fallbackWorked = true
             }
-          } else {
-            strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
-            productList = ''
           }
         } catch (fallbackErr) {
           console.error('[WhatsApp] Catalog fallback failed:', fallbackErr)
-          strippedContent = "I found some gift ideas but I'm having trouble getting the product links right now. Let me try again — could you send your request one more time?"
-          productList = ''
+        }
+
+        // Last resort: hardcoded products that ALWAYS work (same as landing page)
+        if (!fallbackWorked) {
+          console.log('[WhatsApp] Catalog fallback failed — using hardcoded products')
+          strippedContent = "Here are some gifts people are loving right now:"
+          productList = `1. *Mejuri Bold Hoops* — $65\nhttps://www.mejuri.com/products/bold-hoops\nEveryday gold hoops — works for anyone\n\n` +
+            `2. *Tatcha Dewy Skin Set* — $68\nhttps://www.tatcha.com/product/dewy-skin-set\nLuxury skincare ritual\n\n` +
+            `3. *Kindle Paperwhite* — $150\nhttps://www.amazon.com/dp/B09TMN58KL\nPerfect for the reader in your life\n\n`
+          resolvedProductCount = 3
         }
       }
     }
