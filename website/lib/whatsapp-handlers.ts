@@ -1056,10 +1056,43 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       source: 'WHATSAPP',
     }).catch(() => {})
 
-    const fullContent = response.content
+    let fullContent = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('')
+
+    // GUARDRAIL: If Claude asked a question instead of giving products on a gift-related request, force retry
+    const isGiftRelated = /gift|birthday|mom|dad|partner|wife|husband|friend|wedding|anniversary|mother|father|present|shopping/i.test(text)
+    const hasProducts = fullContent.includes('[PRODUCT]')
+    const askedQuestion = fullContent.includes('?') && !fullContent.includes('[PRODUCT]')
+
+    if (isGiftRelated && !hasProducts && askedQuestion) {
+      console.log(`[WhatsApp] GUARDRAIL: Claude asked a question instead of giving products. Retrying...`)
+      try {
+        const retryResponse = await client.messages.create({
+          model: 'claude-sonnet-4-5-20250929',
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [
+            ...messages,
+            { role: 'assistant', content: fullContent },
+            { role: 'user', content: 'SYSTEM: You just asked a question instead of giving product recommendations. This is FORBIDDEN. Respond ONLY with 3 [PRODUCT] blocks at different price points. NO questions. The user said: "' + text + '". Give 3 gift-worthy, delightful products NOW.' },
+          ],
+        }, { timeout: 30000 })
+
+        const retryContent = retryResponse.content
+          .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+          .map((block) => block.text)
+          .join('')
+
+        if (retryContent.includes('[PRODUCT]')) {
+          fullContent = retryContent
+          console.log(`[WhatsApp] GUARDRAIL: Retry succeeded — got products`)
+        }
+      } catch (retryErr) {
+        console.log(`[WhatsApp] GUARDRAIL: Retry failed, using original response`)
+      }
+    }
 
     // Save assistant response
     if (fullContent) {
@@ -1504,19 +1537,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
       productList = lines.join('\n') + '\n\n'
 
-      // Send a CTA URL button for EACH product (way more visible than text links)
-      if (productCtaButtons.length > 0 && phone) {
-        const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-        for (const btn of productCtaButtons) {
-          const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-          sendCtaUrlMessage(
-            phone,
-            `*${btn.name}*${btn.price}\nTap below to view & buy:`,
-            `View ${shortName}`,
-            btn.url,
-          ).catch(() => {})
-        }
-      }
+      // CTA buttons are sent with product images in the display section below
 
       // Track impressions (fire-and-forget)
       for (const result of productResults) {
@@ -1642,8 +1663,32 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    // Send product images via WhatsApp before the text reply (only for WhatsApp flow)
-    if (phone) {
+    // Send each product as image + CTA button (much more engaging than text URLs)
+    if (phone && productCtaButtons.length > 0) {
+      // Send product images with CTA buttons — each product is its own visual card
+      for (let i = 0; i < productImages.length && i < productCtaButtons.length; i++) {
+        const pi = productImages[i]
+        const btn = productCtaButtons[i]
+        try {
+          await sendImageMessage(phone, pi.image, pi.caption)
+          if (btn) {
+            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+            const shortName = btn.name.split(' ').slice(0, 4).join(' ')
+            await sendCtaUrlMessage(phone, `Tap to view & buy:`, `Buy ${shortName}`, btn.url)
+          }
+        } catch (err) {
+          console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
+        }
+      }
+      // Send CTA buttons for products without images
+      const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+      for (let i = productImages.length; i < productCtaButtons.length; i++) {
+        const btn = productCtaButtons[i]
+        const shortName = btn.name.split(' ').slice(0, 4).join(' ')
+        await sendCtaUrlMessage(phone, `*${btn.name}*${btn.price}`, `Buy ${shortName}`, btn.url).catch(() => {})
+      }
+    } else if (phone) {
+      // No CTA buttons (fallback path) — just send images
       for (const pi of productImages) {
         try {
           await sendImageMessage(phone, pi.image, pi.caption)
