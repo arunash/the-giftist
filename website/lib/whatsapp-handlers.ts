@@ -1421,6 +1421,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     // Extract product blocks and create tracked links
     const productSegments = segments.filter(s => s.type === 'product')
     let productList = ''
+    let productCtaButtons: { name: string; url: string; price: string }[] = []
     let resolvedProductCount = 0
     // autoSavedCount removed — simplified flow
     const productImages: { image: string; caption: string }[] = []  // For sending images via WhatsApp
@@ -1521,7 +1522,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
 
       const lines: string[] = []
       let displayIdx = 0
-      const productCtaButtons: { name: string; url: string; price: string }[] = []
+      productCtaButtons = []
       for (const result of productResults) {
         if (!result) continue
         displayIdx++
