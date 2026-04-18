@@ -189,20 +189,34 @@ export async function POST(request: NextRequest) {
     const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day|need a gift|need gift|shopping for/i.test(firstMessageText)
 
     if (isNewUser && !isGiftRequest) {
-      // Vague first message — one clean message + buttons. Don't overwhelm.
-      // The ad already told them what we do. Just ask what they need.
+      // Vague first message — detect language, send welcome + buttons.
+      const isSpanish = /hola|información|quiero|regalo|busco|ayuda/i.test(firstMessageText)
 
-      await sendButtonMessage(
-        phone,
-        `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I find the perfect gift for anyone in seconds.\n\nJust tell me *who it's for* and *what they're into* — I'll send you 3 great options with prices and links.\n\nOr tap below to get started:`,
-        [
-          { id: 'list_mom', title: '🌸 Gift for Mom' },
-          { id: 'list_birthday', title: '🎂 Birthday gift' },
-          { id: 'list_partner', title: '💝 Gift for partner' },
-        ],
-        undefined,
-        'Free · Reply in seconds',
-      )
+      if (isSpanish) {
+        await sendButtonMessage(
+          phone,
+          `${profileName ? `¡Hola ${profileName}! 👋` : '¡Hola! 👋'} Encuentro el regalo perfecto para cualquier persona en segundos.\n\nDime *para quién es* y *qué le gusta* — te envío 3 opciones con precios y links.\n\nO toca un botón para empezar:`,
+          [
+            { id: 'list_mom', title: '🌸 Regalo para Mamá' },
+            { id: 'list_birthday', title: '🎂 Regalo cumpleaños' },
+            { id: 'list_partner', title: '💝 Regalo pareja' },
+          ],
+          undefined,
+          'Gratis · Respuesta en segundos',
+        )
+      } else {
+        await sendButtonMessage(
+          phone,
+          `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I find the perfect gift for anyone in seconds.\n\nJust tell me *who it's for* and *what they're into* — I'll send you 3 great options with prices and links.\n\nOr tap below to get started:`,
+          [
+            { id: 'list_mom', title: '🌸 Gift for Mom' },
+            { id: 'list_birthday', title: '🎂 Birthday gift' },
+            { id: 'list_partner', title: '💝 Gift for partner' },
+          ],
+          undefined,
+          'Free · Reply in seconds',
+        )
+      }
 
       sendContactMessage(phone).catch(() => {})
 
