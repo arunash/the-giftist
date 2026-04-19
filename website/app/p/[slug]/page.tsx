@@ -78,6 +78,12 @@ function ProductPage() {
       .then((data) => {
         setProduct(data)
         setLoading(false)
+
+        // Auto-open retailer page in new tab (affiliate click)
+        // Only on first visit, not after purchase redirect
+        if (data?.targetUrl && !purchased) {
+          window.open(`/go-r/${slug}`, '_blank')
+        }
       })
       .catch(() => setLoading(false))
   }, [slug])

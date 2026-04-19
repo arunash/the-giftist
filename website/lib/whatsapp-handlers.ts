@@ -1664,45 +1664,6 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    // Send text reply FIRST, then product images + CTA buttons AFTER
-    // This ensures the order: text intro → images → CTA buttons → satisfaction buttons
-    const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
-
-    if (phone && finalReply) {
-      await sendTextMessage(phone, finalReply)
-    }
-
-    // Now send product images + CTA buttons after the text
-    if (phone && productCtaButtons.length > 0) {
-      for (let i = 0; i < Math.max(productImages.length, productCtaButtons.length); i++) {
-        try {
-          if (i < productImages.length) {
-            await sendImageMessage(phone, productImages[i].image, productImages[i].caption)
-          }
-          if (i < productCtaButtons.length) {
-            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-            const btn = productCtaButtons[i]
-            const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-            await sendCtaUrlMessage(phone, `See photos & reviews 👆`, `See ${shortName}`, btn.url)
-          }
-        } catch (err) {
-          console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
-        }
-      }
-    } else if (phone) {
-      for (const pi of productImages) {
-        try {
-          await sendImageMessage(phone, pi.image, pi.caption)
-        } catch (err) {
-          console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
-        }
-      }
-    }
-
-    // Return a marker so the webhook knows we already sent the reply
-    // but can still detect products for satisfaction buttons
-    return `__ALREADY_SENT__${finalReply}`
-
     // Credit awareness: gentle at message 5 (remaining=7), warning at message 11 (remaining=1)
     let limitWarning = ''
     if (remaining === 7) {
@@ -1720,7 +1681,45 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    return strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
+    // Build final reply and send text FIRST, then images + CTA buttons
+    const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
+
+    if (phone && finalReply && productCtaButtons.length > 0) {
+      // Send text first
+      await sendTextMessage(phone, finalReply)
+
+      // Then product images + CTA buttons in order
+      for (let i = 0; i < Math.max(productImages.length, productCtaButtons.length); i++) {
+        try {
+          if (i < productImages.length) {
+            await sendImageMessage(phone, productImages[i].image, productImages[i].caption)
+          }
+          if (i < productCtaButtons.length) {
+            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+            const btn = productCtaButtons[i]
+            const shortName = btn.name.split(' ').slice(0, 4).join(' ')
+            await sendCtaUrlMessage(phone, `See photos & reviews 👆`, `See ${shortName}`, btn.url)
+          }
+        } catch (err) {
+          console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
+        }
+      }
+
+      return `__ALREADY_SENT__${finalReply}`
+    }
+
+    // No CTA buttons — send images before text (original flow)
+    if (phone) {
+      for (const pi of productImages) {
+        try {
+          await sendImageMessage(phone, pi.image, pi.caption)
+        } catch (err) {
+          console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
+        }
+      }
+    }
+
+    return finalReply
   } catch (error) {
     if (thinkingTimer) clearTimeout(thinkingTimer)
     console.error('WhatsApp chat error:', error)
