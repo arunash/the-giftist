@@ -264,7 +264,49 @@ export async function POST(request: NextRequest) {
           || message.interactive?.list_reply?.id
           || ''
 
-        // "Found it!" — celebrate with a GIF (sent as MP4 video — WhatsApp doesn't support .gif)
+        // Track "show me more" / "something else" taps — paywall after 2 free rounds
+        if (buttonId === 'satisfaction_more' || buttonId === 'satisfaction_different') {
+          const browseCount = await prisma.whatsAppMessage.count({
+            where: {
+              phone,
+              type: 'interactive',
+              content: { in: ['Show me more', 'Something else', '🔄 Show me more', '↩️ Something else'] },
+            },
+          })
+
+          if (browseCount >= 2) {
+            // 3rd+ browse — paywall
+            try {
+              const { stripe } = await import('@/lib/stripe')
+              let sub = await prisma.subscription.findUnique({ where: { userId } })
+              let custId = sub?.stripeCustomerId
+              if (!custId) {
+                const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+                const cust = await stripe.customers.create({ email: user?.email || undefined, metadata: { userId } })
+                custId = cust.id
+                if (sub) await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId: custId } })
+                else await prisma.subscription.create({ data: { userId, stripeCustomerId: custId, status: 'INACTIVE' } })
+              }
+              const sess = await stripe.checkout.sessions.create({
+                mode: 'payment',
+                customer: custId,
+                line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Giftist Credit Pack', description: '50 messages + 5 Gift DNA analyses' }, unit_amount: 500 }, quantity: 1 }],
+                metadata: { type: 'credit_pack', userId },
+                success_url: 'https://giftist.ai/settings?credits=success',
+                cancel_url: 'https://giftist.ai',
+              })
+              reply = `You've been exploring a lot of options — love the dedication! 🎁\n\nTo keep browsing, grab a *Credit Pack* ($5 for 50 messages):\n${sess.url}\n\nOr go *Gold* ($4.99/mo) for unlimited browsing: giftist.ai/settings`
+            } catch {
+              reply = `You've been exploring a lot of options! 🎁\n\nTo keep browsing, grab a *Credit Pack* ($5 for 50 messages) or upgrade to *Gold* ($4.99/mo) for unlimited → giftist.ai/settings`
+            }
+
+            if (reply) await sendTextMessage(phone, reply)
+            await prisma.whatsAppMessage.update({ where: { id: waMsg.id }, data: { status: 'PROCESSED', processedAt: new Date() } })
+            return NextResponse.json({ success: true })
+          }
+        }
+
+        // "All set!" — celebrate with a GIF (sent as MP4 video — WhatsApp doesn't support .gif)
         if (buttonId === 'satisfaction_yes') {
           const memes = [
             { url: 'https://media.giphy.com/media/xT0xezQGU5xCDJuCPe/giphy.mp4', caption: "Congratulations! 🎉" },
