@@ -335,6 +335,29 @@ export async function processMessageQueue() {
       } else {
         // User hasn't returned — send the nudge
         toSend = nudge
+
+        // Email notification when onboarding nudge is sent
+        try {
+          const { default: subprocess } = await import('child_process')
+          const userName = user?.name || nudge.phone || 'Unknown'
+          const emailPayload = JSON.stringify({
+            from: 'Giftist Ads <digest@giftist.ai>',
+            to: ['arunash@gmail.com'],
+            subject: `📱 Nudge sent: ${nudge.template} → ${userName}`,
+            html: `<div style="font-family:-apple-system,sans-serif;max-width:500px;">
+              <h3 style="color:#6C63FF;">Onboarding Nudge Sent</h3>
+              <p><b>User:</b> ${userName}</p>
+              <p><b>Phone:</b> ...${(nudge.phone || '').slice(-4)}</p>
+              <p><b>Template:</b> ${nudge.template}</p>
+              <p><b>Message:</b> ${nudge.text.slice(0, 200)}</p>
+              <p style="color:#888;font-size:12px;">Sent at ${new Date().toISOString().slice(0, 16)}</p>
+            </div>`,
+          })
+          subprocess.execSync(
+            `curl -s -X POST https://api.resend.com/emails -H "Authorization: Bearer re_bcfGU5GA_vYLazycT9GSBMdwiLVyyg8z9" -H "Content-Type: application/json" -d '${emailPayload.replace(/'/g, "'\\''")}'`,
+            { timeout: 10000 },
+          )
+        } catch {}
       }
     }
 
