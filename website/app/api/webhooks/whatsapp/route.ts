@@ -407,13 +407,26 @@ export async function POST(request: NextRequest) {
       if (isProductList && !isSingleBuyLink) {
         await sendButtonMessage(
           phone,
-          'Which one do you like? Reply with the number (1, 2, or 3) and I\'ll send you the link to get it!',
+          'Like any of these? Just reply 1, 2, or 3 — I\'ll get you the best price instantly!',
           [
             { id: 'satisfaction_more', title: '🔄 Show me more' },
             { id: 'satisfaction_different', title: '↩️ Something else' },
             { id: 'satisfaction_yes', title: '✅ All set!' },
           ],
         ).catch(() => {})
+      }
+
+      // When user picks a product ("Great choice!"), send a big CTA button for the buy link
+      if (isSingleBuyLink) {
+        const linkMatch = replyText.match(/(https:\/\/giftist\.ai\/p\/[^\s?]+)/)
+        if (linkMatch) {
+          await sendCtaUrlMessage(
+            phone,
+            '👆 Tap to see it & grab it before it sells out!',
+            'View & Buy Now',
+            linkMatch[1],
+          ).catch(() => {})
+        }
       }
 
       // First gift request nudge — for new users only
