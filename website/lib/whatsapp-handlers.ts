@@ -1675,7 +1675,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           if (btn) {
             const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
             const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-            await sendCtaUrlMessage(phone, `Tap to view & buy:`, `Buy ${shortName}`, btn.url)
+            await sendCtaUrlMessage(phone, `See photos & reviews 👆`, `See ${shortName}`, btn.url)
           }
         } catch (err) {
           console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
@@ -1686,7 +1686,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       for (let i = productImages.length; i < productCtaButtons.length; i++) {
         const btn = productCtaButtons[i]
         const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-        await sendCtaUrlMessage(phone, `*${btn.name}*${btn.price}`, `Buy ${shortName}`, btn.url).catch(() => {})
+        await sendCtaUrlMessage(phone, `*${btn.name}*${btn.price}`, `See ${shortName}`, btn.url).catch(() => {})
       }
     } else if (phone) {
       // No CTA buttons (fallback path) — just send images

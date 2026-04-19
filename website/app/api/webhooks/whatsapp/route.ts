@@ -365,11 +365,11 @@ export async function POST(request: NextRequest) {
       if (hasProducts) {
         await sendButtonMessage(
           phone,
-          'Did any of those work for you?',
+          'Which one do you like? Reply with the number (1, 2, or 3) and I\'ll send you the link to get it!',
           [
-            { id: 'satisfaction_yes', title: '✅ Found it!' },
             { id: 'satisfaction_more', title: '🔄 Show me more' },
             { id: 'satisfaction_different', title: '↩️ Something else' },
+            { id: 'satisfaction_yes', title: '✅ All set!' },
           ],
         ).catch(() => {})
       }
