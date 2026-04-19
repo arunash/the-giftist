@@ -423,7 +423,7 @@ export async function POST(request: NextRequest) {
           await sendCtaUrlMessage(
             phone,
             '👆 Tap to see it & grab it before it sells out!',
-            'View & Buy Now',
+            'View & Gift Now',
             linkMatch[1],
           ).catch(() => {})
         }
