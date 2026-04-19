@@ -80,6 +80,30 @@ export default function AdsPage() {
   const [syncing, setSyncing] = useState(false)
   const [creating, setCreating] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [sortCol, setSortCol] = useState<string>('spend')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  const toggleSort = (col: string) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('desc') }
+  }
+
+  const sortedCampaigns = [...(data?.campaigns || [])].sort((a, b) => {
+    const va = (a as any)[sortCol] ?? 0
+    const vb = (b as any)[sortCol] ?? 0
+    if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    return sortDir === 'asc' ? va - vb : vb - va
+  })
+
+  const SortHeader = ({ col, label, align = 'right' }: { col: string; label: string; align?: string }) => (
+    <th
+      className={`px-4 py-3 text-${align} text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none`}
+      onClick={() => toggleSort(col)}
+    >
+      {label} {sortCol === col ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+    </th>
+  )
+
   const [form, setForm] = useState({
     name: '',
     dailyBudget: '5',
@@ -345,15 +369,15 @@ export default function AdsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Campaign</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Budget</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Spend</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Impr.</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Clicks</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Meta Msgs</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CPC</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CTR</th>
+              <SortHeader col="name" label="Campaign" align="left" />
+              <SortHeader col="status" label="Status" align="left" />
+              <SortHeader col="dailyBudget" label="Budget" />
+              <SortHeader col="spend" label="Spend" />
+              <SortHeader col="impressions" label="Impr." />
+              <SortHeader col="clicks" label="Clicks" />
+              <SortHeader col="messages" label="Meta Msgs" />
+              <SortHeader col="cpc" label="CPC" />
+              <SortHeader col="ctr" label="CTR" />
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -365,7 +389,7 @@ export default function AdsPage() {
                 </td>
               </tr>
             )}
-            {data?.campaigns.map((c) => (
+            {sortedCampaigns.map((c) => (
               <tr key={c.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="text-sm font-medium">{c.name}</div>

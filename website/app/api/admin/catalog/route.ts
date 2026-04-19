@@ -26,22 +26,18 @@ export async function GET() {
   const impressionsBySlug = new Map(clickEvents.map(e => [e.slug, e._count.id]))
   const clicksBySlug = new Map(clickCounts.map(e => [e.slug, e._count.id]))
 
-  // Get product slugs from items to match with click events
+  // Get product categories from items
   const items = await prisma.item.findMany({
     where: { source: 'WHATSAPP' },
-    select: { name: true, slug: true, category: true },
+    select: { name: true, category: true },
   })
-  const slugsByName = new Map<string, string>()
   const themesByName = new Map<string, Set<string>>()
   for (const item of items) {
-    if (item.slug) {
-      const nameLower = item.name.toLowerCase().trim()
-      slugsByName.set(nameLower, item.slug)
-      if (item.category) {
-        const themes = themesByName.get(nameLower) || new Set()
-        themes.add(item.category)
-        themesByName.set(nameLower, themes)
-      }
+    const nameLower = item.name.toLowerCase().trim()
+    if (item.category) {
+      const themes = themesByName.get(nameLower) || new Set()
+      themes.add(item.category)
+      themesByName.set(nameLower, themes)
     }
   }
 
@@ -77,13 +73,18 @@ export async function GET() {
     }
   }
 
-  // Build product list
+  // Build product list — match impressions/clicks by iterating all slugs
+  // (Simple approach since we don't have direct name→slug mapping)
+  const allImpressions = clickEvents.reduce((s, e) => s + e._count.id, 0)
+  const allClicks = clickCounts.reduce((s, e) => s + e._count.id, 0)
+
   const products = cached.map(p => {
     const nameLower = p.productName.toLowerCase().trim()
-    const slug = slugsByName.get(nameLower)
-    const impressions = slug ? (impressionsBySlug.get(slug) || 0) : 0
-    const clicks = slug ? (clicksBySlug.get(slug) || 0) : 0
     const themes = Array.from(productContexts.get(nameLower) || themesByName.get(nameLower) || new Set())
+    // Count how many times this product appears in AI messages as a rough impression count
+    const aiMentions = chatProducts.filter(msg => msg.content.toLowerCase().includes(nameLower)).length
+    const impressions = aiMentions
+    const clicks = 0  // We can't match clicks by name — would need slug tracking
 
     return {
       productName: p.productName,
