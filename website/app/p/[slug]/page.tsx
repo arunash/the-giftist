@@ -83,6 +83,8 @@ function ProductPage() {
         // Only on first visit, not after purchase redirect
         if (data?.targetUrl && !purchased) {
           window.open(`/go-r/${slug}`, '_blank')
+          // Bring focus back to Giftist tab
+          window.focus()
         }
       })
       .catch(() => setLoading(false))
