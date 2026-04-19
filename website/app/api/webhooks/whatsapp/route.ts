@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
       if (isProductList && !isSingleBuyLink) {
         await sendButtonMessage(
           phone,
-          'Like any of these? Just reply 1, 2, or 3 — I\'ll get you the best price instantly!',
+          'Reply 1, 2, or 3 to get it!',
           [
             { id: 'satisfaction_more', title: '🔄 Show me more' },
             { id: 'satisfaction_different', title: '↩️ Something else' },
