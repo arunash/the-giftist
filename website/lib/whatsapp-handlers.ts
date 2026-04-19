@@ -1061,12 +1061,13 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       .map((block) => block.text)
       .join('')
 
-    // GUARDRAIL: If Claude asked a question instead of giving products on a gift-related request, force retry
-    const isGiftRelated = /gift|birthday|mom|dad|partner|wife|husband|friend|wedding|anniversary|mother|father|present|shopping/i.test(text)
-    const hasProducts = fullContent.includes('[PRODUCT]')
-    const askedQuestion = fullContent.includes('?') && !fullContent.includes('[PRODUCT]')
+    // GUARDRAIL: Retry if Claude asked a question OR gave fewer than 2 products on a gift request
+    const isGiftRelated = /gift|birthday|mom|dad|partner|wife|husband|friend|wedding|anniversary|mother|father|present|shopping|teacher|coworker|boss|him|her|boyfriend|girlfriend/i.test(text)
+    const productCount = (fullContent.match(/\[PRODUCT\]/g) || []).length
+    const askedQuestion = fullContent.includes('?')
+    const needsRetry = isGiftRelated && (productCount < 2 || (askedQuestion && productCount < 3))
 
-    if (isGiftRelated && !hasProducts && askedQuestion) {
+    if (needsRetry) {
       console.log(`[WhatsApp] GUARDRAIL: Claude asked a question instead of giving products. Retrying...`)
       try {
         const retryResponse = await client.messages.create({
@@ -1568,69 +1569,13 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           strippedContent = lines[0]
         }
       } else {
-        // NONE resolved — fall back to catalog, then hardcoded products. NEVER show an error.
-        console.log(`[WhatsApp] 0/${productSegments.length} products resolved — falling back to catalog`)
-        let fallbackWorked = false
-
-        try {
-          const fallbacks = await prisma.productUrlCache.findMany({
-            where: { priceValue: { gt: 0 }, url: { not: '' } },
-            orderBy: { verifiedAt: 'desc' },
-            take: 50,
-          })
-
-          if (fallbacks.length >= 3) {
-            const sorted = fallbacks.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0))
-            const low = sorted.find(p => (p.priceValue || 0) >= 10 && (p.priceValue || 0) <= 30)
-            const mid = sorted.find(p => (p.priceValue || 0) >= 40 && (p.priceValue || 0) <= 80)
-            const high = sorted.find(p => (p.priceValue || 0) >= 90 && (p.priceValue || 0) <= 200)
-            const picks = [low, mid, high].filter(Boolean)
-
-            if (picks.length >= 2) {
-              const fallbackLines: string[] = []
-              for (let i = 0; i < picks.length; i++) {
-                const p = picks[i]!
-                const trackedUrl = await createTrackedLink({
-                  productName: p.productName,
-                  targetUrl: p.url,
-                  price: p.price,
-                  priceValue: p.priceValue,
-                  image: p.image,
-                  userId,
-                  source: 'WHATSAPP',
-                })
-                fallbackLines.push(`${i + 1}. *${p.productName}* — ${p.price}\n${trackedUrl}?from=wa`)
-              }
-              strippedContent = "Here are some popular picks you might like:"
-              productList = fallbackLines.join('\n') + '\n\n'
-              resolvedProductCount = picks.length
-              fallbackWorked = true
-            }
-          }
-        } catch (fallbackErr) {
-          console.error('[WhatsApp] Catalog fallback failed:', fallbackErr)
-        }
-
-        // Last resort: hardcoded products that ALWAYS work (same as landing page)
-        if (!fallbackWorked) {
-          console.log('[WhatsApp] Catalog fallback failed — using hardcoded products')
-          strippedContent = "Here are some gifts people are loving right now:"
-          productList = `1. *Mejuri Bold Hoops* — $65\nhttps://www.mejuri.com/products/bold-hoops\nEveryday gold hoops — works for anyone\n\n` +
-            `2. *Tatcha Dewy Skin Set* — $68\nhttps://www.tatcha.com/product/dewy-skin-set\nLuxury skincare ritual\n\n` +
-            `3. *Kindle Paperwhite* — $150\nhttps://www.amazon.com/dp/B09TMN58KL\nPerfect for the reader in your life\n\n`
-          resolvedProductCount = 3
-
-          // CTA button for hardcoded top pick
-          if (phone) {
-            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-            sendCtaUrlMessage(
-              phone,
-              '👆 Tap to view the top pick',
-              'View Mejuri Hoops',
-              'https://www.mejuri.com/products/bold-hoops',
-            ).catch(() => {})
-          }
-        }
+        // NONE resolved — use safe universal fallback products, never random cache
+        console.log(`[WhatsApp] 0/${productSegments.length} products resolved — using safe fallback`)
+        strippedContent = "Here are some crowd-favorite gifts while I find the perfect links:"
+        productList = `1. *Aesop Resurrection Hand Care Duo* — $75\nhttps://www.amazon.com/dp/B07GZ7J5YZ\nLuxe hand care — beautiful packaging, everyone loves it\n\n` +
+          `2. *Uncommon Goods Custom Star Map* — $40\nhttps://www.amazon.com/dp/B07ZYBX6L7\nPersonalized night sky from any special date\n\n` +
+          `3. *MasterClass Annual Membership* — $120\nhttps://www.masterclass.com/gift\nLearn from the best — cooking, writing, music, anything\n\n`
+        resolvedProductCount = 3
       }
     }
 
