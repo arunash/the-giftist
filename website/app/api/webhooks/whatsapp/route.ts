@@ -274,8 +274,8 @@ export async function POST(request: NextRequest) {
             },
           })
 
-          if (browseCount >= 2) {
-            // 3rd+ browse — paywall
+          if (browseCount >= 5) {
+            // 6th+ browse — soft paywall with option to pick from what they've seen
             try {
               const { stripe } = await import('@/lib/stripe')
               let sub = await prisma.subscription.findUnique({ where: { userId } })
@@ -295,9 +295,9 @@ export async function POST(request: NextRequest) {
                 success_url: 'https://giftist.ai/settings?credits=success',
                 cancel_url: 'https://giftist.ai',
               })
-              reply = `You've been exploring a lot of options — love the dedication! 🎁\n\nTo keep browsing, grab a *Credit Pack* ($5 for 50 messages):\n${sess.url}\n\nOr go *Gold* ($4.99/mo) for unlimited browsing: giftist.ai/settings`
+              reply = `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nTo keep exploring, grab a *Credit Pack* ($5 for 50 messages):\n${sess.url}\n\nOr just reply with a number from the options above to get one of those! 🎁`
             } catch {
-              reply = `You've been exploring a lot of options! 🎁\n\nTo keep browsing, grab a *Credit Pack* ($5 for 50 messages) or upgrade to *Gold* ($4.99/mo) for unlimited → giftist.ai/settings`
+              reply = `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nTo keep exploring, grab a *Credit Pack* ($5 for 50 messages) or go *Gold* ($4.99/mo) for unlimited → giftist.ai/settings\n\nOr just reply with a number from the options above to get one! 🎁`
             }
 
             if (reply) await sendTextMessage(phone, reply)
