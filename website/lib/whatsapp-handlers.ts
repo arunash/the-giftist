@@ -1684,41 +1684,9 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
     // Build final reply and send text FIRST, then images + CTA buttons
     const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
 
-    if (phone && finalReply && productCtaButtons.length > 0) {
-      // Send text first
-      await sendTextMessage(phone, finalReply)
-
-      // Then product images + CTA buttons in order
-      for (let i = 0; i < Math.max(productImages.length, productCtaButtons.length); i++) {
-        try {
-          if (i < productImages.length) {
-            await sendImageMessage(phone, productImages[i].image, productImages[i].caption)
-          }
-          if (i < productCtaButtons.length) {
-            const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-            const btn = productCtaButtons[i]
-            const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-            await sendCtaUrlMessage(phone, `See photos & reviews 👆`, `See ${shortName}`, btn.url)
-          }
-        } catch (err) {
-          console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
-        }
-      }
-
-      return `__ALREADY_SENT__${finalReply}`
-    }
-
-    // No CTA buttons — send images before text (original flow)
-    if (phone) {
-      for (const pi of productImages) {
-        try {
-          await sendImageMessage(phone, pi.image, pi.caption)
-        } catch (err) {
-          console.log(`[WhatsApp] Failed to send product image: ${(err as Error).message}`)
-        }
-      }
-    }
-
+    // Send text reply — clean and simple, no image/CTA spam
+    // The text already has product names, prices, and giftist.ai links
+    // Satisfaction buttons handle the next action
     return finalReply
   } catch (error) {
     if (thinkingTimer) clearTimeout(thinkingTimer)
