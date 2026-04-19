@@ -80,7 +80,7 @@ export async function GET() {
 
   const products = cached.map(p => {
     const nameLower = p.productName.toLowerCase().trim()
-    const themes = Array.from(productContexts.get(nameLower) || themesByName.get(nameLower) || new Set())
+    const themes: string[] = Array.from(productContexts.get(nameLower) || themesByName.get(nameLower) || new Set<string>())
     // Count how many times this product appears in AI messages as a rough impression count
     const aiMentions = chatProducts.filter(msg => msg.content.toLowerCase().includes(nameLower)).length
     const impressions = aiMentions
