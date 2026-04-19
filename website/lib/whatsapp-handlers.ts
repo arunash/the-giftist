@@ -1664,16 +1664,24 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
-    // Send each product as image + CTA button (much more engaging than text URLs)
+    // Send text reply FIRST, then product images + CTA buttons AFTER
+    // This ensures the order: text intro → images → CTA buttons → satisfaction buttons
+    const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
+
+    if (phone && finalReply) {
+      await sendTextMessage(phone, finalReply)
+    }
+
+    // Now send product images + CTA buttons after the text
     if (phone && productCtaButtons.length > 0) {
-      // Send product images with CTA buttons — each product is its own visual card
-      for (let i = 0; i < productImages.length && i < productCtaButtons.length; i++) {
-        const pi = productImages[i]
-        const btn = productCtaButtons[i]
+      for (let i = 0; i < Math.max(productImages.length, productCtaButtons.length); i++) {
         try {
-          await sendImageMessage(phone, pi.image, pi.caption)
-          if (btn) {
+          if (i < productImages.length) {
+            await sendImageMessage(phone, productImages[i].image, productImages[i].caption)
+          }
+          if (i < productCtaButtons.length) {
             const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
+            const btn = productCtaButtons[i]
             const shortName = btn.name.split(' ').slice(0, 4).join(' ')
             await sendCtaUrlMessage(phone, `See photos & reviews 👆`, `See ${shortName}`, btn.url)
           }
@@ -1681,15 +1689,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
           console.log(`[WhatsApp] Failed to send product card: ${(err as Error).message}`)
         }
       }
-      // Send CTA buttons for products without images
-      const { sendCtaUrlMessage } = await import('@/lib/whatsapp')
-      for (let i = productImages.length; i < productCtaButtons.length; i++) {
-        const btn = productCtaButtons[i]
-        const shortName = btn.name.split(' ').slice(0, 4).join(' ')
-        await sendCtaUrlMessage(phone, `*${btn.name}*${btn.price}`, `See ${shortName}`, btn.url).catch(() => {})
-      }
     } else if (phone) {
-      // No CTA buttons (fallback path) — just send images
       for (const pi of productImages) {
         try {
           await sendImageMessage(phone, pi.image, pi.caption)
@@ -1698,6 +1698,10 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
         }
       }
     }
+
+    // Return a marker so the webhook knows we already sent the reply
+    // but can still detect products for satisfaction buttons
+    return `__ALREADY_SENT__${finalReply}`
 
     // Credit awareness: gentle at message 5 (remaining=7), warning at message 11 (remaining=1)
     let limitWarning = ''

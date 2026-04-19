@@ -393,15 +393,16 @@ export async function POST(request: NextRequest) {
         reply = "I can help with gifts! Just type who you're shopping for, send a photo, or use a voice note 🎤"
       }
 
-      // Send reply (empty string means handler already sent a reply)
-      if (reply) {
+      // Send reply — skip if handler already sent it (marked with __ALREADY_SENT__)
+      const alreadySent = reply?.startsWith('__ALREADY_SENT__')
+      if (reply && !alreadySent) {
         await sendTextMessage(phone, reply)
       }
+      const replyText = alreadySent ? reply!.replace('__ALREADY_SENT__', '') : (reply || '')
 
       // Send satisfaction buttons after product RECOMMENDATIONS (multiple products, not single buy links)
-      // Skip if: user just picked a product ("Great choice! Here's your link") — that's a single link, not a rec list
-      const isProductList = reply && /\d\.\s\*[A-Z]/.test(reply)  // numbered list: "1. *Product..."
-      const isSingleBuyLink = reply && reply.includes('Great choice') && reply.includes('giftist.ai/p/')
+      const isProductList = replyText && /\d\.\s\*[A-Z]/.test(replyText)
+      const isSingleBuyLink = replyText && replyText.includes('Great choice') && replyText.includes('giftist.ai/p/')
 
       if (isProductList && !isSingleBuyLink) {
         await sendButtonMessage(
