@@ -79,12 +79,19 @@ function ProductPage() {
         setProduct(data)
         setLoading(false)
 
-        // Auto-open retailer page in new tab (affiliate click)
-        // Only on first visit, not after purchase redirect
+        // Auto-open retailer in background tab (affiliate click)
+        // Use a hidden link click trick to open without stealing focus
         if (data?.targetUrl && !purchased) {
-          window.open(`/go-r/${slug}`, '_blank')
-          // Bring focus back to Giftist tab
-          window.focus()
+          const a = document.createElement('a')
+          a.href = `/go-r/${slug}`
+          a.target = '_blank'
+          a.rel = 'noopener'
+          // Some browsers still focus the new tab — use a blur listener to refocus
+          const refocus = () => { window.focus(); window.removeEventListener('blur', refocus) }
+          window.addEventListener('blur', refocus)
+          a.click()
+          // Fallback: force focus after a short delay
+          setTimeout(() => window.focus(), 100)
         }
       })
       .catch(() => setLoading(false))
