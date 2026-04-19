@@ -110,15 +110,27 @@ function ProductPage() {
   const hasRealProductUrl = product?.targetUrl && !product.targetUrl.includes('/s?k=') && !product.targetUrl.includes('google.com/search') && !product.targetUrl.includes('/search?')
 
   const requireAuth = () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && channel !== 'whatsapp') {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
+      return true
+    }
+    if (!isLoggedIn && channel === 'whatsapp') {
+      // WhatsApp users: only block on buy, not on browse
+      return false
+    }
+    return false
+  }
+
+  const requireAuthForPurchase = () => {
+    if (!isLoggedIn) {
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}?from=wa`)}`
       return true
     }
     return false
   }
 
   const handleBuyClick = () => {
-    if (requireAuth()) return
+    if (requireAuthForPurchase()) return
     setShowRecipientModal(true)
   }
 
@@ -223,14 +235,14 @@ function ProductPage() {
     window.location.href = `/chat?q=${encodeURIComponent(prompt)}`
   }
 
-  // Redirect to login if not authenticated (with return URL)
+  // Redirect to login if not authenticated — BUT skip for WhatsApp users (they can browse without login)
   useEffect(() => {
-    if (isLoggedIn === false) {
+    if (isLoggedIn === false && channel !== 'whatsapp') {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}${fromParam ? `?from=${fromParam}` : ''}`)}`
     }
-  }, [isLoggedIn, slug, fromParam])
+  }, [isLoggedIn, slug, fromParam, channel])
 
-  if (loading || isLoggedIn === null || isLoggedIn === false) {
+  if (loading || isLoggedIn === null || (isLoggedIn === false && channel !== 'whatsapp')) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
