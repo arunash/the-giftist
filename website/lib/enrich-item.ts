@@ -175,16 +175,18 @@ export async function findProductUrl(productName: string): Promise<ProductUrlRes
   try {
     const { results, bestResult } = await searchRetailers(productName, null, null)
 
-    // Prefer Amazon — most trusted retailer. If Amazon has no price, borrow from bestResult.
+    // Prefer retailers where we have affiliate agreements (Amazon > Etsy > others)
     const amazonResult = results.find(r => r.url.includes('amazon.com/dp/'))
+    const etsyResult = results.find(r => r.url.includes('etsy.com'))
     if (amazonResult && !amazonResult.priceValue && bestResult?.priceValue) {
       amazonResult.price = bestResult.price
       amazonResult.priceValue = bestResult.priceValue
     }
     const prioritized = [
       amazonResult,
+      etsyResult,
       bestResult,
-      ...results.filter(r => r !== amazonResult && r !== bestResult),
+      ...results.filter(r => r !== amazonResult && r !== etsyResult && r !== bestResult),
     ].filter(Boolean) as typeof results
     const candidates = prioritized.length > 0 ? prioritized : results
 
