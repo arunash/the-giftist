@@ -313,21 +313,28 @@ export async function processMessageQueue() {
 
     let toSend: typeof messages[0] | null = null
 
-    // Onboarding nudges bypass rate limits but check if user engaged first
+    // Onboarding nudges bypass rate limits but check if user came BACK after their initial session
     if (onboarding.length > 0) {
-      // Check if user sent any messages since the onboarding was scheduled
-      const userMsgCount = await prisma.whatsAppMessage.count({
-        where: { phone: onboarding[0].phone!, type: 'text', createdAt: { gte: onboarding[0].createdAt } },
+      const nudge = onboarding[0]
+      // Check if user sent any message MORE THAN 1 hour after signup (i.e. they came back)
+      const user = await prisma.user.findFirst({ where: { phone: nudge.phone! } })
+      const oneHourAfterSignup = user ? new Date(user.createdAt.getTime() + 3600000) : new Date()
+      const cameBack = await prisma.whatsAppMessage.count({
+        where: {
+          phone: nudge.phone!,
+          type: { in: ['text', 'interactive', 'CTWA_CLICK'] },
+          createdAt: { gte: oneHourAfterSignup },
+        },
       })
-      if (userMsgCount > 0) {
-        // User engaged — skip all onboarding nudges
+      if (cameBack > 0) {
+        // User came back on their own — skip nudges
         for (const msg of onboarding) {
           await prisma.messageQueue.update({ where: { id: msg.id }, data: { status: 'SKIPPED' } })
         }
-        console.log(`[MessageQueue] Skipped ${onboarding.length} onboarding nudges — user engaged`)
+        console.log(`[MessageQueue] Skipped ${onboarding.length} onboarding nudges — user came back`)
       } else {
-        // User hasn't engaged — send the first onboarding nudge
-        toSend = onboarding[0]
+        // User hasn't returned — send the nudge
+        toSend = nudge
       }
     }
 

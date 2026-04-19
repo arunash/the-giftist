@@ -175,12 +175,21 @@ export async function POST(request: NextRequest) {
     // Resolve user and list
     const { userId, listId, isNewUser } = await resolveUserAndList(phone, profileName)
 
-    // New user: schedule 4h/12h/20h onboarding nudges (cancelled if they engage)
-    // Returning user: cancel any pending onboarding nudges (they're back!)
+    // New user: schedule 4h/12h/20h onboarding nudges
+    // Returning user: cancel nudges ONLY if they come back after being away (not during same session)
     if (isNewUser) {
       scheduleOnboardingNudges(userId, phone, null).catch(() => {})
     } else {
-      cancelOnboardingNudges(userId).catch(() => {})
+      // Check if user's previous message was > 1 hour ago (they left and came back)
+      const prevMsg = await prisma.whatsAppMessage.findFirst({
+        where: { phone, type: { in: ['text', 'interactive', 'CTWA_CLICK'] } },
+        orderBy: { createdAt: 'desc' },
+        skip: 1, // skip the current message
+      })
+      const hoursSinceLast = prevMsg ? (Date.now() - new Date(prevMsg.createdAt).getTime()) / 3600000 : 0
+      if (hoursSinceLast > 1) {
+        cancelOnboardingNudges(userId).catch(() => {})
+      }
     }
 
     // Detect if first message is a gift request (from landing page or ad ice breakers)
