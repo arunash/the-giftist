@@ -273,8 +273,9 @@ export async function POST(request: NextRequest) {
           || message.interactive?.list_reply?.id
           || ''
 
-        // Track "show me more" / "something else" taps — paywall after 2 free rounds
-        if (buttonId === 'satisfaction_more' || buttonId === 'satisfaction_different') {
+        // Track "show me more" / "something else" taps — paywall after 5 free rounds (skip for admins)
+        const ADMIN_PHONES = new Set(['13034087839', '14153168720', '919321918293'])
+        if ((buttonId === 'satisfaction_more' || buttonId === 'satisfaction_different') && !ADMIN_PHONES.has(phone)) {
           const browseCount = await prisma.whatsAppMessage.count({
             where: {
               phone,
@@ -305,7 +306,7 @@ export async function POST(request: NextRequest) {
                 cancel_url: 'https://giftist.ai',
               })
               await sendTextMessage(phone, `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nOr just reply with a number from the options above to get one! 🎁`)
-              await sendCtaUrlMessage(phone, 'To keep exploring, grab a Credit Pack ($5 for 50 messages):', 'Get Credit Pack — $5', sess.url)
+              await sendCtaUrlMessage(phone, 'To keep exploring, grab a Credit Pack ($5 for 50 messages):', 'Get Credit Pack — $5', sess.url || 'https://giftist.ai/settings')
               reply = ''
             } catch {
               await sendTextMessage(phone, `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nOr just reply with a number from the options above to get one! 🎁`)
