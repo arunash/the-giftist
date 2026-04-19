@@ -304,12 +304,14 @@ export async function POST(request: NextRequest) {
                 success_url: 'https://giftist.ai/settings?credits=success',
                 cancel_url: 'https://giftist.ai',
               })
-              reply = `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nTo keep exploring, grab a *Credit Pack* ($5 for 50 messages):\n${sess.url}\n\nOr just reply with a number from the options above to get one of those! 🎁`
+              await sendTextMessage(phone, `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nOr just reply with a number from the options above to get one! 🎁`)
+              await sendCtaUrlMessage(phone, 'To keep exploring, grab a Credit Pack ($5 for 50 messages):', 'Get Credit Pack — $5', sess.url)
+              reply = ''
             } catch {
-              reply = `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nTo keep exploring, grab a *Credit Pack* ($5 for 50 messages) or go *Gold* ($4.99/mo) for unlimited → giftist.ai/settings\n\nOr just reply with a number from the options above to get one! 🎁`
+              await sendTextMessage(phone, `I've shown you 15+ gift ideas — you clearly have great taste! 😄\n\nOr just reply with a number from the options above to get one! 🎁`)
+              await sendCtaUrlMessage(phone, 'To keep exploring:', 'Get Credits — $5', 'https://giftist.ai/settings')
+              reply = ''
             }
-
-            if (reply) await sendTextMessage(phone, reply)
             await prisma.whatsAppMessage.update({ where: { id: waMsg.id }, data: { status: 'PROCESSED', processedAt: new Date() } })
             return NextResponse.json({ success: true })
           }
