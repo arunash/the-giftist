@@ -398,22 +398,12 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(phone, reply)
       }
 
-      // Send satisfaction buttons after ANY reply that contains product recommendations
-      // Detect by: product links OR numbered product list format ("1. *Product Name*")
-      const hasProducts = reply && (
-        reply.includes('giftist.ai/p/') ||
-        reply.includes('amazon.com/dp/') ||
-        reply.includes('amazon.com/') ||
-        reply.includes('mejuri.com/') ||
-        reply.includes('tatcha.com/') ||
-        reply.includes('target.com/p/') ||
-        reply.includes('nordstrom.com/s/') ||
-        reply.includes('walmart.com/ip/') ||
-        reply.includes('bestbuy.com/') ||
-        /\d\.\s\*[A-Z]/.test(reply)  // numbered list with bold product names: "1. *Product..."
-      )
+      // Send satisfaction buttons after product RECOMMENDATIONS (multiple products, not single buy links)
+      // Skip if: user just picked a product ("Great choice! Here's your link") — that's a single link, not a rec list
+      const isProductList = reply && /\d\.\s\*[A-Z]/.test(reply)  // numbered list: "1. *Product..."
+      const isSingleBuyLink = reply && reply.includes('Great choice') && reply.includes('giftist.ai/p/')
 
-      if (hasProducts) {
+      if (isProductList && !isSingleBuyLink) {
         await sendButtonMessage(
           phone,
           'Which one do you like? Reply with the number (1, 2, or 3) and I\'ll send you the link to get it!',
