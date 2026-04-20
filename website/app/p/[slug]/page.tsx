@@ -79,20 +79,9 @@ function ProductPage() {
         setProduct(data)
         setLoading(false)
 
-        // Auto-open retailer in background tab (affiliate click)
-        // Use a hidden link click trick to open without stealing focus
-        if (data?.targetUrl && !purchased) {
-          const a = document.createElement('a')
-          a.href = `/go-r/${slug}`
-          a.target = '_blank'
-          a.rel = 'noopener'
-          // Some browsers still focus the new tab — use a blur listener to refocus
-          const refocus = () => { window.focus(); window.removeEventListener('blur', refocus) }
-          window.addEventListener('blur', refocus)
-          a.click()
-          // Fallback: force focus after a short delay
-          setTimeout(() => window.focus(), 100)
-        }
+        // Don't auto-open retailer — it steals focus from Giftist page.
+        // Instead, the "View & Buy" button on the page opens it in a new tab
+        // when the user clicks. Affiliate cookie sets on their click.
       })
       .catch(() => setLoading(false))
   }, [slug])
@@ -542,19 +531,19 @@ function ProductPage() {
           </div>
         )}
 
-        {/* View on retailer — only show if we have a real product page URL */}
+        {/* View on retailer — primary CTA for affiliate clicks */}
         {hasRealProductUrl && (
-          <div className="text-center py-2">
-            <button
-              onClick={() => {
-                if (requireAuth()) return
-                window.open(`/go-r/${slug}`, '_blank')
-              }}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition"
+          <div className="text-center py-4">
+            <a
+              href={`/go-r/${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 w-full max-w-sm px-6 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-base hover:bg-violet-700 transition shadow-lg shadow-violet-600/20"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              View on {product.domain}
-            </button>
+              <ExternalLink className="h-4 w-4" />
+              View & Buy on {product.domain?.replace('www.', '')}
+            </a>
+            <p className="text-xs text-gray-400 mt-2">Opens retailer in a new tab</p>
           </div>
         )}
       </div>
