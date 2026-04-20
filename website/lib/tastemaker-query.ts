@@ -179,10 +179,70 @@ export async function getTastemakerProducts(userMessage: string): Promise<string
   ).join('\n')
 
   return `\n\n🎁 TASTEMAKER PRODUCT CATALOG — PICK FROM THESE (MANDATORY):
-You MUST recommend products from this curated list. These are verified, scored across trust/taste/intent/conversion signals, and proven gift-worthy. Do NOT hallucinate products outside this list.
+
+STEP 1 — BEFORE selecting products, INFER from the user's message:
+- WHO is the recipient? (personality, lifestyle, age, preferences — read between the lines)
+- WHAT emotional reaction should the gift create? Choose the dominant emotion:
+  • SURPRISE — "I can't believe you found this!" (unique, unexpected, personalized)
+  • COMFORT — "This makes me feel so cared for" (cozy, practical luxury, self-care)
+  • LUXURY — "I'd never buy this for myself" (premium, indulgent, aspirational)
+  • FUN — "This is so cool!" (playful, creative, experience-driven)
+  • SENTIMENTAL — "This means so much" (personalized, meaningful, memory-tied)
+
+STEP 2 — Select 3 products using this PRIORITY ORDER:
+1. GIFTABILITY — must feel like a great gift to receive (not something you'd buy yourself)
+2. RELEVANCE — matches the recipient's personality, lifestyle, situation
+3. SIGNAL STRENGTH — higher score = more expert/community endorsement
+4. UNIQUENESS — avoid generic picks. Prefer "I'd never think of that!" over "obvious choice"
+
+Do NOT blindly pick highest score if it's boring or mismatched. A score-2.0 product that perfectly matches the recipient beats a score-3.0 generic product.
+
+Avoid overly generic gifts (candles, mugs, gift cards) UNLESS they are clearly premium or elevated in a meaningful way (e.g., Diptyque candle = premium, generic Target candle = NO).
+
+At least ONE of your 3 picks should be a "surprise" — unexpected but perfect. Something that makes the recipient say "How did you know?!"
+
+PRODUCT CATALOG (verified, multi-signal scored):
 
 ${lines}
 
-Pick the 3 best matches for the user's request at different price points. Use the exact product names from this list in your [PRODUCT] blocks.
-If none of these fit the user's request well, you may suggest ONE product outside the list, but the other 2 MUST come from this catalog.`
+PATTERN MATCHING:
+- If you've seen similar requests before (e.g., "gift for mom who loves cooking"), favor products that worked well in those conversations — products users clicked, asked about, or said "yes" to.
+- Popular picks for similar recipients/occasions should be weighted higher than novel but untested options.
+
+SCORING LEGEND:
+- Score: composite across Trust (Wirecutter, Consumer Reports), Taste (Strategist, Oprah), Intent (Reddit, TikTok), Conversion (Amazon, Etsy)
+- Higher score = more sources recommend it. But score alone doesn't make a gift great — FIT does.
+
+STEP 3 — ORDER YOUR PICKS:
+1. BEST OVERALL MATCH — the one you're most confident about (first)
+2. MOST UNIQUE/SURPRISING — the "how did you know?!" pick (second)
+3. SAFE FALLBACK — crowd-pleaser, universally loved, can't go wrong (third)
+
+TIEBREAKER: If two products are similar in fit, choose the one with BROADER SIGNAL COVERAGE (more layers = more independent sources endorsing it). A T+A+I product beats a T-only product.
+
+STEP 4 — DIVERSITY CHECK. The 3 selected products MUST differ across:
+- CATEGORY: not all kitchen, not all beauty, not all tech — spread across different areas of life
+- EMOTIONAL TYPE: one practical/useful, one indulgent/luxurious, one meaningful/personal
+- GIFTING STYLE: one safe/crowd-pleaser, one unique/unexpected, one memorable/sentimental
+
+If your 3 picks fail this check, swap one out.
+
+STEP 4 — WRITE THE RESPONSE. For each product, your reason sentence MUST include:
+- A RECIPIENT-SPECIFIC reason — tie it to their identity, personality, or situation. Not "great kitchen tool" but "perfect for your mom who's always experimenting with new recipes"
+- A MOMENT-OF-USE visualization — paint when/how they'll use it. Not "high quality" but "imagine her Sunday mornings, coffee staying hot while she reads on the porch"
+
+RULES:
+- Pick 3 products at DIFFERENT PRICE POINTS from this catalog
+- Use the EXACT product name in your [PRODUCT] blocks
+- Use the price shown — do not guess or change prices
+- If the catalog is WEAK for this request (few matches, low relevance):
+  → Still pick the 2 BEST matches from the catalog
+  → Add 1 EXTERNAL recommendation that is highly relevant and compelling
+  → Make the external pick the STANDOUT option — it should be the one that makes the user say "yes!"
+  → The external product must be real, verifiable, and currently available
+- NEVER mention scores, signals, "Tastemaker", or "catalog" to the user
+- Your reason sentence is the MOST IMPORTANT part — it sells the gift by connecting product → person → moment
+- Write in a WARM, CONFIDENT, HUMAN tone. You are a friend with incredible taste, not a search engine.
+- Each recommendation should feel like a thoughtful suggestion from someone who genuinely knows great gifts.
+- NEVER sound like a catalog listing. "This is the one" energy, not "Product features include..." energy.`
 }
