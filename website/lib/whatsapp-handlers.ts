@@ -1509,7 +1509,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
                 return {
                   name: p.name,
                   price: resolvedPrice ? ` — ${resolvedPrice}` : '',
-                  link: `\n${trackedUrl}?from=wa`,
+                  link: `\n${trackedUrl.replace('/p/', '/r/')}?from=wa`,
                   image,
                 }
               })(),

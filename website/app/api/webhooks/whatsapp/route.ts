@@ -405,7 +405,7 @@ export async function POST(request: NextRequest) {
 
       // Send satisfaction buttons after product RECOMMENDATIONS (multiple products, not single buy links)
       const isProductList = replyText && /\d\.\s\*[A-Z]/.test(replyText)
-      const isSingleBuyLink = replyText && replyText.includes('Great choice') && replyText.includes('giftist.ai/p/')
+      const isSingleBuyLink = replyText && replyText.includes('Great choice') && (replyText.includes('giftist.ai/p/') || replyText.includes('giftist.ai/r/'))
 
       if (isProductList && !isSingleBuyLink) {
         await sendButtonMessage(
@@ -421,7 +421,7 @@ export async function POST(request: NextRequest) {
 
       // When user picks a product ("Great choice!"), send a big CTA button for the buy link
       if (isSingleBuyLink) {
-        const linkMatch = replyText.match(/(https:\/\/giftist\.ai\/p\/[^\s?]+)/)
+        const linkMatch = replyText.match(/(https:\/\/giftist\.ai\/[pr]\/[^\s?]+)/)
         if (linkMatch) {
           await sendCtaUrlMessage(
             phone,
