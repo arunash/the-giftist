@@ -22,6 +22,7 @@ interface TastemakerGift {
   totalScore: number
   signalCount: number
   sources: Record<string, any>
+  affiliateReady: boolean
   reviewStatus: string
   reviewComment: string | null
   reviewedAt: string | null
