@@ -1027,8 +1027,19 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       content: m.content,
     }))
 
-  // Build system prompt with user context
-  const systemPrompt = await buildChatContext(userId, 'whatsapp')
+  // Build system prompt with user context + Tastemaker products
+  let systemPrompt = await buildChatContext(userId, 'whatsapp')
+
+  // Inject Tastemaker curated products into the prompt
+  try {
+    const { getTastemakerProducts } = await import('@/lib/tastemaker-query')
+    const tastemakerCatalog = await getTastemakerProducts(text)
+    if (tastemakerCatalog) {
+      systemPrompt += tastemakerCatalog
+    }
+  } catch (err) {
+    console.log('[Tastemaker] Query failed, Claude will use its own knowledge:', err)
+  }
 
   // Send "thinking" indicator if response takes more than 10 seconds (WhatsApp only)
   const thinkingTimer = phone ? setTimeout(() => {
