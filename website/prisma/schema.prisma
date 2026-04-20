@@ -674,3 +674,48 @@ model MetaCampaign {
   @@index([status])
   @@index([holidaySlug])
 }
+
+// Tastemaker — scored gift recommendations from multi-signal scraping
+model TastemakerGift {
+  id                String    @id @default(cuid())
+  name              String
+  nameNormalized    String    @unique
+  price             String?
+  priceValue        Float?
+  url               String?
+  domain            String?
+  image             String?
+  why               String?
+
+  // Tags
+  recipientTypes    String[]  @default([])
+  occasions         String[]  @default([])
+  interests         String[]  @default([])
+  priceRange        String    @default("mid")
+
+  // Scores (0-5 each)
+  trustScore        Float     @default(0)
+  tasteScore        Float     @default(0)
+  intentScore       Float     @default(0)
+  conversionScore   Float     @default(0)
+  totalScore        Float     @default(0)
+  signalCount       Int       @default(0)
+
+  // Provenance
+  sources           Json      @default("{}")
+  affiliateReady    Boolean   @default(false)
+
+  // HITL review
+  reviewStatus      String    @default("pending")  // pending | approved | rejected
+  reviewComment     String?
+  reviewedAt        DateTime?
+
+  // Timestamps
+  lastScrapedAt     DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([totalScore(sort: Desc)])
+  @@index([reviewStatus])
+  @@index([priceRange])
+}

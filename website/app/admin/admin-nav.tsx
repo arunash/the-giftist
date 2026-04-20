@@ -14,6 +14,7 @@ const tabs = [
   { href: '/admin/campaigns', label: 'Campaigns' },
   { href: '/admin/ads', label: 'Ads' },
   { href: '/admin/catalog', label: 'Catalog' },
+  { href: '/admin/tastemaker', label: 'Tastemaker' },
 ]
 
 export function AdminNav() {
