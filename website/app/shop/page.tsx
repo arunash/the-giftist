@@ -68,10 +68,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Gift Ideas That People Actually Want | Giftist',
     description: 'Curated gift recommendations backed by Wirecutter, The Strategist, Reddit, and real reviews.',
-    url: 'https://giftist.ai/gifts',
+    url: 'https://giftist.ai/shop',
     type: 'website',
   },
-  alternates: { canonical: 'https://giftist.ai/gifts' },
+  alternates: { canonical: 'https://giftist.ai/shop' },
 }
 
 interface GiftProduct {
@@ -156,7 +156,7 @@ export default async function GiftsPage() {
     '@type': 'CollectionPage',
     name: 'Gift Ideas That People Actually Want',
     description: 'Curated gift recommendations backed by expert reviews and real data.',
-    url: 'https://giftist.ai/gifts',
+    url: 'https://giftist.ai/shop',
     provider: { '@type': 'Organization', name: 'Giftist', url: 'https://giftist.ai' },
     mainEntity: {
       '@type': 'ItemList',
