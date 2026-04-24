@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       // Step 3: If still no image, try Google Shopping image search
       if (!image) {
         try {
-          const searchRes = await searchRetailers(product.name)
+          const searchRes = await searchRetailers(product.name, null, null)
           if (searchRes.bestResult?.url) {
             if (!url) {
               url = searchRes.bestResult.url
