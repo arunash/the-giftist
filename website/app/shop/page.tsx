@@ -2,65 +2,14 @@ import { prisma } from '@/lib/db'
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Gift, ExternalLink, MessageCircle, Star, ChevronRight, Search } from 'lucide-react'
+import { Gift, MessageCircle, Star } from 'lucide-react'
 import { createTrackedLink } from '@/lib/product-link'
+import { GiftGrid, GiftProduct } from './gift-grid'
+import { EditorsPickCard } from './editors-pick-card'
 
 export const revalidate = 3600 // ISR: revalidate every hour
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
-
-// Map source keys to display labels
-const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
-  wirecutter: { label: 'Wirecutter Pick', color: 'bg-blue-50 text-blue-700' },
-  strategist: { label: 'NY Mag Pick', color: 'bg-purple-50 text-purple-700' },
-  oprah_daily: { label: "Oprah's Pick", color: 'bg-orange-50 text-orange-700' },
-  reddit_occasions: { label: 'Reddit Loved', color: 'bg-red-50 text-red-700' },
-  uncommon_goods: { label: 'Top Seller', color: 'bg-green-50 text-green-700' },
-  something_good_blog: { label: 'Editor Pick', color: 'bg-teal-50 text-teal-700' },
-  amazon_bestseller: { label: 'Bestseller', color: 'bg-yellow-50 text-yellow-700' },
-  etsy_trending: { label: 'Trending', color: 'bg-pink-50 text-pink-700' },
-}
-
-function getSourceBadge(sources: any): { label: string; color: string } | null {
-  if (!sources || typeof sources !== 'object') return null
-  // Pick the highest-weight source
-  const entries = Object.entries(sources) as [string, any][]
-  if (entries.length === 0) return null
-  entries.sort((a, b) => (b[1]?.weight || 0) - (a[1]?.weight || 0))
-  const topSource = entries[0][0]
-  return SOURCE_LABELS[topSource] || { label: 'Expert Pick', color: 'bg-gray-50 text-gray-600' }
-}
-
-// Occasion filter labels
-const OCCASIONS = [
-  { key: 'all', label: 'All Gifts' },
-  { key: 'birthday', label: 'Birthday' },
-  { key: 'mothers-day', label: "Mother's Day" },
-  { key: 'fathers-day', label: "Father's Day" },
-  { key: 'christmas', label: 'Christmas' },
-  { key: 'anniversary', label: 'Anniversary' },
-  { key: 'wedding', label: 'Wedding' },
-  { key: 'graduation', label: 'Graduation' },
-  { key: 'just-because', label: 'Just Because' },
-]
-
-const RECIPIENTS = [
-  { key: 'all', label: 'Anyone' },
-  { key: 'mom', label: 'Mom' },
-  { key: 'dad', label: 'Dad' },
-  { key: 'partner', label: 'Partner' },
-  { key: 'friend', label: 'Friend' },
-  { key: 'coworker', label: 'Coworker' },
-  { key: 'self', label: 'Self' },
-]
-
-const PRICE_RANGES = [
-  { key: 'all', label: 'Any Price' },
-  { key: 'budget', label: 'Under $30' },
-  { key: 'mid', label: '$30 - $75' },
-  { key: 'premium', label: '$75 - $150' },
-  { key: 'luxury', label: '$150+' },
-]
 
 export const metadata: Metadata = {
   title: 'Gift Ideas That People Actually Want | Giftist',
@@ -72,25 +21,6 @@ export const metadata: Metadata = {
     type: 'website',
   },
   alternates: { canonical: 'https://giftist.ai/shop' },
-}
-
-interface GiftProduct {
-  id: string
-  name: string
-  price: string | null
-  priceValue: number | null
-  image: string | null
-  url: string | null
-  domain: string | null
-  why: string | null
-  totalScore: number
-  signalCount: number
-  sources: any
-  recipientTypes: string[]
-  occasions: string[]
-  interests: string[]
-  priceRange: string
-  trackedSlug?: string
 }
 
 async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: GiftProduct[] }> {
@@ -121,7 +51,6 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     },
   })
 
-  // Create tracked links for all products
   const withSlugs: GiftProduct[] = []
   for (const p of products) {
     let trackedSlug: string | undefined
@@ -135,7 +64,6 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
           image: p.image,
           source: 'GIFTS_PAGE',
         })
-        // Extract slug from URL: https://giftist.ai/p/SLUG
         trackedSlug = trackedUrl.split('/p/')[1]
       } catch {}
     }
@@ -148,7 +76,7 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
   }
 }
 
-export default async function GiftsPage() {
+export default async function ShopPage() {
   const { editorsPicks, allGifts } = await getGifts()
 
   const jsonLd = {
@@ -236,7 +164,7 @@ export default async function GiftsPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {editorsPicks.map((p) => (
-              <GiftCard key={p.id} product={p} featured />
+              <EditorsPickCard key={p.id} product={p} />
             ))}
           </div>
         </section>
@@ -260,7 +188,7 @@ export default async function GiftsPage() {
         </div>
       </div>
 
-      {/* Filter + Grid */}
+      {/* Filter + Grid (client component) */}
       <GiftGrid gifts={allGifts} />
 
       {/* Bottom CTA */}
@@ -283,141 +211,5 @@ export default async function GiftsPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-function GiftCard({ product: p, featured }: { product: GiftProduct; featured?: boolean }) {
-  const badge = getSourceBadge(p.sources)
-  const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
-  const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
-
-  // Image links to Giftist product page (shows why + details)
-  // "Buy" button links to retailer (affiliate) in new tab
-  return (
-    <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-      {/* Product image — click opens Giftist product page with details */}
-      <a
-        href={giftistUrl || retailerUrl || '#'}
-        className="block"
-      >
-        <div className={`relative ${featured ? 'aspect-square' : 'aspect-[4/5]'} bg-gray-50 overflow-hidden`}>
-          {p.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={p.image}
-              alt={p.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Gift className="h-8 w-8 text-gray-200" />
-            </div>
-          )}
-
-          {/* Price badge */}
-          {p.price && (
-            <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[10px] font-bold text-gray-900 px-2 py-0.5 rounded-full shadow-sm">
-              {p.price}
-            </div>
-          )}
-
-          {/* Source badge */}
-          {badge && (
-            <div className={`absolute top-2 right-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${badge.color}`}>
-              {badge.label}
-            </div>
-          )}
-        </div>
-      </a>
-
-      {/* Product info */}
-      <div className="p-3">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
-          {p.domain?.replace('www.', '') || 'Shop'}
-        </p>
-        <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5 line-clamp-2">
-          {p.name}
-        </p>
-
-        {/* Why — shown as a subtle teaser */}
-        {p.why && (
-          <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 leading-snug">
-            {p.why}
-          </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-2.5">
-          {retailerUrl && (
-            <a
-              href={retailerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
-            >
-              Buy
-              <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          )}
-          {p.trackedSlug && (
-            <a
-              href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-600 transition ml-auto"
-            >
-              Find similar
-              <ChevronRight className="h-2.5 w-2.5" />
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
-  // Server-rendered grid with all products — filtering happens client-side via CSS/JS
-  // For now, render all products; we'll add client-side filtering in a follow-up
-  return (
-    <section className="max-w-6xl mx-auto px-4 py-12">
-      <h2 className="text-lg font-bold text-gray-900 mb-2">All Gifts</h2>
-      <p className="text-sm text-gray-400 mb-6">{gifts.length} curated picks from trusted sources</p>
-
-      {/* Filter pills — static for now, can be made interactive with client component */}
-      <div className="flex gap-2 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-        {OCCASIONS.slice(0, 6).map((o) => (
-          <span
-            key={o.key}
-            className="flex-shrink-0 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full cursor-default"
-          >
-            {o.label}
-          </span>
-        ))}
-      </div>
-
-      {gifts.length === 0 ? (
-        <div className="text-center py-20">
-          <Gift className="h-10 w-10 text-gray-200 mx-auto" />
-          <p className="text-sm text-gray-400 mt-3">Products are being curated. Check back soon!</p>
-          <a
-            href={`${WHATSAPP_URL}?text=${encodeURIComponent("I need help finding a gift")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-[#25D366] hover:underline"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Ask our concierge instead
-          </a>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {gifts.map((p) => (
-            <GiftCard key={p.id} product={p} />
-          ))}
-        </div>
-      )}
-    </section>
   )
 }
