@@ -221,10 +221,12 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
   const badge = getSourceBadge(p.sources)
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
   const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
+  const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
+  const cardLink = giftistUrl || retailerUrl || waLink
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-      <a href={giftistUrl || retailerUrl || '#'} className="block">
+      <a href={cardLink} className="block" {...(!giftistUrl && !retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
           {p.image && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -236,8 +238,9 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Gift className="h-8 w-8 text-gray-200" />
+            <div className="w-full h-full flex flex-col items-center justify-center px-4 bg-gradient-to-br from-gray-50 to-gray-100">
+              <Gift className="h-6 w-6 text-gray-300 mb-2" />
+              <p className="text-[11px] text-gray-400 text-center leading-tight line-clamp-3 font-medium">{p.name}</p>
             </div>
           )}
 
@@ -270,7 +273,7 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
         )}
 
         <div className="flex items-center gap-2 mt-2.5">
-          {retailerUrl && (
+          {retailerUrl ? (
             <a
               href={retailerUrl}
               target="_blank"
@@ -280,18 +283,26 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
               Buy
               <ExternalLink className="h-2.5 w-2.5" />
             </a>
-          )}
-          {p.trackedSlug && (
+          ) : (
             <a
-              href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`}
+              href={waLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-600 transition ml-auto"
+              className="flex items-center gap-1 text-[11px] font-semibold text-[#25D366] hover:text-[#20bd5a] transition"
             >
-              Find similar
-              <ChevronRight className="h-2.5 w-2.5" />
+              Ask about this
+              <MessageCircle className="h-2.5 w-2.5" />
             </a>
           )}
+          <a
+            href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Find me something similar to ${p.name}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-600 transition ml-auto"
+          >
+            Find similar
+            <ChevronRight className="h-2.5 w-2.5" />
+          </a>
         </div>
       </div>
     </div>

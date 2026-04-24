@@ -27,11 +27,8 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
   const products = await prisma.tastemakerGift.findMany({
     where: {
       reviewStatus: 'approved',
-      image: { not: null },
-      url: { not: null },
     },
     orderBy: { totalScore: 'desc' },
-    take: 200,
     select: {
       id: true,
       name: true,
@@ -51,27 +48,35 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     },
   })
 
+  // Only create tracked links for products with URLs (batch — limit to top 100 for build speed)
   const withSlugs: GiftProduct[] = []
-  for (const p of products) {
-    let trackedSlug: string | undefined
-    if (p.url) {
-      try {
-        const trackedUrl = await createTrackedLink({
-          productName: p.name,
-          targetUrl: p.url,
-          price: p.price,
-          priceValue: p.priceValue,
-          image: p.image,
-          source: 'GIFTS_PAGE',
-        })
-        trackedSlug = trackedUrl.split('/p/')[1]
-      } catch {}
-    }
-    withSlugs.push({ ...p, trackedSlug })
+  const productsWithUrls = products.filter(p => p.url)
+  const productsToTrack = productsWithUrls.slice(0, 100)
+  const slugMap = new Map<string, string>()
+
+  for (const p of productsToTrack) {
+    try {
+      const trackedUrl = await createTrackedLink({
+        productName: p.name,
+        targetUrl: p.url!,
+        price: p.price,
+        priceValue: p.priceValue,
+        image: p.image,
+        source: 'GIFTS_PAGE',
+      })
+      slugMap.set(p.id, trackedUrl.split('/p/')[1])
+    } catch {}
   }
 
+  for (const p of products) {
+    withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })
+  }
+
+  // Editor's Picks: only products with images, sorted by score (already sorted)
+  const withImages = withSlugs.filter(p => p.image)
+
   return {
-    editorsPicks: withSlugs.slice(0, 6),
+    editorsPicks: withImages.slice(0, 6),
     allGifts: withSlugs,
   }
 }
