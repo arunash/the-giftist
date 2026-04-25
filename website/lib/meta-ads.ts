@@ -337,13 +337,15 @@ export async function createShopAdCreative(params: {
   const { adAccountId, pageId: defaultPageId } = getConfig()
   const pid = params.pageId || defaultPageId
 
-  const path = params.shopPath || '/shop'
-  const utm = new URLSearchParams({
-    utm_source: 'meta',
-    utm_medium: 'paid_social',
-    utm_campaign: params.utmCampaign,
-  }).toString()
-  const link = `https://giftist.ai${path}?${utm}`
+  // Merge UTM params with any existing query string in shopPath so we don't
+  // accidentally produce double-? URLs like /shop?occasion=foo?utm_source=...
+  const rawPath = params.shopPath || '/shop'
+  const [pathOnly, existingQs = ''] = rawPath.split('?')
+  const merged = new URLSearchParams(existingQs)
+  merged.set('utm_source', 'meta')
+  merged.set('utm_medium', 'paid_social')
+  merged.set('utm_campaign', params.utmCampaign)
+  const link = `https://giftist.ai${pathOnly}?${merged.toString()}`
 
   const objectStorySpec: any = {
     page_id: pid,
@@ -433,6 +435,9 @@ export async function createShopFullCampaign(params: {
         publisher_platforms: ['facebook', 'instagram'],
         facebook_positions: ['feed', 'story'],
         instagram_positions: ['stream', 'story', 'reels'],
+        // Meta requires this flag when targeting is narrowed (gender / age / interests).
+        // 0 = honor exact targeting; 1 = let Meta expand to similar audiences.
+        targeting_automation: { advantage_audience: 0 },
       },
       status: 'PAUSED',
     },
@@ -457,18 +462,20 @@ export async function createShopFullCampaign(params: {
   await activateAdSet(adSet.id)
   await activateCampaign(campaign.id)
 
-  const utm = new URLSearchParams({
-    utm_source: 'meta',
-    utm_medium: 'paid_social',
-    utm_campaign: params.utmCampaign,
-  }).toString()
+  // Build the same merged URL the creative uses so we can log/persist it.
+  const rawPath = params.shopPath || '/shop'
+  const [pathOnly, existingQs = ''] = rawPath.split('?')
+  const merged = new URLSearchParams(existingQs)
+  merged.set('utm_source', 'meta')
+  merged.set('utm_medium', 'paid_social')
+  merged.set('utm_campaign', params.utmCampaign)
 
   return {
     campaignId: campaign.id,
     adSetId: adSet.id,
     adId: ad.id,
     creativeId: creative.id,
-    landingUrl: `https://giftist.ai${params.shopPath || '/shop'}?${utm}`,
+    landingUrl: `https://giftist.ai${pathOnly}?${merged.toString()}`,
   }
 }
 
