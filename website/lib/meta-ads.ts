@@ -401,6 +401,8 @@ export async function createShopFullCampaign(params: {
       objective: 'OUTCOME_TRAFFIC',
       special_ad_categories: [],
       buying_type: 'AUCTION',
+      // Each ad set sets its own budget; not sharing across ad sets.
+      is_adset_budget_sharing_enabled: false,
       status: 'PAUSED',
     },
   })
