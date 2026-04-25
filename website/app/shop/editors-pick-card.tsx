@@ -29,13 +29,21 @@ function getSourceBadge(sources: any): { label: string; color: string } | null {
 export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
-  // /r/SLUG opens the retailer in a background tab AND navigates to /p/SLUG (Giftist page)
-  const dualLink = p.trackedSlug ? `/r/${p.trackedSlug}` : null
+  const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
+
+  // For tracked products: open retailer in bg tab via window.open (real user gesture
+  // = no popup-blocker), and let the <a> navigate the current tab to /p/SLUG.
+  const dualClick = giftistUrl && retailerUrl
+    ? (e: React.MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+        window.open(retailerUrl, '_blank', 'noopener,noreferrer')
+      }
+    : undefined
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-      <a href={dualLink || retailerUrl || '#'} className="block" {...(!dualLink && retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+      <a href={giftistUrl || retailerUrl || '#'} onClick={dualClick} className="block" {...(!giftistUrl && retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         <div className="relative aspect-square bg-gray-50 overflow-hidden">
           {p.image && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -81,9 +89,10 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
         )}
 
         <div className="flex items-center gap-2 mt-2.5">
-          {dualLink ? (
+          {giftistUrl && retailerUrl ? (
             <a
-              href={dualLink}
+              href={giftistUrl}
+              onClick={dualClick}
               className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
             >
               Buy
