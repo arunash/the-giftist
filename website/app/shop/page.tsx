@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Suspense } from 'react'
 import { Gift, MessageCircle, Star } from 'lucide-react'
 import { createTrackedLink } from '@/lib/product-link'
 import { GiftGrid, GiftProduct } from './gift-grid'
@@ -203,8 +204,10 @@ export default async function ShopPage() {
         </div>
       </div>
 
-      {/* Filter + Grid (client component) */}
-      <GiftGrid gifts={allGifts} />
+      {/* Filter + Grid (client component) — wrapped in Suspense because useSearchParams requires it */}
+      <Suspense fallback={null}>
+        <GiftGrid gifts={allGifts} />
+      </Suspense>
 
       {/* Bottom CTA */}
       <div className="bg-gray-900 text-white py-16">

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Gift, ExternalLink, MessageCircle, ChevronRight } from 'lucide-react'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
@@ -87,10 +88,34 @@ function matchesPriceRange(product: GiftProduct, filter: string): boolean {
   }
 }
 
+function isValidKey(value: string | null, options: Array<{ key: string }>): string {
+  if (!value) return 'all'
+  return options.some(o => o.key === value) ? value : 'all'
+}
+
 export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
-  const [occasion, setOccasion] = useState('all')
-  const [recipient, setRecipient] = useState('all')
-  const [priceRange, setPriceRange] = useState('all')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // Initialize from URL so ads landing on /shop?occasion=mothers-day land
+  // pre-filtered. Subsequent filter changes update the URL too so it's shareable.
+  const [occasion, setOccasion] = useState(() => isValidKey(searchParams.get('occasion'), OCCASIONS))
+  const [recipient, setRecipient] = useState(() => isValidKey(searchParams.get('recipient'), RECIPIENTS))
+  const [priceRange, setPriceRange] = useState(() => isValidKey(searchParams.get('price'), PRICE_RANGES))
+
+  // Keep URL in sync when user changes filters (preserve other params like utm_*).
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (occasion === 'all') params.delete('occasion'); else params.set('occasion', occasion)
+    if (recipient === 'all') params.delete('recipient'); else params.set('recipient', recipient)
+    if (priceRange === 'all') params.delete('price'); else params.set('price', priceRange)
+    const qs = params.toString()
+    const next = qs ? `${pathname}?${qs}` : pathname
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== next) {
+      router.replace(next, { scroll: false })
+    }
+  }, [occasion, recipient, priceRange, pathname, router, searchParams])
 
   const filtered = useMemo(() => {
     return gifts.filter(p => {

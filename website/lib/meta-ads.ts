@@ -384,6 +384,10 @@ export async function createShopFullCampaign(params: {
   imageUrl?: string
   imageHash?: string
   interests?: Array<{ id: string; name: string }>
+  ageMin?: number          // default 21
+  ageMax?: number          // default 65
+  genders?: Array<1 | 2>   // 1=male, 2=female; omit for all
+  countries?: string[]     // default ['US']
 }): Promise<{
   campaignId: string
   adSetId: string
@@ -421,9 +425,10 @@ export async function createShopFullCampaign(params: {
       start_time: params.startDate.toISOString(),
       ...(params.endDate ? { end_time: params.endDate.toISOString() } : {}),
       targeting: {
-        geo_locations: { countries: ['US'] },
-        age_min: 21,
-        age_max: 65,
+        geo_locations: { countries: params.countries || ['US'] },
+        age_min: params.ageMin ?? 21,
+        age_max: params.ageMax ?? 65,
+        ...(params.genders && params.genders.length > 0 ? { genders: params.genders } : {}),
         ...(params.interests ? { flexible_spec: [{ interests: params.interests }] } : {}),
         publisher_platforms: ['facebook', 'instagram'],
         facebook_positions: ['feed', 'story'],

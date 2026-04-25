@@ -26,6 +26,9 @@ interface Args {
   text?: string
   interests?: 'mothers-day' | 'gift' | 'none'
   endDays?: number  // auto-end after N days
+  ageMin?: number
+  ageMax?: number
+  gender?: 'male' | 'female' | 'all'
 }
 
 function parseArgs(): Args {
@@ -33,7 +36,7 @@ function parseArgs(): Args {
   for (let i = 2; i < process.argv.length; i += 2) {
     const k = process.argv[i].replace(/^--/, '')
     const v = process.argv[i + 1]
-    if (k === 'budget' || k === 'endDays') out[k] = Number(v)
+    if (k === 'budget' || k === 'endDays' || k === 'ageMin' || k === 'ageMax') out[k] = Number(v)
     else out[k] = v
   }
   if (!out.name || !out.budget || !out.campaign) {
@@ -67,6 +70,11 @@ async function main() {
   const startDate = new Date()
   const endDate = args.endDays ? new Date(Date.now() + args.endDays * 86400000) : undefined
 
+  const genders =
+    args.gender === 'female' ? [2 as const] :
+    args.gender === 'male' ? [1 as const] :
+    undefined
+
   const result = await createShopFullCampaign({
     name: args.name,
     dailyBudget: args.budget,
@@ -78,6 +86,9 @@ async function main() {
     endDate,
     imageUrl: args.image,
     interests,
+    ageMin: args.ageMin,
+    ageMax: args.ageMax,
+    genders,
   })
 
   // Persist a MetaCampaign row so the admin dashboard can track it
