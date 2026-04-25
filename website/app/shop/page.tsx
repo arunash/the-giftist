@@ -8,6 +8,8 @@ import { createTrackedLink } from '@/lib/product-link'
 import { GiftGrid, GiftProduct } from './gift-grid'
 import { EditorsPickCard } from './editors-pick-card'
 import { ShopPageViewTracker } from './page-view-tracker'
+import { ShopHero } from './shop-hero'
+import { StickyConciergeBar } from './sticky-concierge-bar'
 
 export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
@@ -158,17 +160,22 @@ export default async function ShopPage() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <div className="max-w-6xl mx-auto px-4 pt-12 pb-8">
-        <div className="text-center max-w-2xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-            Gifts people actually want
-          </h1>
-          <p className="text-gray-500 mt-3 text-base sm:text-lg leading-relaxed">
-            Every pick is backed by expert reviews from Wirecutter, The Strategist, Reddit, and real purchase data. No filler, no generic candles.
-          </p>
+      {/* Occasion-aware hero — swaps to a Mother's Day variant when arriving via
+          ?occasion=mothers-day or utm_campaign=md-* */}
+      <Suspense fallback={
+        <div className="max-w-6xl mx-auto px-4 pt-12 pb-8">
+          <div className="text-center max-w-2xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+              Gifts people actually want
+            </h1>
+            <p className="text-gray-500 mt-3 text-base sm:text-lg leading-relaxed">
+              Every pick is backed by expert reviews from Wirecutter, The Strategist, Reddit, and real purchase data.
+            </p>
+          </div>
         </div>
-      </div>
+      }>
+        <ShopHero />
+      </Suspense>
 
       {/* Editor's Picks */}
       {editorsPicks.length > 0 && (
@@ -205,8 +212,15 @@ export default async function ShopPage() {
       </div>
 
       {/* Filter + Grid (client component) — wrapped in Suspense because useSearchParams requires it */}
+      <div id="all-gifts">
+        <Suspense fallback={null}>
+          <GiftGrid gifts={allGifts} />
+        </Suspense>
+      </div>
+
+      {/* Sticky bottom WhatsApp CTA — mobile only, hides on lg+ */}
       <Suspense fallback={null}>
-        <GiftGrid gifts={allGifts} />
+        <StickyConciergeBar />
       </Suspense>
 
       {/* Bottom CTA */}

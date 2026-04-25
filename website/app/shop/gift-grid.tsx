@@ -249,15 +249,13 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
   const cardLink = giftistUrl || retailerUrl || waLink
 
-  // For tracked products: open retailer in a new tab FIRST, then the Giftist
-  // page in a second new tab — browsers focus the most recently opened tab,
-  // so the user lands on Giftist while the retailer sits in the background.
-  // /shop stays in its original tab.
-  const dualClick = giftistUrl && retailerUrl
+  // Single-tab card click — navigates current tab to /p/SLUG. The retailer
+  // link is reachable from the product page; opening it here triggered Chrome's
+  // popup blocker on mobile and added friction without driving conversion.
+  // (Funnel data showed 96% bounce on /shop with the dual-tab flow.)
+  const dualClick = giftistUrl
     ? (e: React.MouseEvent) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
-        // Track the funnel step (fire-and-forget, doesn't block navigation)
-        if (p.trackedSlug) {
+        if (p.trackedSlug && !(e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0)) {
           fetch('/api/analytics/click-event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -265,9 +263,6 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
             keepalive: true,
           }).catch(() => {})
         }
-        e.preventDefault()
-        window.open(retailerUrl, '_blank', 'noopener,noreferrer')
-        window.open(giftistUrl, '_blank', 'noopener,noreferrer')
       }
     : undefined
 
@@ -300,6 +295,12 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
           {badge && (
             <div className={`absolute top-2 right-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${badge.color}`}>
               {badge.label}
+            </div>
+          )}
+
+          {p.occasions?.includes('mothers-day') && (
+            <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+              <span>🌸</span> Mother&apos;s Day
             </div>
           )}
         </div>
