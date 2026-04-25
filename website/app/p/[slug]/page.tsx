@@ -233,14 +233,10 @@ function ProductPage() {
     window.location.href = `/chat?q=${encodeURIComponent(prompt)}`
   }
 
-  // Redirect to login if not authenticated — BUT skip for WhatsApp users (they can browse without login)
-  useEffect(() => {
-    if (isLoggedIn === false && channel !== 'whatsapp') {
-      window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}${fromParam ? `?from=${fromParam}` : ''}`)}`
-    }
-  }, [isLoggedIn, slug, fromParam, channel])
+  // Browsing is free for everyone (web + WhatsApp). The Buy button gates on
+  // auth itself via requireAuthForPurchase().
 
-  if (loading || isLoggedIn === null || (isLoggedIn === false && channel !== 'whatsapp')) {
+  if (loading || isLoggedIn === null) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading...</div>
