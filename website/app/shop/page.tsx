@@ -7,7 +7,7 @@ import { createTrackedLink } from '@/lib/product-link'
 import { GiftGrid, GiftProduct } from './gift-grid'
 import { EditorsPickCard } from './editors-pick-card'
 
-export const revalidate = 3600 // ISR: revalidate every hour
+export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
