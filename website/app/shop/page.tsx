@@ -48,25 +48,33 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     },
   })
 
-  // Only create tracked links for products with URLs (batch — limit to top 100 for build speed)
+  // Create tracked links for ALL products with URLs so every click
+  // routes through /r/SLUG (opens retailer in bg + lands on Giftist /p page).
+  // Parallel batches keep build time reasonable.
   const withSlugs: GiftProduct[] = []
   const productsWithUrls = products.filter(p => p.url)
-  const productsToTrack = productsWithUrls.slice(0, 100)
   const slugMap = new Map<string, string>()
+  const CONCURRENCY = 12
 
-  for (const p of productsToTrack) {
-    try {
-      const trackedUrl = await createTrackedLink({
-        productName: p.name,
-        targetUrl: p.url!,
-        price: p.price,
-        priceValue: p.priceValue,
-        image: p.image,
-        source: 'GIFTS_PAGE',
-      })
-      slugMap.set(p.id, trackedUrl.split('/p/')[1])
-    } catch {}
-  }
+  let cursor = 0
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      while (cursor < productsWithUrls.length) {
+        const p = productsWithUrls[cursor++]
+        try {
+          const trackedUrl = await createTrackedLink({
+            productName: p.name,
+            targetUrl: p.url!,
+            price: p.price,
+            priceValue: p.priceValue,
+            image: p.image,
+            source: 'GIFTS_PAGE',
+          })
+          slugMap.set(p.id, trackedUrl.split('/p/')[1])
+        } catch {}
+      }
+    })
+  )
 
   for (const p of products) {
     withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })

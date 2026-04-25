@@ -29,12 +29,13 @@ function getSourceBadge(sources: any): { label: string; color: string } | null {
 export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
+  // /r/SLUG opens the retailer in a background tab AND navigates to /p/SLUG (Giftist page)
+  const dualLink = p.trackedSlug ? `/r/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
-  const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-      <a href={giftistUrl || retailerUrl || '#'} className="block">
+      <a href={dualLink || retailerUrl || '#'} className="block" {...(!dualLink && retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         <div className="relative aspect-square bg-gray-50 overflow-hidden">
           {p.image && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -80,7 +81,15 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
         )}
 
         <div className="flex items-center gap-2 mt-2.5">
-          {retailerUrl && (
+          {dualLink ? (
+            <a
+              href={dualLink}
+              className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
+            >
+              Buy
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          ) : retailerUrl && (
             <a
               href={retailerUrl}
               target="_blank"
