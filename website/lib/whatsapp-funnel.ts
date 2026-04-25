@@ -34,6 +34,27 @@ function parseFunnelStage(raw: string | null): FunnelState {
   try { return JSON.parse(raw) } catch { return {} }
 }
 
+// Phrases that signal the user wants us to back off. Match in their inbound
+// messages from the last 30 days; if any hit, we suppress non-urgent outbound
+// (promo / engagement / onboarding nudges).
+const NEGATIVE_SIGNAL_REGEX = /\b(scam|spam|fraud|fake|stop|unsubscribe|opt[-\s]?out|leave\s+me\s+alone|go\s+away|don'?t\s+(text|message|contact)|block(ing)?\s+(you|u)|annoying|harass|f\*?\s*off|fuck\s*off|piss\s*off|shut\s*up)\b/i
+
+export async function hasRecentNegativeSignal(userId: string, phone: string | null): Promise<boolean> {
+  if (!phone) return false
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const recent = await prisma.whatsAppMessage.findMany({
+    where: {
+      phone,
+      createdAt: { gte: cutoff },
+      type: { in: ['text', 'interactive'] },
+      content: { not: null },
+    },
+    select: { content: true },
+    take: 200,
+  })
+  return recent.some(m => m.content && NEGATIVE_SIGNAL_REGEX.test(m.content))
+}
+
 // ── AI Gift Suggestion Generator ──
 // Every outbound message should include a curated product suggestion.
 // Uses Claude Haiku to generate contextual, specific product picks.
@@ -201,6 +222,12 @@ async function queueMessage(params: {
 export async function scheduleOnboardingNudges(userId: string, phone: string, timezone: string | null) {
   const now = new Date()
 
+  // Skip scheduling entirely if the user has recently told us to back off.
+  if (await hasRecentNegativeSignal(userId, phone)) {
+    console.log(`[Onboarding] Skipped scheduling — recent negative signal from ${phone}`)
+    return
+  }
+
   const nudges = [
     {
       delayHours: 4,
@@ -291,6 +318,22 @@ export async function processMessageQueue() {
 
   for (const [userId, messages] of Array.from(byUser.entries())) {
     const tz = messages[0].user.timezone || 'America/New_York'
+    const phoneForUser = messages.find(m => m.phone)?.phone || null
+
+    // Suppress non-urgent outbound for users who told us to back off.
+    // Holiday/expiring messages still go through (urgency overrides).
+    if (await hasRecentNegativeSignal(userId, phoneForUser)) {
+      const skippable = messages.filter(m => m.expiresAt == null)
+      for (const msg of skippable) {
+        await prisma.messageQueue.update({
+          where: { id: msg.id },
+          data: { status: 'SKIPPED' },
+        })
+      }
+      console.log(`[MessageQueue] Suppressed ${skippable.length} msgs for ${phoneForUser} — recent negative signal`)
+      results.deferred += messages.length - skippable.length
+      continue
+    }
 
     const lastSent = await prisma.messageQueue.findFirst({
       where: { userId, status: 'SENT' },
@@ -492,6 +535,8 @@ export async function runDailyEngagement() {
 
   for (const user of users) {
     if (!user.phone && !user.email) continue
+    // Don't queue ANY engagement messages for users who told us to back off.
+    if (user.phone && (await hasRecentNegativeSignal(user.id, user.phone))) continue
     const state = parseFunnelStage(user.funnelStage)
     const displayName = user.name || 'there'
     const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / 86400000)
@@ -1348,6 +1393,7 @@ export async function sendSmsReengagement() {
     if (!user.phone) continue
     if (!user.phone.startsWith('1') || user.phone.length !== 11) { results.skipped++; continue }
     if (user._count.items > 0) { results.skipped++; continue }
+    if (await hasRecentNegativeSignal(user.id, user.phone)) { results.skipped++; continue }
 
     const state = parseFunnelStage(user.funnelStage)
     if (state.reengagementSent) { results.skipped++; continue }

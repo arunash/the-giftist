@@ -2,6 +2,8 @@ import { prisma } from './db'
 
 const DEDUP_WINDOW_DAYS = 7
 const MAX_SUGGESTIONS_PER_PRODUCT = 2
+const PER_USER_DEDUP_WINDOW_DAYS = 30
+const PER_USER_MAX_SUGGESTIONS = 30 // cap so prompt doesn't bloat
 
 function normalizeProductName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -34,6 +36,23 @@ export async function getOverSuggestedProducts(): Promise<string[]> {
   })
 
   return overUsed.map(p => p.productName)
+}
+
+/**
+ * Per-user dedup: products this specific user has already been shown
+ * in the last 30 days. Used so "Show me more" returns genuinely new picks.
+ */
+export async function getProductsShownToUser(userId: string): Promise<string[]> {
+  if (!userId) return []
+  const cutoff = new Date(Date.now() - PER_USER_DEDUP_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const rows = await prisma.productSuggestion.findMany({
+    where: { userId, createdAt: { gte: cutoff } },
+    select: { productName: true },
+    orderBy: { createdAt: 'desc' },
+    take: PER_USER_MAX_SUGGESTIONS,
+    distinct: ['productName'],
+  })
+  return rows.map(r => r.productName)
 }
 
 /**

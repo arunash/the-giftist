@@ -166,6 +166,26 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Skip-stale check: if the user fired off 2+ messages in quick succession
+    // (e.g., tapped 3 buttons in a row), only process the LATEST one. Avoids
+    // the cascade where each rapid tap generates a parallel Claude reply.
+    const newerInbound = await prisma.whatsAppMessage.findFirst({
+      where: {
+        phone,
+        type: { in: ['text', 'interactive', 'image', 'document', 'CTWA_CLICK'] },
+        id: { not: waMsg.id },
+        createdAt: { gt: waMsg.createdAt },
+      },
+      select: { id: true },
+    })
+    if (newerInbound) {
+      await prisma.whatsAppMessage.update({
+        where: { id: waMsg.id },
+        data: { status: 'SKIPPED', processedAt: new Date(), error: 'superseded by newer inbound' },
+      }).catch(() => {})
+      return NextResponse.json({ status: 'ok', skipped: 'stale' })
+    }
+
     // Mark as read + react immediately so user sees we're working on it
     markAsRead(waMessageId).catch(() => {})
     if (messageType === 'text' || messageType === 'interactive') {
@@ -199,7 +219,9 @@ export async function POST(request: NextRequest) {
 
     if (isNewUser && !isGiftRequest) {
       // Vague first message — detect language, send welcome + buttons.
-      const isSpanish = /hola|información|quiero|regalo|busco|ayuda/i.test(firstMessageText)
+      const { detectLanguage } = await import('@/lib/chat-context')
+      const lang = detectLanguage(firstMessageText)
+      const isSpanish = lang.code === 'es'
 
       if (isSpanish) {
         await sendButtonMessage(
@@ -398,43 +420,64 @@ export async function POST(request: NextRequest) {
 
       // Send reply — skip if handler already sent it (marked with __ALREADY_SENT__)
       const alreadySent = reply?.startsWith('__ALREADY_SENT__')
-      if (reply && !alreadySent) {
-        await sendTextMessage(phone, reply)
-      }
       const replyText = alreadySent ? reply!.replace('__ALREADY_SENT__', '') : (reply || '')
 
-      // Send satisfaction buttons after product RECOMMENDATIONS (multiple products, not single buy links)
-      const isProductList = replyText && /\d\.\s\*[A-Z]/.test(replyText)
-      const isSingleBuyLink = replyText && replyText.includes('Great choice') && (replyText.includes('giftist.ai/p/') || replyText.includes('giftist.ai/r/'))
+      // Classify the reply
+      const isProductList = !!(replyText && /\d\.\s\*[A-Z]/.test(replyText))
+      const isSingleBuyLink = !!(replyText && replyText.includes('Great choice') && (replyText.includes('giftist.ai/p/') || replyText.includes('giftist.ai/r/')))
 
-      if (isProductList && !isSingleBuyLink) {
-        await sendButtonMessage(
-          phone,
-          'Or tap below:',
-          [
+      // ONE message per turn rule:
+      // - Product list → fold the satisfaction buttons into the same message body
+      //   (when it fits in WhatsApp's 1024-char interactive body limit)
+      // - Single buy link → fold the View & Gift CTA into the same message
+      // - Anything else → plain text
+      const WA_BODY_LIMIT = 1024
+
+      if (reply && !alreadySent) {
+        if (isProductList && !isSingleBuyLink && replyText.length <= WA_BODY_LIMIT) {
+          await sendButtonMessage(
+            phone,
+            replyText,
+            [
+              { id: 'satisfaction_more', title: '🔄 Show me more' },
+              { id: 'satisfaction_different', title: '↩️ Something else' },
+              { id: 'satisfaction_yes', title: '✅ All set!' },
+            ],
+          ).catch(async () => {
+            // Buttons can fail (e.g., body too long after WhatsApp's own counting);
+            // fall back to plain text + a separate buttons follow-up.
+            await sendTextMessage(phone, replyText)
+            await sendButtonMessage(phone, 'What next?', [
+              { id: 'satisfaction_more', title: '🔄 Show me more' },
+              { id: 'satisfaction_different', title: '↩️ Something else' },
+              { id: 'satisfaction_yes', title: '✅ All set!' },
+            ]).catch(() => {})
+          })
+        } else if (isSingleBuyLink) {
+          const linkMatch = replyText.match(/(https:\/\/giftist\.ai\/[pr]\/[^\s?]+)/)
+          if (linkMatch && replyText.length <= WA_BODY_LIMIT) {
+            await sendCtaUrlMessage(
+              phone,
+              replyText,
+              'View & Gift Now',
+              linkMatch[1],
+            ).catch(async () => {
+              await sendTextMessage(phone, replyText)
+            })
+          } else {
+            await sendTextMessage(phone, replyText)
+          }
+        } else if (isProductList && replyText.length > WA_BODY_LIMIT) {
+          // Product list too long for button body — send text + buttons separately.
+          await sendTextMessage(phone, replyText)
+          await sendButtonMessage(phone, 'What next?', [
             { id: 'satisfaction_more', title: '🔄 Show me more' },
             { id: 'satisfaction_different', title: '↩️ Something else' },
             { id: 'satisfaction_yes', title: '✅ All set!' },
-          ],
-        ).catch(() => {})
-      }
-
-      // When user picks a product ("Great choice!"), send a big CTA button for the buy link
-      if (isSingleBuyLink) {
-        const linkMatch = replyText.match(/(https:\/\/giftist\.ai\/[pr]\/[^\s?]+)/)
-        if (linkMatch) {
-          await sendCtaUrlMessage(
-            phone,
-            '👆 Tap to see it & grab it before it sells out!',
-            'View & Gift Now',
-            linkMatch[1],
-          ).catch(() => {})
+          ]).catch(() => {})
+        } else {
+          await sendTextMessage(phone, replyText)
         }
-      }
-
-      // First gift request nudge — for new users only
-      if (isNewUser && isGiftRequest && reply) {
-        await sendTextMessage(phone, `💡 *Quick tip:* Reply with more details (hobbies, budget, age) and I'll refine my picks. Or just say "more like #1" to see similar options!`).catch(() => {})
       }
 
       // Update audit record

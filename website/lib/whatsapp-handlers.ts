@@ -1033,7 +1033,7 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
   // Inject Tastemaker curated products into the prompt
   try {
     const { getTastemakerProducts } = await import('@/lib/tastemaker-query')
-    const tastemakerCatalog = await getTastemakerProducts(text)
+    const tastemakerCatalog = await getTastemakerProducts(text, userId)
     if (tastemakerCatalog) {
       systemPrompt += tastemakerCatalog
     }

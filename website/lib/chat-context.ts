@@ -1,5 +1,5 @@
 import { prisma } from './db'
-import { getOverSuggestedProducts } from './product-suggestions'
+import { getOverSuggestedProducts, getProductsShownToUser } from './product-suggestions'
 
 // First 2 messages are the "demo" experience (welcome + first interaction).
 // The 10 free messages start counting from message 3.
@@ -214,8 +214,53 @@ function getStartOfDayInUTC(timezone: string): Date {
   return new Date(Date.UTC(year, month - 1, day) - offsetMs)
 }
 
+// ── Language lock ──
+// Detect a single language from the user's recent inbound text so we don't
+// bounce between English/Spanish/Creole mid-conversation.
+const LANG_PATTERNS: Array<{ code: string; name: string; regex: RegExp }> = [
+  { code: 'ht', name: 'Haitian Creole', regex: /\b(bonswa|bonjou|mwen|kado|kisa|pou\s+(yon|ou)|èske|jodi\s+a|mèsi)\b/i },
+  { code: 'es', name: 'Spanish', regex: /\b(hola|gracias|regalo|para\s+mi|mamá|papá|cumpleaños|información|quiero|necesito|busco|amiga|amigo|qué|cuánto)\b|¿|¡/i },
+  { code: 'fr', name: 'French', regex: /\b(bonjour|salut|merci|cadeau|anniversaire|pour\s+ma|mère|père|s'?il\s+vous\s+plaît|aide|j'ai\s+besoin)\b/i },
+  { code: 'pt', name: 'Portuguese', regex: /\b(olá|obrigad[oa]|presente|mãe|pai|aniversário|preciso|gostaria|por\s+favor|você)\b/i },
+  { code: 'it', name: 'Italian', regex: /\b(ciao|grazie|regalo|mamma|papà|compleanno|per\s+favore|aiuto|vorrei)\b/i },
+  { code: 'tr', name: 'Turkish', regex: /\b(merhaba|teşekkür|hediye|için|doğum\s+günü|nasıl|lütfen|annem|babam)\b/i },
+  { code: 'de', name: 'German', regex: /\b(hallo|danke|geschenk|geburtstag|für|bitte|hilfe|brauche|möchte)\b/i },
+  { code: 'hi', name: 'Hindi', regex: /\b(namaste|dhanyavaad|tohfa|janamdin|ke\s+liye|maa|papa|chahiye)\b/i },
+]
+
+export function detectLanguage(text: string): { code: string; name: string } {
+  for (const { code, name, regex } of LANG_PATTERNS) {
+    if (regex.test(text)) return { code, name }
+  }
+  return { code: 'en', name: 'English' }
+}
+
+/**
+ * Pick the dominant language across the user's recent inbound messages.
+ * Locks language so we don't switch mid-conversation.
+ */
+export async function detectUserLanguage(userId: string): Promise<{ code: string; name: string }> {
+  let recent: Array<{ content: string }> = []
+  try {
+    const rows = await prisma.chatMessage.findMany({
+      where: { userId, role: 'USER' },
+      orderBy: { createdAt: 'asc' },
+      take: 5,
+      select: { content: true },
+    })
+    if (Array.isArray(rows)) recent = rows
+  } catch { /* fall through to English */ }
+  // First non-English vote wins. Locks the user into their first-detected language.
+  for (const m of recent) {
+    const lang = detectLanguage(m.content)
+    if (lang.code !== 'en') return lang
+  }
+  return { code: 'en', name: 'English' }
+}
+
 export async function buildChatContext(userId: string, channel: 'web' | 'whatsapp' = 'web'): Promise<string> {
-  const [items, events, wallet, user, circleMembers, overSuggested] = await Promise.all([
+  const lockedLanguage = await detectUserLanguage(userId)
+  const [items, events, wallet, user, circleMembers, overSuggested, alreadyShownToUser] = await Promise.all([
     prisma.item.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' },
@@ -272,6 +317,7 @@ export async function buildChatContext(userId: string, channel: 'web' | 'whatsap
       take: 20,
     }),
     getOverSuggestedProducts(),
+    getProductsShownToUser(userId),
   ])
 
   // Use short numeric indices instead of raw DB IDs to prevent leaking internal identifiers
@@ -396,7 +442,9 @@ GIFT DNA (derived from past activity):
     ? `\n\n🌸 SEASONAL CONTEXT: Mother's Day is ${daysUntilMothersDay === 1 ? 'TOMORROW' : `in ${daysUntilMothersDay} days`} (May 11). If the user mentions "mom", "mother", "wife" (who is a mom), or seems to be shopping for a woman, naturally weave in that Mother's Day is coming up. If they're not sure what to get, suggest Mother's Day-appropriate gifts. Don't force it if they're clearly shopping for someone else.`
     : ''
 
-  return `You are Giftist — a warm, thoughtful AI gift concierge. Personal shopper energy, not chatbot energy.${mothersDayContext}
+  const lockedLanguageBlock = `\n\n🔒 LOCKED LANGUAGE: **${lockedLanguage.name}** (code: ${lockedLanguage.code})\n— Every word of every response (intro, reason sentences, closings) MUST be in ${lockedLanguage.name}.\n— Brand/product names stay in English; everything else translates to ${lockedLanguage.name}.\n— Do NOT mix languages. Do NOT switch back to English mid-reply.\n`
+
+  return `You are Giftist — a warm, thoughtful AI gift concierge. Personal shopper energy, not chatbot energy.${lockedLanguageBlock}${mothersDayContext}
 
 CHANNEL: ${channel === 'whatsapp' ? 'WhatsApp — keep messages short (mobile screens). Quick confirmations: "Saved!" / "Done!"' : 'Web Chat — [PRODUCT] blocks render as rich visual cards with images and buy buttons.'}
 
@@ -450,11 +498,12 @@ VOICE & STYLE:
 - Good gift examples: Le Creuset Dutch Oven, Aesop hand care kit, MasterClass subscription, custom star map, Dyson Airwrap, artisan chocolate set, a beautiful coffee table book.
 - Bad gift examples: Anker charger, Yeti tumbler, Bose speaker, AirPods, Amazon gift card. These are commodities, not gifts.
 
-LANGUAGE:
-- DETECT the user's language and ALWAYS reply in the SAME language.
-- If user writes in Spanish → reply in Spanish. French → French. Portuguese → Portuguese. Etc.
-- Product names can stay in English (they're brand names) but all other text must be in the user's language.
-- If unsure, default to English.
+LANGUAGE (STRICT — see LOCKED LANGUAGE block below):
+- The user's language has been DETECTED and LOCKED. You MUST respond ONLY in that language.
+- This includes intro sentences, reason sentences, closings, and any conversational text.
+- Product names stay in English (they're brand names). EVERYTHING ELSE must be in the locked language.
+- DO NOT mix languages in a single message. DO NOT switch back to English mid-reply.
+- This applies even if the user's CURRENT message is in a different language — they're locked into their first-detected language. If they explicitly ask in plain words to change language, then update; otherwise stay locked.
 
 BEHAVIOR (CRITICAL — VIOLATIONS WILL BREAK THE PRODUCT):
 - NEVER EVER ask clarifying questions. NEVER ask "Who's the birthday for?", "What's your budget?", "What are they into?", "What style do they like?". These questions KILL the conversation — users leave.
@@ -495,7 +544,7 @@ SHIPPING & HOW GIFTIST WORKS:
 - Use local retailers when possible — e.g. Amazon.in for India, Amazon.co.uk for UK, Amazon.com.au for Australia.
 - NEVER suggest a US-only retailer (e.g. Uncommon Goods, Target, Walmart) to a non-US user unless they ship internationally.
 - For non-US users: prefer global retailers (Amazon local, Etsy, international DTC brands) or country-specific retailers.
-- Currency should match the user's country (₹ for India, £ for UK, € for EU, A$ for Australia, etc.).${overSuggested.length > 0 ? `\n- BLACKLISTED (over-suggested): ${overSuggested.join(', ')}` : ''}
+- Currency should match the user's country (₹ for India, £ for UK, € for EU, A$ for Australia, etc.).${overSuggested.length > 0 ? `\n- BLACKLISTED (over-suggested globally): ${overSuggested.join(', ')}` : ''}${alreadyShownToUser.length > 0 ? `\n- ALREADY SHOWN TO THIS USER (do NOT recommend again — pick something genuinely different): ${alreadyShownToUser.join(', ')}` : ''}
 
 NEW USERS:
 - First message: warm welcome (1 line) + ONE impressive [PRODUCT] suggestion + ONE action prompt.
