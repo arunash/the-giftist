@@ -224,12 +224,16 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
   const cardLink = giftistUrl || retailerUrl || waLink
 
-  // For tracked products: open retailer in bg tab via window.open (real user gesture
-  // = no popup-blocker), and let the <a> navigate the current tab to /p/SLUG.
+  // For tracked products: open retailer in a new tab FIRST, then the Giftist
+  // page in a second new tab — browsers focus the most recently opened tab,
+  // so the user lands on Giftist while the retailer sits in the background.
+  // /shop stays in its original tab.
   const dualClick = giftistUrl && retailerUrl
     ? (e: React.MouseEvent) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+        e.preventDefault()
         window.open(retailerUrl, '_blank', 'noopener,noreferrer')
+        window.open(giftistUrl, '_blank', 'noopener,noreferrer')
       }
     : undefined
 
