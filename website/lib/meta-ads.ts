@@ -319,6 +319,152 @@ export async function createFullCampaign(params: {
   }
 }
 
+// ── Shop-Lander Variant ──
+// New acquisition strategy: send ad clicks to /shop instead of opening
+// WhatsApp directly. Users browse the curated catalog and convert via
+// the "Order via WhatsApp" CTA on the product page.
+
+export async function createShopAdCreative(params: {
+  name: string
+  pageId?: string
+  text: string
+  headline: string
+  imageUrl?: string
+  imageHash?: string
+  utmCampaign: string
+  shopPath?: string  // defaults to /shop; can be /shop/mothers-day etc
+}): Promise<{ id: string }> {
+  const { adAccountId, pageId: defaultPageId } = getConfig()
+  const pid = params.pageId || defaultPageId
+
+  const path = params.shopPath || '/shop'
+  const utm = new URLSearchParams({
+    utm_source: 'meta',
+    utm_medium: 'paid_social',
+    utm_campaign: params.utmCampaign,
+  }).toString()
+  const link = `https://giftist.ai${path}?${utm}`
+
+  const objectStorySpec: any = {
+    page_id: pid,
+    link_data: {
+      message: params.text,
+      name: params.headline,
+      link,
+      call_to_action: {
+        type: 'SHOP_NOW',
+      },
+    },
+  }
+  if (params.imageHash) {
+    objectStorySpec.link_data.image_hash = params.imageHash
+  } else if (params.imageUrl) {
+    objectStorySpec.link_data.picture = params.imageUrl
+  }
+
+  const data = await metaApi(`/act_${adAccountId}/adcreatives`, {
+    method: 'POST',
+    body: {
+      name: params.name,
+      object_story_spec: objectStorySpec,
+    },
+  })
+  return data
+}
+
+export async function createShopFullCampaign(params: {
+  name: string
+  dailyBudget: number
+  adText: string
+  headline: string
+  utmCampaign: string
+  shopPath?: string
+  startDate: Date
+  endDate?: Date
+  imageUrl?: string
+  imageHash?: string
+  interests?: Array<{ id: string; name: string }>
+}): Promise<{
+  campaignId: string
+  adSetId: string
+  adId: string
+  creativeId: string
+  landingUrl: string
+}> {
+  // Use OUTCOME_TRAFFIC objective so Meta optimizes for clicks to /shop,
+  // not for WhatsApp message starts.
+  const { adAccountId } = getConfig()
+  const campaign = await metaApi(`/act_${adAccountId}/campaigns`, {
+    method: 'POST',
+    body: {
+      name: params.name,
+      objective: 'OUTCOME_TRAFFIC',
+      special_ad_categories: [],
+      buying_type: 'AUCTION',
+      status: 'PAUSED',
+    },
+  })
+
+  // Ad set targeting LINK_CLICKS instead of CONVERSATIONS
+  const adSet = await metaApi(`/act_${adAccountId}/adsets`, {
+    method: 'POST',
+    body: {
+      name: `${params.name} - Ad Set`,
+      campaign_id: campaign.id,
+      daily_budget: Math.round(params.dailyBudget * 100),
+      billing_event: 'IMPRESSIONS',
+      optimization_goal: 'LINK_CLICKS',
+      bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+      destination_type: 'WEBSITE',
+      start_time: params.startDate.toISOString(),
+      ...(params.endDate ? { end_time: params.endDate.toISOString() } : {}),
+      targeting: {
+        geo_locations: { countries: ['US'] },
+        age_min: 21,
+        age_max: 65,
+        ...(params.interests ? { flexible_spec: [{ interests: params.interests }] } : {}),
+        publisher_platforms: ['facebook', 'instagram'],
+        facebook_positions: ['feed', 'story'],
+        instagram_positions: ['stream', 'story', 'reels'],
+      },
+      status: 'PAUSED',
+    },
+  })
+
+  const creative = await createShopAdCreative({
+    name: `${params.name} - Creative`,
+    text: params.adText,
+    headline: params.headline,
+    imageUrl: params.imageUrl,
+    imageHash: params.imageHash,
+    utmCampaign: params.utmCampaign,
+    shopPath: params.shopPath,
+  })
+
+  const ad = await createAd({
+    adSetId: adSet.id,
+    creativeId: creative.id,
+    name: `${params.name} - Ad`,
+  })
+
+  await activateAdSet(adSet.id)
+  await activateCampaign(campaign.id)
+
+  const utm = new URLSearchParams({
+    utm_source: 'meta',
+    utm_medium: 'paid_social',
+    utm_campaign: params.utmCampaign,
+  }).toString()
+
+  return {
+    campaignId: campaign.id,
+    adSetId: adSet.id,
+    adId: ad.id,
+    creativeId: creative.id,
+    landingUrl: `https://giftist.ai${params.shopPath || '/shop'}?${utm}`,
+  }
+}
+
 // ── Common Interest IDs for gift/shopping targeting ──
 export const GIFT_INTERESTS = [
   { id: '6003263791114', name: 'Shopping' },

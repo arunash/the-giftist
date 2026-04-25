@@ -396,19 +396,28 @@ function ProductPage() {
             </button>
           ) : !purchased ? (
             <>
-              <button
-                onClick={handleBuyClick}
-                disabled={buyingLoading || !product.priceValue}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
+              <a
+                href={`https://wa.me/15014438478?text=${encodeURIComponent(
+                  `Hi! I'd like to buy "${product.productName}"${product.price ? ` (${product.price})` : ''}.\n\nProduct page: https://giftist.ai/p/${slug}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  fetch('/api/analytics/click-event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slug, event: 'WA_INTENT', channel: 'WEB' }),
+                    keepalive: true,
+                  }).catch(() => {})
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md shadow-[#25D366]/30"
               >
-                <Gift className="h-4 w-4" />
-                {total ? `Buy as Gift — $${total.toFixed(2)}` : 'Buy as Gift'}
-              </button>
-              {total && fee && (
-                <p className="text-xs text-gray-400 text-center">
-                  {product.price} + ${fee.toFixed(2)} service + ${shippingFee.toFixed(2)} shipping
-                </p>
-              )}
+                <MessageCircle className="h-4 w-4" />
+                Order via WhatsApp
+              </a>
+              <p className="text-xs text-gray-400 text-center">
+                Get personal help from our concierge to complete your gift
+              </p>
             </>
           ) : null}
         </div>

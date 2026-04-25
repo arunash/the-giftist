@@ -851,6 +851,124 @@ interface FunnelData {
   recentEvents: { id: string; event: string; channel: string; product: string; price: string | null; createdAt: string }[]
 }
 
+interface ShopFunnelData {
+  range: string
+  funnel: {
+    shopViews: number
+    shopUniqueSessions: number
+    cardClicks: number
+    productPageViews: number
+    waIntents: number
+    cardCtr: number
+    pageViewRate: number
+    waConversion: number
+    overall: number
+  }
+  byCampaign: { utmSource: string | null; utmCampaign: string | null; sessions: number; views: number }[]
+  daily: Record<string, Record<string, number>>
+}
+
+function ShopFunnelSection({ range }: { range: string }) {
+  const [data, setData] = useState<ShopFunnelData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/admin/shop-funnel?range=${range}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [range])
+
+  if (loading) return <div className="bg-surface rounded-xl border border-border p-6"><Loader2 className="h-5 w-5 animate-spin text-muted mx-auto" /></div>
+  if (!data) return null
+  const f = data.funnel
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-surface rounded-xl border border-border p-6">
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-green-600" /> Shop → WhatsApp Funnel
+        </h3>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 text-center">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+              <Globe className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-blue-700">{f.shopUniqueSessions}</p>
+              <p className="text-xs text-blue-500 mt-0.5">Shop Sessions</p>
+              <p className="text-[10px] text-muted mt-0.5">{f.shopViews} pageviews</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+          <div className="flex-1 text-center">
+            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+              <MousePointer className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-purple-700">{f.cardClicks}</p>
+              <p className="text-xs text-purple-500 mt-0.5">Card Clicks</p>
+              <p className="text-[10px] text-muted mt-0.5">{f.cardCtr}% of sessions</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+          <div className="flex-1 text-center">
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+              <Eye className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-amber-700">{f.productPageViews}</p>
+              <p className="text-xs text-amber-500 mt-0.5">/p/SLUG Views</p>
+              <p className="text-[10px] text-muted mt-0.5">{f.pageViewRate}% of card clicks</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted flex-shrink-0" />
+          <div className="flex-1 text-center">
+            <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+              <Activity className="h-5 w-5 text-green-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-green-700">{f.waIntents}</p>
+              <p className="text-xs text-green-500 mt-0.5">WA Intents</p>
+              <p className="text-[10px] text-muted mt-0.5">{f.waConversion}% of /p views</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 text-center">
+          <span className="text-sm font-medium text-muted">Overall: </span>
+          <span className="text-sm font-bold text-foreground">{f.overall}% shop session → WhatsApp intent</span>
+        </div>
+      </div>
+
+      {/* By Campaign */}
+      <div className="bg-surface rounded-xl border border-border">
+        <h3 className="text-sm font-semibold p-4 border-b border-border flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" /> By UTM Campaign
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-muted bg-background/50 border-b border-border">
+                <th className="text-left p-3 font-medium">Source</th>
+                <th className="text-left p-3 font-medium">Campaign</th>
+                <th className="text-right p-3 font-medium">Sessions</th>
+                <th className="text-right p-3 font-medium">Pageviews</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.byCampaign.length === 0 && (
+                <tr><td colSpan={4} className="p-4 text-center text-muted">No /shop traffic yet. Once Meta ads point here, attribution rows will appear.</td></tr>
+              )}
+              {data.byCampaign.map((c, i) => (
+                <tr key={i} className="border-b border-border last:border-0">
+                  <td className="p-3 text-foreground font-medium">{c.utmSource || '(direct)'}</td>
+                  <td className="p-3 text-muted">{c.utmCampaign || '—'}</td>
+                  <td className="p-3 text-right font-medium">{c.sessions}</td>
+                  <td className="p-3 text-right text-muted">{c.views}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FunnelSection() {
   const [data, setData] = useState<FunnelData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -881,10 +999,13 @@ function FunnelSection() {
         ))}
       </div>
 
-      {/* Funnel visualization */}
+      {/* Shop → WhatsApp funnel (new acquisition strategy) */}
+      <ShopFunnelSection range={range} />
+
+      {/* Chat-driven funnel (legacy WhatsApp/web chat path) */}
       <div className="bg-surface rounded-xl border border-border p-6">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" /> Conversion Funnel
+          <TrendingUp className="h-4 w-4 text-primary" /> Chat → Retailer Funnel
         </h3>
         <div className="flex items-center gap-2">
           {/* Recommendations */}

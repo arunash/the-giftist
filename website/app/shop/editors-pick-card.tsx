@@ -39,6 +39,14 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
   const dualClick = giftistUrl && retailerUrl
     ? (e: React.MouseEvent) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+        if (p.trackedSlug) {
+          fetch('/api/analytics/click-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: p.trackedSlug, event: 'CARD_CLICK', channel: 'WEB' }),
+            keepalive: true,
+          }).catch(() => {})
+        }
         e.preventDefault()
         window.open(retailerUrl, '_blank', 'noopener,noreferrer')
         window.open(giftistUrl, '_blank', 'noopener,noreferrer')

@@ -6,6 +6,7 @@ import { Gift, MessageCircle, Star } from 'lucide-react'
 import { createTrackedLink } from '@/lib/product-link'
 import { GiftGrid, GiftProduct } from './gift-grid'
 import { EditorsPickCard } from './editors-pick-card'
+import { ShopPageViewTracker } from './page-view-tracker'
 
 export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
@@ -134,6 +135,7 @@ export default async function ShopPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <ShopPageViewTracker path="/shop" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Nav */}
