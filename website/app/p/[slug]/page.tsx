@@ -104,8 +104,10 @@ function ProductPage() {
 
   const giftUrl = giftData ? `https://giftist.ai/gift/${giftData.redeemCode}` : ''
 
-  // Check if target URL is a real product page (not a search/category page)
-  const hasRealProductUrl = product?.targetUrl && !product.targetUrl.includes('/s?k=') && !product.targetUrl.includes('google.com/search') && !product.targetUrl.includes('/search?')
+  // Allow View & Buy for any retailer URL — including search URLs (Amazon /s?k=
+  // is what we use when we don't have a verified ASIN). Only block obvious
+  // generic search engines (Google) which aren't retailers.
+  const hasRealProductUrl = product?.targetUrl && !product.targetUrl.includes('google.com/search')
 
   const requireAuth = () => {
     if (!isLoggedIn && channel !== 'whatsapp') {
