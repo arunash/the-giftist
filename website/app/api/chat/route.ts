@@ -148,6 +148,14 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // If the response included product recommendations, append a shop CTA
+          // so users can keep browsing the full curated catalog.
+          if (fullContent.includes('[PRODUCT]')) {
+            const shopCta = '\n\n🛍️ Browse for more gifts at https://giftist.ai/shop'
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: shopCta })}\n\n`))
+            fullContent += shopCta
+          }
+
           // Save assistant response
           if (fullContent) {
             await prisma.chatMessage.create({

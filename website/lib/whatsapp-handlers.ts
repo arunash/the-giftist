@@ -1637,8 +1637,12 @@ async function handleChatMessage(userId: string, text: string, phone?: string): 
       }
     }
 
+    // Always-on shop CTA — every recommendation message ends with a link to /shop
+    // so users can keep browsing the full curated catalog.
+    const shopBrowseCta = resolvedProductCount > 0 ? '\n\n🛍️ Browse for more gifts at https://giftist.ai/shop' : ''
+
     // Build final reply and send text FIRST, then images + CTA buttons
-    const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + limitWarning
+    const finalReply = strippedContent + (productList ? '\n\n' + productList.trimEnd() : '') + eventConfirmations.join('') + ateSection + autoSaveNote + chatWebCta + shareCta + shopBrowseCta + limitWarning
 
     // Send text reply — clean and simple, no image/CTA spam
     // The text already has product names, prices, and giftist.ai links
