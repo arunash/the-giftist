@@ -297,9 +297,14 @@ async function runBatch(items, fn, concurrency) {
   const seenImages = new Set(existing.map(e => e.image.split('?')[0]));
 
   const limit = process.env.LIMIT ? parseInt(process.env.LIMIT, 10) : undefined;
+  // Default: enrich approved products. Pass INCLUDE_PENDING=1 to also enrich
+  // newly-discovered pending entries so they're image-ready for HITL review.
+  const statuses = process.env.INCLUDE_PENDING === '1'
+    ? ['approved', 'pending']
+    : ['approved'];
   const products = await p.tastemakerGift.findMany({
     where: {
-      reviewStatus: "approved",
+      reviewStatus: { in: statuses },
       OR: [{ image: null }, { image: "" }],
     },
     orderBy: { totalScore: "desc" },
