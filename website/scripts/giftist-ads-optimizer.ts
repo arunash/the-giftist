@@ -30,7 +30,7 @@ const ADMIN_EMAIL = 'arunash@gmail.com'
 const COOLDOWN_HOURS = 4
 const MAX_BUDGET = 50
 const MIN_BUDGET = 5
-const TOTAL_BUDGET_CAP = 200
+const TOTAL_BUDGET_CAP = 100
 
 interface CampaignTarget {
   id: string
