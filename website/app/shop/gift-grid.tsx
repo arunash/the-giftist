@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Gift, ExternalLink, MessageCircle, ChevronRight } from 'lucide-react'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
@@ -94,28 +93,37 @@ function isValidKey(value: string | null, options: Array<{ key: string }>): stri
 }
 
 export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
+  // Default to 'all' on server-render so the full catalog is visible in
+  // the initial HTML (good for SEO and for users with JS slow/disabled).
+  // After hydration, useEffect reads URL params and applies the filter.
+  // This avoids needing useSearchParams + Suspense, which would render the
+  // grid as null during SSR.
+  const [occasion, setOccasion] = useState('all')
+  const [recipient, setRecipient] = useState('all')
+  const [priceRange, setPriceRange] = useState('all')
 
-  // Initialize from URL so ads landing on /shop?occasion=mothers-day land
-  // pre-filtered. Subsequent filter changes update the URL too so it's shareable.
-  const [occasion, setOccasion] = useState(() => isValidKey(searchParams.get('occasion'), OCCASIONS))
-  const [recipient, setRecipient] = useState(() => isValidKey(searchParams.get('recipient'), RECIPIENTS))
-  const [priceRange, setPriceRange] = useState(() => isValidKey(searchParams.get('price'), PRICE_RANGES))
+  // Hydrate filter state from URL after mount.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setOccasion(isValidKey(params.get('occasion'), OCCASIONS))
+    setRecipient(isValidKey(params.get('recipient'), RECIPIENTS))
+    setPriceRange(isValidKey(params.get('price'), PRICE_RANGES))
+  }, [])
 
   // Keep URL in sync when user changes filters (preserve other params like utm_*).
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
     if (occasion === 'all') params.delete('occasion'); else params.set('occasion', occasion)
     if (recipient === 'all') params.delete('recipient'); else params.set('recipient', recipient)
     if (priceRange === 'all') params.delete('price'); else params.set('price', priceRange)
     const qs = params.toString()
-    const next = qs ? `${pathname}?${qs}` : pathname
-    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== next) {
-      router.replace(next, { scroll: false })
+    const next = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    if (window.location.pathname + window.location.search !== next) {
+      window.history.replaceState(null, '', next)
     }
-  }, [occasion, recipient, priceRange, pathname, router, searchParams])
+  }, [occasion, recipient, priceRange])
 
   const filtered = useMemo(() => {
     return gifts.filter(p => {

@@ -211,11 +211,10 @@ export default async function ShopPage() {
         </div>
       </div>
 
-      {/* Filter + Grid (client component) — wrapped in Suspense because useSearchParams requires it */}
+      {/* Filter + Grid — Client Component but server-renders all cards (no useSearchParams,
+          uses window.location post-hydration to apply URL filters). */}
       <div id="all-gifts">
-        <Suspense fallback={null}>
-          <GiftGrid gifts={allGifts} />
-        </Suspense>
+        <GiftGrid gifts={allGifts} />
       </div>
 
       {/* Sticky bottom WhatsApp CTA — mobile only, hides on lg+ */}
