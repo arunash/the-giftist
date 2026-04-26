@@ -851,6 +851,18 @@ interface FunnelData {
   recentEvents: { id: string; event: string; channel: string; product: string; price: string | null; createdAt: string }[]
 }
 
+interface AffiliateBreakdown {
+  totalRetailerClicks: number
+  totalAffiliateClicks: number
+  nonAffiliateClicks: number
+  coveragePct: number
+  estCommissionLowUsd: number
+  estCommissionMidUsd: number
+  estCommissionHighUsd: number
+  byProgram: { program: string; clicks: number; commissionRate: number; estCommissionUsd: number; products: number }[]
+  topProducts: { slug: string; productName: string; targetUrl: string; clicks: number; domain: string; affiliate: { program: string; commissionRate: number } | null; estCommissionUsd: number }[]
+}
+
 interface ShopFunnelData {
   range: string
   funnel: {
@@ -864,6 +876,7 @@ interface ShopFunnelData {
     waConversion: number
     overall: number
   }
+  affiliate: AffiliateBreakdown
   byCampaign: { utmSource: string | null; utmCampaign: string | null; sessions: number; views: number }[]
   daily: Record<string, Record<string, number>>
 }
@@ -932,6 +945,86 @@ function ShopFunnelSection({ range }: { range: string }) {
           <span className="text-sm font-medium text-muted">Overall: </span>
           <span className="text-sm font-bold text-foreground">{f.overall}% shop session → WhatsApp intent</span>
         </div>
+      </div>
+
+      {/* Affiliate Pipeline */}
+      <div className="bg-surface rounded-xl border border-border p-6">
+        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <ExternalLink className="h-4 w-4 text-emerald-600" /> Affiliate Pipeline
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">Retailer Clicks</p>
+            <p className="text-2xl font-bold text-emerald-700 mt-0.5">{data.affiliate.totalRetailerClicks}</p>
+            <p className="text-[10px] text-emerald-600 mt-0.5">{data.affiliate.coveragePct}% affiliate-eligible</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+            <p className="text-[10px] uppercase tracking-wider text-blue-700 font-semibold">Monetized</p>
+            <p className="text-2xl font-bold text-blue-700 mt-0.5">{data.affiliate.totalAffiliateClicks}</p>
+            <p className="text-[10px] text-blue-600 mt-0.5">{data.affiliate.nonAffiliateClicks} unmonetized</p>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+            <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Est. Commission</p>
+            <p className="text-2xl font-bold text-amber-700 mt-0.5">${data.affiliate.estCommissionMidUsd.toFixed(2)}</p>
+            <p className="text-[10px] text-amber-600 mt-0.5">range: ${data.affiliate.estCommissionLowUsd.toFixed(2)}–${data.affiliate.estCommissionHighUsd.toFixed(2)}</p>
+          </div>
+          <div className="bg-violet-50 rounded-xl p-3 border border-violet-100">
+            <p className="text-[10px] uppercase tracking-wider text-violet-700 font-semibold">Active Programs</p>
+            <p className="text-2xl font-bold text-violet-700 mt-0.5">{data.affiliate.byProgram.length}</p>
+            <p className="text-[10px] text-violet-600 mt-0.5">earning today</p>
+          </div>
+        </div>
+        <p className="text-[10px] text-muted mb-3">
+          Estimate assumes ~5% click→purchase rate at $50 avg basket. Actual revenue lives in each affiliate dashboard (Amazon Associates, Awin, Impact, etc).
+        </p>
+        {data.affiliate.byProgram.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-muted bg-background/50 border-b border-border">
+                  <th className="text-left p-2 font-medium">Program</th>
+                  <th className="text-right p-2 font-medium">Clicks</th>
+                  <th className="text-right p-2 font-medium">Products</th>
+                  <th className="text-right p-2 font-medium">Commission %</th>
+                  <th className="text-right p-2 font-medium">Est $ (mid)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.affiliate.byProgram.map((p, i) => (
+                  <tr key={i} className="border-b border-border last:border-0">
+                    <td className="p-2 font-medium text-foreground">{p.program}</td>
+                    <td className="p-2 text-right">{p.clicks}</td>
+                    <td className="p-2 text-right text-muted">{p.products}</td>
+                    <td className="p-2 text-right text-muted">{(p.commissionRate * 100).toFixed(0)}%</td>
+                    <td className="p-2 text-right font-medium text-emerald-600">${p.estCommissionUsd.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted text-center py-4">No affiliate-eligible retailer clicks yet in this window.</p>
+        )}
+
+        {data.affiliate.topProducts.length > 0 && (
+          <details className="mt-4">
+            <summary className="text-xs font-semibold text-muted cursor-pointer hover:text-foreground">Top products driving clicks ({data.affiliate.topProducts.length})</summary>
+            <div className="mt-3 space-y-1.5">
+              {data.affiliate.topProducts.map((p, i) => (
+                <div key={i} className="flex items-center justify-between text-xs gap-3 py-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-foreground truncate">{p.productName}</p>
+                    <p className="text-[10px] text-muted truncate">{p.domain} · {p.affiliate?.program || 'no affiliate program'}</p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="font-semibold">{p.clicks} click{p.clicks !== 1 ? 's' : ''}</p>
+                    {p.affiliate && <p className="text-[10px] text-emerald-600">~${p.estCommissionUsd.toFixed(2)}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
 
       {/* By Campaign */}
