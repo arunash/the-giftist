@@ -396,9 +396,22 @@ function ProductPage() {
             </button>
           ) : !purchased ? (
             <>
+              {/* Buy on retailer — primary path for users who already know what they want */}
+              {hasRealProductUrl && (
+                <a
+                  href={`/go-r/${slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700 transition shadow-md shadow-violet-600/30"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Buy on {product.domain?.replace('www.', '') || 'retailer'}
+                </a>
+              )}
+              {/* Order via WhatsApp — for users who want concierge help */}
               <a
                 href={`https://wa.me/15014438478?text=${encodeURIComponent(
-                  `Hi! I'd like to buy "${product.productName}"${product.price ? ` (${product.price})` : ''}.\n\nProduct page: https://giftist.ai/p/${slug}`
+                  `Hi! I'd like help with "${product.productName}"${product.price ? ` (${product.price})` : ''}.\n\nProduct page: https://giftist.ai/p/${slug}`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -413,10 +426,10 @@ function ProductPage() {
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md shadow-[#25D366]/30"
               >
                 <MessageCircle className="h-4 w-4" />
-                Order via WhatsApp
+                Or — get help via WhatsApp
               </a>
               <p className="text-xs text-gray-400 text-center">
-                Get personal help from our concierge to complete your gift
+                Buy directly on the retailer, or chat with our concierge first
               </p>
             </>
           ) : null}
@@ -538,21 +551,8 @@ function ProductPage() {
           </div>
         )}
 
-        {/* View on retailer — primary CTA for affiliate clicks */}
-        {hasRealProductUrl && (
-          <div className="text-center py-4">
-            <a
-              href={`/go-r/${slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full max-w-sm px-6 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-base hover:bg-violet-700 transition shadow-lg shadow-violet-600/20"
-            >
-              <ExternalLink className="h-4 w-4" />
-              View & Buy on {product.domain?.replace('www.', '')}
-            </a>
-            <p className="text-xs text-gray-400 mt-2">Opens retailer in a new tab</p>
-          </div>
-        )}
+        {/* (The "Buy on retailer" CTA was promoted to the top Actions section
+            alongside Order via WhatsApp — no need to repeat it down here.) */}
       </div>
 
       {/* Recipient info modal (pre-checkout) */}

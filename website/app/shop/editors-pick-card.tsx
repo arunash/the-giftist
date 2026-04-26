@@ -103,14 +103,25 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
 
         <div className="flex items-center gap-2 mt-2.5">
           {giftistUrl && retailerUrl ? (
-            <a
-              href={giftistUrl}
-              onClick={dualClick}
-              className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
-            >
-              Buy
-              <ExternalLink className="h-2.5 w-2.5" />
-            </a>
+            <>
+              <a
+                href={giftistUrl}
+                onClick={dualClick}
+                className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
+              >
+                Details
+              </a>
+              <a
+                href={retailerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-0.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition"
+                aria-label={`Buy on ${p.domain?.replace('www.', '') || 'retailer'}`}
+              >
+                Buy
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            </>
           ) : retailerUrl && (
             <a
               href={retailerUrl}
