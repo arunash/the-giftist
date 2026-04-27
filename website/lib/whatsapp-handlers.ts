@@ -614,7 +614,7 @@ For example:
 
 Or send me a WhatsApp chat export with your mom and I'll build her Gift DNA for ultra-personalized suggestions.
 
-Mother's Day is May 11 — let's find something she'll love!`
+Mother's Day is May 10 — let's find something she'll love!`
   }
 
   // Command: share

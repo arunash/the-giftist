@@ -26,7 +26,7 @@ export const seoHolidays: Record<string, HolidaySeo> = {
     heroSubtitle: "Tell our AI concierge about your mom and get personalized gift suggestions with buy links — instantly.",
     color: 'pink',
     emoji: '💝',
-    date: 'May 11, 2026',
+    date: 'May 10, 2026',
     ctaText: "Find Mom's Gift",
     occasion: 'mothers_day',
     recipients: ['mom', 'wife', 'grandmother'],
@@ -37,7 +37,7 @@ export const seoHolidays: Record<string, HolidaySeo> = {
     ],
     faq: [
       { q: 'How does Giftist find gifts for my mom?', a: 'Just tell us about your mom — her hobbies, style, or what she\'s mentioned wanting. Our AI concierge searches thousands of products and finds the best matches with buy links.' },
-      { q: "When is Mother's Day 2026?", a: "Mother's Day is Sunday, May 11, 2026." },
+      { q: "When is Mother's Day 2026?", a: "Mother's Day is Sunday, May 10, 2026." },
       { q: 'Is Giftist free?', a: 'Yes! You get 10 free messages. Just text us on WhatsApp or use our web chat — no app download needed.' },
       { q: 'What price range do you cover?', a: 'We find gifts at every budget — from thoughtful $20 picks to luxury $500+ items. Just tell us your budget.' },
     ],

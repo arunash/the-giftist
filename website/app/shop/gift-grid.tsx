@@ -142,6 +142,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
   const [recipient, setRecipient] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
   const [category, setCategory] = useState('all')
+  const [fromQuiz, setFromQuiz] = useState(false)
   const [activeProduct, setActiveProduct] = useState<GiftProduct | null>(null)
 
   // Hydrate filter state from URL after mount.
@@ -152,6 +153,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
     setRecipient(isValidKey(params.get('recipient'), RECIPIENTS))
     setPriceRange(isValidKey(params.get('price'), PRICE_RANGES))
     setCategory(isValidKey(params.get('category'), CATEGORIES))
+    setFromQuiz(params.get('from') === 'quiz')
   }, [])
 
   // Keep URL in sync when user changes filters (preserve other params like utm_*).
@@ -189,7 +191,18 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-12">
-      <h2 className="text-lg font-bold text-gray-900 mb-2">All Gifts</h2>
+      {fromQuiz && hasActiveFilter && (
+        <div className="mb-6 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-100 rounded-2xl px-5 py-4 flex items-start gap-3">
+          <span className="text-2xl">🎯</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-gray-900">Your matches based on the quiz</p>
+            <p className="text-xs text-gray-600 mt-0.5">
+              We narrowed {gifts.length} gifts down to {filtered.length} that fit. Tap any to see why we picked it.
+            </p>
+          </div>
+        </div>
+      )}
+      <h2 className="text-lg font-bold text-gray-900 mb-2">{fromQuiz ? 'Top Picks for You' : 'All Gifts'}</h2>
       <p className="text-sm text-gray-400 mb-5">
         {hasActiveFilter ? `${filtered.length} of ${gifts.length}` : gifts.length} curated picks from trusted sources
       </p>

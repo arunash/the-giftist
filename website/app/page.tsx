@@ -70,6 +70,15 @@ export default async function Home() {
 
           <HeroChatInput />
 
+          {/* Quiz CTA — for visitors who don't know what to ask. Lower-friction
+              entry than the chat for paralyzed gift shoppers. */}
+          <p className="text-xs text-gray-400 mt-5">
+            Or{' '}
+            <Link href="/quiz" className="font-semibold text-primary hover:underline">
+              answer 4 quick questions and we&apos;ll pick 3 for you →
+            </Link>
+          </p>
+
           {/* Desktop: QR code */}
           <div className="mt-12 hidden lg:flex justify-center">
             <WhatsAppQRBlock />

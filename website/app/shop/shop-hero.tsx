@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { MessageCircle, Sparkles, Star, ArrowDown } from 'lucide-react'
+import { MessageCircle, Sparkles, Star, ArrowDown, Wand2 } from 'lucide-react'
 import { trackClick } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
-// Mother's Day 2026
-const MOTHERS_DAY = new Date(2026, 4, 11) // May 11, 2026
+// Mother's Day 2026 — 2nd Sunday of May
+const MOTHERS_DAY = new Date(2026, 4, 10) // May 10, 2026
 
 function daysUntil(date: Date): number {
   return Math.ceil((date.getTime() - Date.now()) / 86400000)
@@ -71,13 +72,13 @@ export function ShopHero() {
                 <MessageCircle className="h-5 w-5" />
                 Tell our concierge (free, 30s)
               </a>
-              <button
-                onClick={() => document.getElementById('all-gifts')?.scrollIntoView({ behavior: 'smooth' })}
+              <Link
+                href="/quiz"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-gray-900 text-base font-semibold px-6 py-3.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition"
               >
-                <ArrowDown className="h-4 w-4" />
-                Browse picks
-              </button>
+                <Wand2 className="h-4 w-4" />
+                Take the 30s quiz
+              </Link>
             </div>
             <div className="flex items-center justify-center gap-1 mt-4 text-xs text-gray-500">
               <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -103,6 +104,16 @@ export function ShopHero() {
         <p className="text-gray-500 mt-3 text-base sm:text-lg leading-relaxed">
           Every pick is backed by expert reviews from Wirecutter, The Strategist, Reddit, and real purchase data. No filler, no generic candles.
         </p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center items-center mt-5">
+          <Link
+            href="/quiz"
+            className="inline-flex items-center gap-1.5 bg-pink-500 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-pink-600 transition shadow-sm"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            30-second gift quiz
+          </Link>
+          <span className="text-xs text-gray-400 hidden sm:inline">or scroll to browse all 916</span>
+        </div>
       </div>
     </div>
   )

@@ -49,7 +49,7 @@ export default function MothersDay() {
         <div className="relative max-w-3xl mx-auto px-6 pt-36 pb-24 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-pink-500/10 border border-pink-500/20 rounded-full mb-8">
             <Heart className="h-3.5 w-3.5 text-pink-500" />
-            <span className="text-xs font-semibold text-pink-500 tracking-wide uppercase">Mother's Day — May 11, 2026</span>
+            <span className="text-xs font-semibold text-pink-500 tracking-wide uppercase">Mother's Day — May 10, 2026</span>
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05] mb-4">
