@@ -48,6 +48,9 @@ const CAMPAIGNS: CampaignTarget[] = [
   { id: '120241902219130145', name: 'V4 Last-Min',     utmCampaign: 'md-lastminute-broad',       adSetId: '120241902219250145' },
   { id: '120241902220990145', name: 'V5 Thoughtful',   utmCampaign: 'md-thoughtful-women2550',   adSetId: '120241902221390145' },
   { id: '120241947367770145', name: 'V6 Sentimental',  utmCampaign: 'md-sentimental-women3055',  adSetId: '120241947367930145' },
+  // V7 = A/B test of /magic vs V6's /shop landing. Same audience + creative,
+  // V6 + V7 share original $7/day budget at $3.50 each.
+  { id: '120242029326430145', name: 'V7 Magic Test',   utmCampaign: 'md-magic-test',             adSetId: '120242029326540145' },
   // Category campaigns (Apr 27)
   { id: '120242024838470145', name: 'Cat Books',       utmCampaign: 'cat-books',                 adSetId: '120242024838800145' },
   { id: '120242024842910145', name: 'Cat Home',        utmCampaign: 'cat-home',                  adSetId: '120242024843120145' },
