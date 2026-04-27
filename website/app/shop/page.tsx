@@ -87,8 +87,11 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
 
   // Editor's Picks: mix of top-scoring + 2 books + 2 occasion-relevant gifts
   // for visual variety in the carousel.
+  // Excluded from the carousel only (still appear in the grid below):
+  // mugs, massagers, and headphones — overrepresented + low-emotion-gift signal.
+  const CAROUSEL_EXCLUDE = /\b(mug|massager|theragun|headphones?|earbuds?|airpods)\b/i
   const withImages = withSlugs.filter(p => p.image)
-  const byScore = [...withImages]  // already sorted desc by totalScore in the SQL query
+  const byScore = withImages.filter(p => !CAROUSEL_EXCLUDE.test(p.name))
 
   const top = byScore.slice(0, 5)
   const seen = new Set(top.map(p => p.id))
