@@ -68,3 +68,20 @@ export function trackClick(slug: string, event: ClickEvent, channel: 'WEB' | 'WH
     keepalive: true,
   }).catch(() => {})
 }
+
+/**
+ * Build a /go-r/SLUG URL with utm + session attached so the server-side
+ * RETAILER_CLICK write captures per-campaign attribution. Use as the href
+ * for any retailer link.
+ */
+export function buildRetailerHref(slug: string): string {
+  const path = `/go-r/${slug}`
+  if (typeof window === 'undefined') return path
+  const attr = getAttribution()
+  const params = new URLSearchParams()
+  if (attr.utmCampaign) params.set('utm_campaign', attr.utmCampaign)
+  if (attr.utmSource) params.set('utm_source', attr.utmSource)
+  if (attr.sessionId) params.set('sid', attr.sessionId)
+  const qs = params.toString()
+  return qs ? `${path}?${qs}` : path
+}

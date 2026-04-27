@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Gift, ExternalLink, ChevronRight } from 'lucide-react'
 import { GiftProduct } from './gift-grid'
-import { trackClick } from '@/lib/track-click'
+import { trackClick, buildRetailerHref } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -110,6 +110,12 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
                 href={retailerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+                  if (!p.trackedSlug) return
+                  e.preventDefault()
+                  window.open(buildRetailerHref(p.trackedSlug), '_blank', 'noopener,noreferrer')
+                }}
                 className="flex items-center gap-0.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition"
                 aria-label={`Buy on ${p.domain?.replace('www.', '') || 'retailer'}`}
               >

@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X, Loader2, Heart, Sparkles, ShieldCheck, Star, RefreshCw, Headphones, DollarSign, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
+import { trackClick, buildRetailerHref } from '@/lib/track-click'
 
 interface ProductData {
   slug: string
@@ -402,6 +403,11 @@ function ProductPage() {
                   href={`/go-r/${slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+                    e.preventDefault()
+                    window.open(buildRetailerHref(slug), '_blank', 'noopener,noreferrer')
+                  }}
                   className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700 transition shadow-md shadow-violet-600/30"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -415,9 +421,7 @@ function ProductPage() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => {
-                  import('@/lib/track-click').then(m => m.trackClick(slug, 'WA_INTENT', 'WEB'))
-                }}
+                onClick={() => trackClick(slug, 'WA_INTENT', 'WEB')}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md shadow-[#25D366]/30"
               >
                 <MessageCircle className="h-4 w-4" />
