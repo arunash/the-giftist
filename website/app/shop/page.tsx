@@ -11,6 +11,8 @@ import { ShopPageViewTracker } from './page-view-tracker'
 import { ShopHero } from './shop-hero'
 import { StickyConciergeBar } from './sticky-concierge-bar'
 import { PicksCarousel } from './picks-carousel'
+import { CountdownStrip } from './countdown-strip'
+import { ExitIntentConcierge } from './exit-intent-concierge'
 
 export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
@@ -215,6 +217,9 @@ export default async function ShopPage() {
       <ShopPageViewTracker path="/shop" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
+      {/* Mother's Day countdown — auto-hides after May 10 */}
+      <CountdownStrip />
+
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
@@ -284,6 +289,9 @@ export default async function ShopPage() {
       <Suspense fallback={null}>
         <StickyConciergeBar />
       </Suspense>
+
+      {/* Exit-intent + 60s-dwell concierge popup — captures paralyzed browsers */}
+      <ExitIntentConcierge />
 
       {/* Bottom CTA */}
       <div className="bg-gray-900 text-white py-16">

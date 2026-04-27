@@ -27,6 +27,26 @@ function getSourceBadge(sources: any): { label: string; color: string } | null {
   return SOURCE_LABELS[topSource] || { label: 'Expert Pick', color: 'bg-gray-50 text-gray-600' }
 }
 
+// Compact "Wirecutter · NY Mag · Reddit" line — used as a trust strip below
+// the title when ≥2 sources back the product.
+function getSourceStack(sources: any): string[] {
+  if (!sources || typeof sources !== 'object') return []
+  const SHORT: Record<string, string> = {
+    wirecutter: 'Wirecutter',
+    strategist: 'NY Mag',
+    oprah_daily: 'Oprah',
+    reddit_occasions: 'Reddit',
+    uncommon_goods: 'Uncommon Goods',
+    something_good_blog: 'Something Good',
+    amazon_bestseller: 'Amazon',
+    etsy_trending: 'Etsy',
+  }
+  return Object.keys(sources)
+    .map(k => SHORT[k])
+    .filter((x): x is string => !!x)
+    .slice(0, 3)
+}
+
 const OCCASIONS = [
   { key: 'all', label: 'All' },
   { key: 'birthday', label: 'Birthday' },
@@ -303,6 +323,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
 function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => void }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
+  const sourceStack = getSourceStack(p.sources)
   const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
@@ -349,7 +370,7 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
           )}
 
           {badge && (
-            <div className={`absolute top-2 right-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${badge.color}`}>
+            <div className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ring-1 ring-black/5 ${badge.color}`}>
               {badge.label}
             </div>
           )}
@@ -369,6 +390,18 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
         <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5 line-clamp-2">
           {p.name}
         </p>
+
+        {/* Trust strip — surfaces the stacked-expert-source signal that's
+            otherwise hidden in a corner chip. Renders only when ≥2 sources. */}
+        {sourceStack.length >= 2 && (
+          <p className="text-[10px] text-gray-500 mt-1 leading-snug font-medium">
+            <span className="text-amber-500">★</span>{' '}
+            {sourceStack.join(' · ')}
+            {p.signalCount > sourceStack.length && (
+              <span className="text-gray-400"> +{p.signalCount - sourceStack.length} more</span>
+            )}
+          </p>
+        )}
 
         {p.why && (
           <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 leading-snug">

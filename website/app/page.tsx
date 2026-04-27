@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, MessageCircle, Users, Zap, Crown, Check, X, Calen
 import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 import { HeroChatInput } from '@/components/landing/hero-chat-input'
+import { CountdownStrip } from './shop/countdown-strip'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
@@ -40,14 +41,9 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* Mother's Day Banner */}
+      {/* Mother's Day countdown — dynamic days remaining + auto-hides after May 10 */}
       <div className="fixed top-[72px] left-0 right-0 z-40">
-        <Link
-          href="/c/mothers-day"
-          className="block bg-gradient-to-r from-pink-500 to-rose-500 text-white text-center py-2.5 px-4 text-sm font-medium hover:from-pink-600 hover:to-rose-600 transition"
-        >
-          🌸 Mother&apos;s Day is May 11 — Find her perfect gift in 30 seconds →
-        </Link>
+        <CountdownStrip href="/c/mothers-day" />
       </div>
 
       {/* Hero — chat-first */}
