@@ -723,3 +723,30 @@ model TastemakerGift {
   @@index([reviewStatus])
   @@index([priceRange])
 }
+
+// SavedReminder — anonymous "text me this gift" save from /shop product
+// modal. Captures phone + slug pair, schedules a WhatsApp reminder for a
+// specific occasion. Cron at /api/cron/saved-reminders processes them.
+//
+// Decoupled from User on purpose: most /shop visitors are unauthenticated
+// and we want zero friction on the save action. If the phone matches an
+// existing User we can link it later, but we don't require it here.
+model SavedReminder {
+  id          String    @id @default(cuid())
+  phone       String                                 // E.164 format ("+15551234567")
+  slug        String                                 // matches ProductClick.slug
+  productName String
+  productUrl  String?                                // /go-r/{slug} captured at save time
+  productImage String?
+  productPrice String?
+  occasion    String?                                // "mothers-day", etc. — for templating
+  remindAt    DateTime                               // when the reminder fires
+  remindedAt  DateTime?                              // null = pending, set after send
+  source      String    @default("shop_modal")      // tracking origin
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([phone, slug])
+  @@index([remindAt, remindedAt])
+}
