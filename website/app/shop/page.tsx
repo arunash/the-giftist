@@ -10,6 +10,7 @@ import { EditorsPickCard } from './editors-pick-card'
 import { ShopPageViewTracker } from './page-view-tracker'
 import { ShopHero } from './shop-hero'
 import { StickyConciergeBar } from './sticky-concierge-bar'
+import { PicksCarousel } from './picks-carousel'
 
 export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
@@ -88,7 +89,7 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
   const withImages = withSlugs.filter(p => p.image)
 
   return {
-    editorsPicks: withImages.slice(0, 6),
+    editorsPicks: withImages.slice(0, 8),
     allGifts: withSlugs,
   }
 }
@@ -177,20 +178,9 @@ export default async function ShopPage() {
         <ShopHero />
       </Suspense>
 
-      {/* Editor's Picks */}
+      {/* Editor's Picks — auto-playing carousel of top picks */}
       {editorsPicks.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 pb-12">
-          <div className="flex items-center gap-2 mb-5">
-            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-            <h2 className="text-lg font-bold text-gray-900">Editor&apos;s Picks</h2>
-            <span className="text-xs text-gray-400 ml-1">Highest-rated across all signals</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {editorsPicks.map((p) => (
-              <EditorsPickCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
+        <PicksCarousel picks={editorsPicks} />
       )}
 
       {/* Inline CTA */}
