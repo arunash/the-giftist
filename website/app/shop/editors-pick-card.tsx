@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Gift, ExternalLink, ChevronRight } from 'lucide-react'
 import { GiftProduct } from './gift-grid'
+import { trackClick } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -32,18 +33,12 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
   const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
 
-  // Single-tab — navigates current tab to /p/SLUG (popup blocker friction was
-  // hurting conversion on mobile per funnel data). Retailer is on the product
-  // page itself.
+  // Single-tab — navigates current tab to /p/SLUG. Retailer link is on the
+  // product page. Tracks CARD_CLICK with utm attribution via trackClick().
   const dualClick = giftistUrl
     ? (e: React.MouseEvent) => {
         if (p.trackedSlug && !(e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0)) {
-          fetch('/api/analytics/click-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: p.trackedSlug, event: 'CARD_CLICK', channel: 'WEB' }),
-            keepalive: true,
-          }).catch(() => {})
+          trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
         }
       }
     : undefined

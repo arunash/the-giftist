@@ -14,7 +14,8 @@ const ALLOWED_CHANNELS = new Set(['WEB', 'WHATSAPP'])
 
 export async function POST(request: NextRequest) {
   try {
-    const { slug, event, channel } = await request.json()
+    const body = await request.json()
+    const { slug, event, channel, utmSource, utmCampaign, sessionId } = body
 
     if (!slug || typeof slug !== 'string') {
       return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
@@ -30,7 +31,12 @@ export async function POST(request: NextRequest) {
     const referrer = request.headers.get('referer') || null
 
     prisma.clickEvent.create({
-      data: { slug, event, channel: ch, userId, userAgent, referrer },
+      data: {
+        slug, event, channel: ch, userId, userAgent, referrer,
+        utmSource: typeof utmSource === 'string' ? utmSource.slice(0, 100) : null,
+        utmCampaign: typeof utmCampaign === 'string' ? utmCampaign.slice(0, 100) : null,
+        sessionId: typeof sessionId === 'string' ? sessionId.slice(0, 100) : null,
+      },
     }).catch(() => {})
 
     return NextResponse.json({ ok: true })

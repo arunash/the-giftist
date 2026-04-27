@@ -3,17 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MessageCircle, X } from 'lucide-react'
+import { trackClick } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 const DISMISS_KEY = 'gf_concierge_dismissed'
 
 function trackWaIntent(slug: string) {
-  fetch('/api/analytics/click-event', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slug, event: 'WA_INTENT', channel: 'WEB' }),
-    keepalive: true,
-  }).catch(() => {})
+  trackClick(slug, 'WA_INTENT', 'WEB')
 }
 
 /**

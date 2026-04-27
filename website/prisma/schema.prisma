@@ -413,19 +413,23 @@ model ProductClick {
 }
 
 model ClickEvent {
-  id        String   @id @default(cuid())
-  slug      String
-  event     String   // IMPRESSION, PAGE_VIEW, RETAILER_CLICK
-  channel   String?  // WEB, WHATSAPP
-  userId    String?
-  referrer  String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  product   ProductClick @relation(fields: [slug], references: [slug])
+  id          String   @id @default(cuid())
+  slug        String
+  event       String   // IMPRESSION, PAGE_VIEW, RETAILER_CLICK, CARD_CLICK, WA_INTENT
+  channel     String?  // WEB, WHATSAPP
+  userId      String?
+  referrer    String?
+  userAgent   String?
+  utmSource   String?  // populated client-side from sessionStorage at the moment of the click
+  utmCampaign String?  // for per-campaign attribution in the funnel admin + ads optimizer
+  sessionId   String?  // browser session id (matches PageView.sessionId)
+  createdAt   DateTime @default(now())
+  product     ProductClick @relation(fields: [slug], references: [slug])
 
   @@index([slug])
   @@index([event])
   @@index([createdAt])
+  @@index([utmCampaign])
 }
 
 model PageView {

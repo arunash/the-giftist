@@ -177,6 +177,9 @@ interface FunnelSnapshot {
 async function fetchFunnel(utm: string): Promise<FunnelSnapshot> {
   const since4h = new Date(Date.now() - 4 * 3600 * 1000)
   const since24h = new Date(Date.now() - 24 * 3600 * 1000)
+  // ClickEvent now carries utmCampaign for events fired after Apr 26 ~12pm PT.
+  // Older events have utmCampaign=null; per-campaign rules treat that period as
+  // "no attribution" rather than attributing to a specific campaign.
   const [sessions4h, sessions24h, cardClicks4h, retailerClicks4h, waIntents4h, retailerClicks24h, waIntents24h] = await Promise.all([
     prisma.pageView.findMany({
       where: { utmCampaign: utm, createdAt: { gte: since4h }, sessionId: { not: null } },
@@ -186,13 +189,11 @@ async function fetchFunnel(utm: string): Promise<FunnelSnapshot> {
       where: { utmCampaign: utm, createdAt: { gte: since24h }, sessionId: { not: null } },
       distinct: ['sessionId'], select: { sessionId: true },
     }).then(r => r.length),
-    // ClickEvent doesn't carry utm yet, so these are global counts in the window —
-    // useful for trend/sanity but NOT precise per-campaign attribution.
-    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since24h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since24h } } }),
+    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', utmCampaign: utm, createdAt: { gte: since4h } } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since4h } } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since4h } } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since24h } } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since24h } } }),
   ])
   const totalConversions4h = retailerClicks4h + waIntents4h
   const totalConversions24h = retailerClicks24h + waIntents24h

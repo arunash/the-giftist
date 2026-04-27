@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Gift, ExternalLink, MessageCircle, ChevronRight } from 'lucide-react'
+import { trackClick } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -257,19 +258,12 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
   const cardLink = giftistUrl || retailerUrl || waLink
 
-  // Single-tab card click — navigates current tab to /p/SLUG. The retailer
-  // link is reachable from the product page; opening it here triggered Chrome's
-  // popup blocker on mobile and added friction without driving conversion.
-  // (Funnel data showed 96% bounce on /shop with the dual-tab flow.)
+  // Single-tab card click — navigates current tab to /p/SLUG. Tracks
+  // CARD_CLICK with utm attribution carried in via trackClick().
   const dualClick = giftistUrl
     ? (e: React.MouseEvent) => {
         if (p.trackedSlug && !(e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0)) {
-          fetch('/api/analytics/click-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: p.trackedSlug, event: 'CARD_CLICK', channel: 'WEB' }),
-            keepalive: true,
-          }).catch(() => {})
+          trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
         }
       }
     : undefined

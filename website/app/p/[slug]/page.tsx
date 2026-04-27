@@ -416,12 +416,7 @@ function ProductPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => {
-                  fetch('/api/analytics/click-event', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ slug, event: 'WA_INTENT', channel: 'WEB' }),
-                    keepalive: true,
-                  }).catch(() => {})
+                  import('@/lib/track-click').then(m => m.trackClick(slug, 'WA_INTENT', 'WEB'))
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md shadow-[#25D366]/30"
               >
