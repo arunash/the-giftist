@@ -55,6 +55,24 @@ const PRICE_RANGES = [
   { key: 'luxury', label: '$150+' },
 ]
 
+// Category filter — backed by the `interests` tag on TastemakerGift.
+// 'books' is mapped to the 'reading' interest tag (187 products).
+const CATEGORIES = [
+  { key: 'all',      label: 'All Categories' },
+  { key: 'books',    label: '📚 Books',      tag: 'reading' },
+  { key: 'home',     label: '🏠 Home',       tag: 'home' },
+  { key: 'fashion',  label: '👗 Fashion',    tag: 'fashion' },
+  { key: 'tech',     label: '💻 Tech',       tag: 'tech' },
+  { key: 'cooking',  label: '🍳 Cooking',    tag: 'cooking' },
+  { key: 'beauty',   label: '✨ Beauty',     tag: 'beauty' },
+  { key: 'travel',   label: '✈️ Travel',     tag: 'travel' },
+  { key: 'art',      label: '🎨 Art',        tag: 'art' },
+  { key: 'outdoor',  label: '🏕️ Outdoor',   tag: 'outdoor' },
+  { key: 'fitness',  label: '💪 Fitness',    tag: 'fitness' },
+  { key: 'music',    label: '🎵 Music',      tag: 'music' },
+  { key: 'wellness', label: '🧘 Wellness',   tag: 'wellness' },
+]
+
 export interface GiftProduct {
   id: string
   name: string
@@ -102,6 +120,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
   const [occasion, setOccasion] = useState('all')
   const [recipient, setRecipient] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
+  const [category, setCategory] = useState('all')
 
   // Hydrate filter state from URL after mount.
   useEffect(() => {
@@ -110,6 +129,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
     setOccasion(isValidKey(params.get('occasion'), OCCASIONS))
     setRecipient(isValidKey(params.get('recipient'), RECIPIENTS))
     setPriceRange(isValidKey(params.get('price'), PRICE_RANGES))
+    setCategory(isValidKey(params.get('category'), CATEGORIES))
   }, [])
 
   // Keep URL in sync when user changes filters (preserve other params like utm_*).
@@ -119,12 +139,13 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
     if (occasion === 'all') params.delete('occasion'); else params.set('occasion', occasion)
     if (recipient === 'all') params.delete('recipient'); else params.set('recipient', recipient)
     if (priceRange === 'all') params.delete('price'); else params.set('price', priceRange)
+    if (category === 'all') params.delete('category'); else params.set('category', category)
     const qs = params.toString()
     const next = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
     if (window.location.pathname + window.location.search !== next) {
       window.history.replaceState(null, '', next)
     }
-  }, [occasion, recipient, priceRange])
+  }, [occasion, recipient, priceRange, category])
 
   const filtered = useMemo(() => {
     return gifts.filter(p => {
@@ -134,11 +155,15 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
         if (!types.includes(recipient) && !types.includes('universal')) return false
       }
       if (!matchesPriceRange(p, priceRange)) return false
+      if (category !== 'all') {
+        const cat = CATEGORIES.find(c => c.key === category)
+        if (cat?.tag && !p.interests?.includes(cat.tag)) return false
+      }
       return true
     })
-  }, [gifts, occasion, recipient, priceRange])
+  }, [gifts, occasion, recipient, priceRange, category])
 
-  const hasActiveFilter = occasion !== 'all' || recipient !== 'all' || priceRange !== 'all'
+  const hasActiveFilter = occasion !== 'all' || recipient !== 'all' || priceRange !== 'all' || category !== 'all'
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-12">
@@ -146,6 +171,26 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
       <p className="text-sm text-gray-400 mb-5">
         {hasActiveFilter ? `${filtered.length} of ${gifts.length}` : gifts.length} curated picks from trusted sources
       </p>
+
+      {/* Category pills (Books, Tech, Cooking, etc.) */}
+      <div className="mb-3">
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Category</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setCategory(c.key)}
+              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                category === c.key
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Occasion pills */}
       <div className="mb-3">
@@ -210,7 +255,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
       {/* Clear filters */}
       {hasActiveFilter && (
         <button
-          onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all') }}
+          onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all'); setCategory('all') }}
           className="text-xs text-pink-500 font-medium mb-4 hover:underline"
         >
           Clear all filters
@@ -222,7 +267,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
           <Gift className="h-10 w-10 text-gray-200 mx-auto" />
           <p className="text-sm text-gray-400 mt-3">No gifts match these filters.</p>
           <button
-            onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all') }}
+            onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all'); setCategory('all') }}
             className="text-sm font-semibold text-pink-500 mt-2 hover:underline"
           >
             Clear filters
