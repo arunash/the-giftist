@@ -48,6 +48,7 @@ model User {
   utmMedium                     String?
   utmCampaign                   String?
   signupReferrer                String?
+  quizCompletedAt               DateTime?
   accounts                      Account[]
   activityEvents                ActivityEvent[]
   chatMessages                  ChatMessage[]

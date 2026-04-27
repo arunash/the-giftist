@@ -29,9 +29,16 @@ export default async function AppLayout({
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { lifetimeContributionsReceived: true },
+      select: { lifetimeContributionsReceived: true, quizCompletedAt: true },
     }),
   ])
+
+  // Quiz-first gate: any logged-in user who hasn't completed the gift quiz
+  // gets routed through /magic before they can use the in-app chat / feed.
+  // /magic preserves the next param so they land where they intended after.
+  if (!user?.quizCompletedAt) {
+    redirect('/magic?next=/chat')
+  }
 
   return (
     <AppShell

@@ -7,10 +7,24 @@ import Image from 'next/image'
 import { WhatsAppQRBlock } from '@/components/feed/whatsapp-qr'
 import { HeroChatInput } from '@/components/landing/hero-chat-input'
 import { CountdownStrip } from './shop/countdown-strip'
+import { prisma } from '@/lib/db'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
   if (session?.user) {
+    // Quiz-first: route logged-in users who haven't completed the gift quiz
+    // to /magic before letting them into /chat. Same intent as the WA flow —
+    // start with the quiz, then become conversational.
+    const userId = (session.user as any).id as string | undefined
+    if (userId) {
+      const u = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { quizCompletedAt: true },
+      })
+      if (!u?.quizCompletedAt) {
+        redirect('/magic?next=/chat')
+      }
+    }
     redirect('/chat')
   }
   return (

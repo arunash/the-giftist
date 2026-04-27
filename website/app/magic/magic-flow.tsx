@@ -11,7 +11,7 @@
 // Visual: full-screen, single question per page, generous whitespace, big serif
 // headlines. Distinct aesthetic from /shop's catalog density.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Sparkles, ArrowRight, MessageCircle, ExternalLink, Loader2 } from 'lucide-react'
@@ -70,6 +70,14 @@ export function MagicFlow() {
   const [budget, setBudget] = useState<string | null>(null)
   const [picks, setPicks] = useState<Pick[]>([])
   const [error, setError] = useState<string | null>(null)
+  // Where the user originally wanted to go (e.g. /chat) — set by the
+  // (app)/layout.tsx redirect when it gates new logged-in users through here.
+  const [nextHref, setNextHref] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const n = new URLSearchParams(window.location.search).get('next')
+    if (n && n.startsWith('/')) setNextHref(n)
+  }, [])
 
   const them = name.trim() || (relationship ? RELATIONSHIPS.find(r => r.v === relationship)?.label : null) || 'them'
 
@@ -158,6 +166,7 @@ export function MagicFlow() {
           <StepReveal
             them={them}
             picks={picks}
+            nextHref={nextHref}
             onRestart={() => {
               setStep('who'); setName(''); setRelationship(null); setInterests([]); setBudget(null); setPicks([])
             }}
@@ -349,9 +358,9 @@ function StepLoading({ them }: { them: string }) {
 
 // ── Reveal ──
 function StepReveal({
-  them, picks, onRestart,
+  them, picks, onRestart, nextHref,
 }: {
-  them: string; picks: Pick[]; onRestart: () => void
+  them: string; picks: Pick[]; onRestart: () => void; nextHref: string | null
 }) {
   const handleBuy = (p: Pick) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
@@ -454,15 +463,25 @@ function StepReveal({
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
-        <a
-          href={`${WHATSAPP_URL}?text=${encodeURIComponent(`I'm shopping for ${them} — can you help me decide?`)}`}
-          target="_blank" rel="noopener noreferrer"
-          onClick={() => trackClick('magic-reveal-wa', 'WA_INTENT', 'WEB')}
-          className="inline-flex items-center gap-2 py-3 px-6 bg-[#25D366] text-white rounded-full font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md"
-        >
-          <MessageCircle className="h-4 w-4" />
-          Chat with our concierge
-        </a>
+        {nextHref ? (
+          <Link
+            href={nextHref}
+            className="inline-flex items-center gap-2 py-3 px-6 bg-gray-900 text-white rounded-full font-semibold text-sm hover:bg-gray-800 transition shadow-md"
+          >
+            Continue to chat
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        ) : (
+          <a
+            href={`${WHATSAPP_URL}?text=${encodeURIComponent(`I'm shopping for ${them} — can you help me decide?`)}`}
+            target="_blank" rel="noopener noreferrer"
+            onClick={() => trackClick('magic-reveal-wa', 'WA_INTENT', 'WEB')}
+            className="inline-flex items-center gap-2 py-3 px-6 bg-[#25D366] text-white rounded-full font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Chat with our concierge
+          </a>
+        )}
         <button
           onClick={onRestart}
           className="inline-flex items-center gap-2 py-3 px-6 bg-white border border-gray-200 text-gray-700 rounded-full font-semibold text-sm hover:bg-gray-50 transition"

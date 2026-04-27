@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { createTrackedLink } from '@/lib/product-link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // POST /api/magic/picks
 // Body: { name?, relationship?, interests: string[], priceTier: 'budget'|'mid'|'premium'|'luxury' }
@@ -142,6 +144,24 @@ export async function POST(req: NextRequest) {
         sources: p.sources,
       }
     }))
+
+    // Quiz-first onboarding: when a logged-in user successfully reaches the
+    // reveal, mark them as having completed the quiz so they're not re-routed
+    // through /magic on their next visit. Anonymous users remain anonymous —
+    // /magic stays a no-auth surface for them.
+    try {
+      const session = await getServerSession(authOptions)
+      const userId = (session?.user as any)?.id as string | undefined
+      if (userId) {
+        await prisma.user.updateMany({
+          where: { id: userId, quizCompletedAt: null },
+          data: { quizCompletedAt: new Date() },
+        })
+      }
+    } catch (err) {
+      console.error('[magic/picks] mark complete failed', err)
+      // Non-fatal — picks still return.
+    }
 
     return NextResponse.json({ picks: withSlugs.filter(p => p.slug) })
   } catch (e: any) {
