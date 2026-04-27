@@ -336,7 +336,6 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
 function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => void }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
-  const sourceStack = getSourceStack(p.sources)
   const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
@@ -403,18 +402,6 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
         <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5 line-clamp-2">
           {p.name}
         </p>
-
-        {/* Trust strip — surfaces the stacked-expert-source signal that's
-            otherwise hidden in a corner chip. Renders only when ≥2 sources. */}
-        {sourceStack.length >= 2 && (
-          <p className="text-[10px] text-gray-500 mt-1 leading-snug font-medium">
-            <span className="text-amber-500">★</span>{' '}
-            {sourceStack.join(' · ')}
-            {p.signalCount > sourceStack.length && (
-              <span className="text-gray-400"> +{p.signalCount - sourceStack.length} more</span>
-            )}
-          </p>
-        )}
 
         {p.why && (
           <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 leading-snug">

@@ -10,9 +10,6 @@ import { EditorsPickCard } from './editors-pick-card'
 import { ShopPageViewTracker } from './page-view-tracker'
 import { ShopHero } from './shop-hero'
 import { StickyConciergeBar } from './sticky-concierge-bar'
-import { PicksCarousel } from './picks-carousel'
-import { CountdownStrip } from './countdown-strip'
-import { ExitIntentConcierge } from './exit-intent-concierge'
 
 export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
 
@@ -30,7 +27,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://giftist.ai/shop' },
 }
 
-async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: GiftProduct[] }> {
+async function getGifts(): Promise<{ allGifts: GiftProduct[] }> {
   const products = await prisma.tastemakerGift.findMany({
     where: {
       reviewStatus: 'approved',
@@ -87,90 +84,11 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })
   }
 
-  // Editor's Picks pool — blends three signals so the carousel changes daily,
-  // surfaces what's actually getting clicked, AND keeps discovery via a
-  // daily-seeded random sample of the top-60.
-  //
-  // Excluded from the carousel only (still appear in the grid below):
-  // mugs, massagers, and headphones — overrepresented + low-emotion-gift signal.
-  // Sentinel slugs (shop-hero-wa, shop-sticky-wa) also excluded from clicks.
-  const CAROUSEL_EXCLUDE = /\b(mug|massager|theragun|headphones?|earbuds?|airpods)\b/i
-  const withImages = withSlugs.filter(p => p.image && !CAROUSEL_EXCLUDE.test(p.name))
-
-  // Pull last-7d click counts per slug → map back to TastemakerGift via productName
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const clickRows = await prisma.$queryRaw<{ productName: string; clicks: bigint }[]>`
-    SELECT pc."productName", COUNT(ce.id) as clicks
-    FROM "ProductClick" pc
-    JOIN "ClickEvent" ce ON ce.slug = pc.slug
-    WHERE ce."createdAt" >= ${since}
-      AND ce.event IN ('CARD_CLICK', 'RETAILER_CLICK', 'WA_INTENT')
-      AND pc.slug NOT IN ('shop-hero-wa', 'shop-sticky-wa')
-    GROUP BY pc."productName"
-    ORDER BY clicks DESC
-    LIMIT 30
-  `
-  const clickMap = new Map<string, number>(clickRows.map(r => [r.productName, Number(r.clicks)]))
-
-  // Daily seed (PT-anchored). Same day → same carousel. Next day → fresh shuffle.
-  const dayInPT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  const seed = dayInPT.getFullYear() * 10000 + (dayInPT.getMonth() + 1) * 100 + dayInPT.getDate()
-  function seededShuffle<T>(arr: T[], s: number): T[] {
-    const a = [...arr]
-    let rng = s
-    for (let i = a.length - 1; i > 0; i--) {
-      rng = (rng * 9301 + 49297) % 233280
-      const j = Math.floor((rng / 233280) * (i + 1))
-      ;[a[i], a[j]] = [a[j], a[i]]
-    }
-    return a
-  }
-
-  const seen = new Set<string>()
-  // 1. Top by clicks (proven engagement) — up to 3
-  const clicked = withImages
-    .filter(p => clickMap.has(p.name))
-    .sort((a, b) => (clickMap.get(b.name) || 0) - (clickMap.get(a.name) || 0))
-    .slice(0, 3)
-  for (const p of clicked) seen.add(p.id)
-
-  // 2. Books — daily-shuffled top picks
-  const books = seededShuffle(
-    withImages.filter(p => p.interests?.includes('reading') && !seen.has(p.id)).slice(0, 8),
-    seed,
-  ).slice(0, 2)
-  for (const p of books) seen.add(p.id)
-
-  // 3. Mother's Day picks — daily-shuffled
-  const seasonal = seededShuffle(
-    withImages.filter(p => p.occasions?.includes('mothers-day') && !seen.has(p.id)).slice(0, 8),
-    seed + 1,
-  ).slice(0, 2)
-  for (const p of seasonal) seen.add(p.id)
-
-  // 4. Discovery — daily-seeded random pick from top-60 by score
-  const discoveryPool = withImages.filter(p => !seen.has(p.id)).slice(0, 60)
-  const discovery = seededShuffle(discoveryPool, seed + 2).slice(0, 4)
-  for (const p of discovery) seen.add(p.id)
-
-  // Interleave: clicked, book, MD, discovery — so the strip feels mixed.
-  const buckets = [clicked, books, seasonal, discovery]
-  const editorsPicks: GiftProduct[] = []
-  let idx = 0
-  while (editorsPicks.length < 9 && buckets.some(b => b.length > 0)) {
-    const b = buckets[idx % buckets.length]
-    if (b.length > 0) editorsPicks.push(b.shift()!)
-    idx++
-  }
-
-  return {
-    editorsPicks,
-    allGifts: withSlugs,
-  }
+  return { allGifts: withSlugs }
 }
 
 export default async function ShopPage() {
-  const { editorsPicks, allGifts } = await getGifts()
+  const { allGifts } = await getGifts()
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -217,9 +135,6 @@ export default async function ShopPage() {
       <ShopPageViewTracker path="/shop" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      {/* Mother's Day countdown — auto-hides after May 10 */}
-      <CountdownStrip />
-
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
@@ -256,28 +171,6 @@ export default async function ShopPage() {
         <ShopHero />
       </Suspense>
 
-      {/* Editor's Picks — auto-playing carousel of top picks */}
-      {editorsPicks.length > 0 && (
-        <PicksCarousel picks={editorsPicks} />
-      )}
-
-      {/* Inline CTA */}
-      <div className="bg-gray-50 border-y border-gray-100 py-8">
-        <div className="max-w-2xl mx-auto px-4 text-center">
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Can&apos;t find the right thing? Tell me about the person — their hobbies, age, your budget — and I&apos;ll find something perfect.
-          </p>
-          <a
-            href={`${WHATSAPP_URL}?text=${encodeURIComponent("I need help finding a gift for someone special")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-4 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Get personalized picks
-          </a>
-        </div>
-      </div>
 
       {/* Filter + Grid — Client Component but server-renders all cards (no useSearchParams,
           uses window.location post-hydration to apply URL filters). */}
@@ -289,9 +182,6 @@ export default async function ShopPage() {
       <Suspense fallback={null}>
         <StickyConciergeBar />
       </Suspense>
-
-      {/* Exit-intent + 60s-dwell concierge popup — captures paralyzed browsers */}
-      <ExitIntentConcierge />
 
       {/* Bottom CTA */}
       <div className="bg-gray-900 text-white py-16">
