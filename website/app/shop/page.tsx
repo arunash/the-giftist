@@ -85,11 +85,36 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })
   }
 
-  // Editor's Picks: only products with images, sorted by score (already sorted)
+  // Editor's Picks: mix of top-scoring + 2 books + 2 occasion-relevant gifts
+  // for visual variety in the carousel.
   const withImages = withSlugs.filter(p => p.image)
+  const byScore = [...withImages]  // already sorted desc by totalScore in the SQL query
+
+  const top = byScore.slice(0, 5)
+  const seen = new Set(top.map(p => p.id))
+
+  const books = byScore
+    .filter(p => p.interests?.includes('reading') && !seen.has(p.id))
+    .slice(0, 2)
+  for (const b of books) seen.add(b.id)
+
+  const seasonal = byScore
+    .filter(p => p.occasions?.includes('mothers-day') && !seen.has(p.id))
+    .slice(0, 2)
+  for (const s of seasonal) seen.add(s.id)
+
+  // Interleave so the order isn't all top-then-books-then-MD.
+  const editorsPicks: GiftProduct[] = []
+  const buckets = [top, books, seasonal]
+  let idx = 0
+  while (editorsPicks.length < 9 && buckets.some(b => b.length > 0)) {
+    const b = buckets[idx % buckets.length]
+    if (b.length > 0) editorsPicks.push(b.shift()!)
+    idx++
+  }
 
   return {
-    editorsPicks: withImages.slice(0, 8),
+    editorsPicks,
     allGifts: withSlugs,
   }
 }

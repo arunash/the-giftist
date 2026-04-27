@@ -41,12 +41,19 @@ interface CampaignTarget {
 
 // Static registry of campaigns we manage. Add new ones here as launched.
 const CAMPAIGNS: CampaignTarget[] = [
+  // Mother's Day theme
   { id: '120241863068050145', name: 'V1 Curation',     utmCampaign: 'mothers-day-shop-test',     adSetId: '120241863070050145' },
   { id: '120241902213880145', name: 'V2 Self-Care',    utmCampaign: 'md-selfcare-women3055',     adSetId: '120241902214320145' },
   { id: '120241902216220145', name: 'V3 Premium',      utmCampaign: 'md-premium-women2850',      adSetId: '120241902216360145' },
   { id: '120241902219130145', name: 'V4 Last-Min',     utmCampaign: 'md-lastminute-broad',       adSetId: '120241902219250145' },
   { id: '120241902220990145', name: 'V5 Thoughtful',   utmCampaign: 'md-thoughtful-women2550',   adSetId: '120241902221390145' },
   { id: '120241947367770145', name: 'V6 Sentimental',  utmCampaign: 'md-sentimental-women3055',  adSetId: '120241947367930145' },
+  // Category campaigns (Apr 27)
+  { id: '120242024838470145', name: 'Cat Books',       utmCampaign: 'cat-books',                 adSetId: '120242024838800145' },
+  { id: '120242024842910145', name: 'Cat Home',        utmCampaign: 'cat-home',                  adSetId: '120242024843120145' },
+  { id: '120242024844460145', name: 'Cat Tech',        utmCampaign: 'cat-tech',                  adSetId: '120242024844620145' },
+  { id: '120242024846930145', name: 'Cat Cooking',     utmCampaign: 'cat-cooking',               adSetId: '120242024847040145' },
+  { id: '120242024849060145', name: 'Cat Fashion',     utmCampaign: 'cat-fashion',               adSetId: '120242024849610145' },
 ]
 
 // ── Meta API helpers ──
