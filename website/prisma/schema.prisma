@@ -724,6 +724,26 @@ model TastemakerGift {
   @@index([priceRange])
 }
 
+// QuizSession — tracks an in-progress gift-finder quiz across multiple
+// turns. Same /magic 4-question flow, delivered as a chat experience on
+// WhatsApp + web. One active session per phone (any new "/gift" trigger
+// resets it). Cleared on completion (completedAt set).
+model QuizSession {
+  id            String   @id @default(cuid())
+  phone         String   @unique           // one active session per phone
+  channel       String   @default("whatsapp")  // whatsapp | web
+  step          Int      @default(0)        // 0=relationship, 1=interest, 2=budget, 3=done
+  recipientName String?                      // optional name for personalization
+  relationship  String?                      // mom | dad | partner | friend | sibling | self
+  interests     String[] @default([])        // single tag for MVP, array for forward-compat
+  priceTier     String?                      // budget | mid | premium | luxury
+  startedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  completedAt   DateTime?
+
+  @@index([completedAt])
+}
+
 // SavedReminder — anonymous "text me this gift" save from /shop product
 // modal. Captures phone + slug pair, schedules a WhatsApp reminder for a
 // specific occasion. Cron at /api/cron/saved-reminders processes them.

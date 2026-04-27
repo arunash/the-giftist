@@ -12,6 +12,7 @@ import {
 import { handleGroupMessage } from '@/lib/group-monitor'
 import { scheduleOnboardingNudges, cancelOnboardingNudges } from '@/lib/whatsapp-funnel'
 import { logError } from '@/lib/api-logger'
+import { handleQuizMessage, startQuizForNewUser } from '@/lib/quiz-wa-handler'
 
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
   const appSecret = process.env.WHATSAPP_APP_SECRET
@@ -212,51 +213,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // === Quiz-first routing ===
+    // Always check the quiz state machine BEFORE the regular welcome / Claude
+    // flow. Returns handled=true if it consumed the message (button reply,
+    // trigger keyword, etc.) so we exit early.
+    const quizText = message.text?.body || message.caption || null
+    const quizButtonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id || null
+    const quizResult = await handleQuizMessage(phone, quizButtonId, quizText)
+    if (quizResult.handled) {
+      await prisma.whatsAppMessage.update({
+        where: { id: waMsg.id },
+        data: { status: 'PROCESSED', processedAt: new Date() },
+      })
+      return NextResponse.json({ success: true, route: 'quiz' })
+    }
+
     // Detect if first message is a gift request (from landing page or ad ice breakers)
     // Skip the long welcome — process their request immediately
     const firstMessageText = message.text?.body || ''
     const isGiftRequest = isNewUser && messageType === 'text' && /interested in|looking at|I want|can you find|help me find|gift for|gift ideas|birthday gift|anniversary gift|who has everything|mother'?s day|father'?s day|need a gift|need gift|shopping for/i.test(firstMessageText)
 
+    // === Quiz-first onboarding for vague new users ===
+    // Replaces the old "welcome buttons" path: instead of showing 3 generic
+    // gift-category buttons, kick off the 4-question quiz immediately.
+    // Specific gift requests (isGiftRequest) still skip the quiz so high-
+    // intent users don't get rerouted.
     if (isNewUser && !isGiftRequest) {
-      // Vague first message — detect language, send welcome + buttons.
-      const { detectLanguage } = await import('@/lib/chat-context')
-      const lang = detectLanguage(firstMessageText)
-      const isSpanish = lang.code === 'es'
-
-      if (isSpanish) {
-        await sendButtonMessage(
-          phone,
-          `${profileName ? `¡Hola ${profileName}! 👋` : '¡Hola! 👋'} Encuentro el regalo perfecto para cualquier persona en segundos.\n\nDime *para quién es* y *qué le gusta* — te envío 3 opciones con precios y links.\n\nO toca un botón para empezar:`,
-          [
-            { id: 'list_mom', title: '🌸 Regalo para Mamá' },
-            { id: 'list_birthday', title: '🎂 Regalo cumpleaños' },
-            { id: 'list_partner', title: '💝 Regalo pareja' },
-          ],
-          undefined,
-          'Gratis · Respuesta en segundos',
-        )
-      } else {
-        await sendButtonMessage(
-          phone,
-          `${profileName ? `Hey ${profileName}! 👋` : 'Hey! 👋'} I find the perfect gift for anyone in seconds.\n\nJust tell me *who it's for* and *what they're into* — I'll send you 3 great options with prices and links.\n\nOr tap below to get started:`,
-          [
-            { id: 'list_mom', title: '🌸 Gift for Mom' },
-            { id: 'list_birthday', title: '🎂 Birthday gift' },
-            { id: 'list_partner', title: '💝 Gift for partner' },
-          ],
-          undefined,
-          'Free · Reply in seconds',
-        )
-      }
-
+      await startQuizForNewUser(phone)
       sendContactMessage(phone).catch(() => {})
-
-      // Mark as processed and return — don't double-process their original message
       await prisma.whatsAppMessage.update({
         where: { id: waMsg.id },
         data: { status: 'PROCESSED', processedAt: new Date() },
       })
-      return NextResponse.json({ success: true })
+      return NextResponse.json({ success: true, route: 'quiz_kickoff' })
     }
 
     if (isNewUser && isGiftRequest) {
