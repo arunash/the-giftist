@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Gift, ExternalLink, MessageCircle, ChevronRight } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
+import { ProductModal } from './product-modal'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -121,6 +122,7 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
   const [recipient, setRecipient] = useState('all')
   const [priceRange, setPriceRange] = useState('all')
   const [category, setCategory] = useState('all')
+  const [activeProduct, setActiveProduct] = useState<GiftProduct | null>(null)
 
   // Hydrate filter state from URL after mount.
   useEffect(() => {
@@ -287,35 +289,42 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {filtered.map((p) => (
-            <GiftCard key={p.id} product={p} />
+            <GiftCard key={p.id} product={p} onOpen={() => setActiveProduct(p)} />
           ))}
         </div>
       )}
+
+      {/* Click-to-preview modal */}
+      <ProductModal product={activeProduct} onClose={() => setActiveProduct(null)} />
     </section>
   )
 }
 
-function GiftCard({ product: p }: { product: GiftProduct }) {
+function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => void }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
   const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
   const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
   const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
-  const cardLink = giftistUrl || retailerUrl || waLink
 
-  // Single-tab card click — navigates current tab to /p/SLUG. Tracks
-  // CARD_CLICK with utm attribution carried in via trackClick().
-  const dualClick = giftistUrl
-    ? (e: React.MouseEvent) => {
-        if (p.trackedSlug && !(e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0)) {
-          trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
-        }
-      }
-    : undefined
+  // Card body click → open the in-page details modal (no navigation, no
+  // popup-blocker, no losing scroll position). Cmd/Ctrl/middle-click still
+  // opens /p/SLUG in a new tab using the underlying anchor href.
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+    e.preventDefault()
+    if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
+    onOpen()
+  }
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-      <a href={cardLink} onClick={dualClick} className="block" {...(!giftistUrl && !retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+      <a
+        href={giftistUrl || retailerUrl || waLink}
+        onClick={handleCardClick}
+        className="block cursor-pointer"
+        {...(!giftistUrl && !retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      >
         <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
           {p.image && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -370,13 +379,13 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
         <div className="flex items-center gap-2 mt-2.5">
           {giftistUrl && retailerUrl ? (
             <>
-              <a
-                href={giftistUrl}
-                onClick={dualClick}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB'); onOpen() }}
                 className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
               >
                 Details
-              </a>
+              </button>
               <a
                 href={retailerUrl}
                 target="_blank"
