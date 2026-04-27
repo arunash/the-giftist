@@ -85,30 +85,75 @@ async function getGifts(): Promise<{ editorsPicks: GiftProduct[]; allGifts: Gift
     withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })
   }
 
-  // Editor's Picks: mix of top-scoring + 2 books + 2 occasion-relevant gifts
-  // for visual variety in the carousel.
+  // Editor's Picks pool — blends three signals so the carousel changes daily,
+  // surfaces what's actually getting clicked, AND keeps discovery via a
+  // daily-seeded random sample of the top-60.
+  //
   // Excluded from the carousel only (still appear in the grid below):
   // mugs, massagers, and headphones — overrepresented + low-emotion-gift signal.
+  // Sentinel slugs (shop-hero-wa, shop-sticky-wa) also excluded from clicks.
   const CAROUSEL_EXCLUDE = /\b(mug|massager|theragun|headphones?|earbuds?|airpods)\b/i
-  const withImages = withSlugs.filter(p => p.image)
-  const byScore = withImages.filter(p => !CAROUSEL_EXCLUDE.test(p.name))
+  const withImages = withSlugs.filter(p => p.image && !CAROUSEL_EXCLUDE.test(p.name))
 
-  const top = byScore.slice(0, 5)
-  const seen = new Set(top.map(p => p.id))
+  // Pull last-7d click counts per slug → map back to TastemakerGift via productName
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const clickRows = await prisma.$queryRaw<{ productName: string; clicks: bigint }[]>`
+    SELECT pc."productName", COUNT(ce.id) as clicks
+    FROM "ProductClick" pc
+    JOIN "ClickEvent" ce ON ce.slug = pc.slug
+    WHERE ce."createdAt" >= ${since}
+      AND ce.event IN ('CARD_CLICK', 'RETAILER_CLICK', 'WA_INTENT')
+      AND pc.slug NOT IN ('shop-hero-wa', 'shop-sticky-wa')
+    GROUP BY pc."productName"
+    ORDER BY clicks DESC
+    LIMIT 30
+  `
+  const clickMap = new Map<string, number>(clickRows.map(r => [r.productName, Number(r.clicks)]))
 
-  const books = byScore
-    .filter(p => p.interests?.includes('reading') && !seen.has(p.id))
-    .slice(0, 2)
-  for (const b of books) seen.add(b.id)
+  // Daily seed (PT-anchored). Same day → same carousel. Next day → fresh shuffle.
+  const dayInPT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+  const seed = dayInPT.getFullYear() * 10000 + (dayInPT.getMonth() + 1) * 100 + dayInPT.getDate()
+  function seededShuffle<T>(arr: T[], s: number): T[] {
+    const a = [...arr]
+    let rng = s
+    for (let i = a.length - 1; i > 0; i--) {
+      rng = (rng * 9301 + 49297) % 233280
+      const j = Math.floor((rng / 233280) * (i + 1))
+      ;[a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+  }
 
-  const seasonal = byScore
-    .filter(p => p.occasions?.includes('mothers-day') && !seen.has(p.id))
-    .slice(0, 2)
-  for (const s of seasonal) seen.add(s.id)
+  const seen = new Set<string>()
+  // 1. Top by clicks (proven engagement) — up to 3
+  const clicked = withImages
+    .filter(p => clickMap.has(p.name))
+    .sort((a, b) => (clickMap.get(b.name) || 0) - (clickMap.get(a.name) || 0))
+    .slice(0, 3)
+  for (const p of clicked) seen.add(p.id)
 
-  // Interleave so the order isn't all top-then-books-then-MD.
+  // 2. Books — daily-shuffled top picks
+  const books = seededShuffle(
+    withImages.filter(p => p.interests?.includes('reading') && !seen.has(p.id)).slice(0, 8),
+    seed,
+  ).slice(0, 2)
+  for (const p of books) seen.add(p.id)
+
+  // 3. Mother's Day picks — daily-shuffled
+  const seasonal = seededShuffle(
+    withImages.filter(p => p.occasions?.includes('mothers-day') && !seen.has(p.id)).slice(0, 8),
+    seed + 1,
+  ).slice(0, 2)
+  for (const p of seasonal) seen.add(p.id)
+
+  // 4. Discovery — daily-seeded random pick from top-60 by score
+  const discoveryPool = withImages.filter(p => !seen.has(p.id)).slice(0, 60)
+  const discovery = seededShuffle(discoveryPool, seed + 2).slice(0, 4)
+  for (const p of discovery) seen.add(p.id)
+
+  // Interleave: clicked, book, MD, discovery — so the strip feels mixed.
+  const buckets = [clicked, books, seasonal, discovery]
   const editorsPicks: GiftProduct[] = []
-  const buckets = [top, books, seasonal]
   let idx = 0
   while (editorsPicks.length < 9 && buckets.some(b => b.length > 0)) {
     const b = buckets[idx % buckets.length]
