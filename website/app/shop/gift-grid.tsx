@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Gift, ExternalLink, MessageCircle, ChevronRight } from 'lucide-react'
+import { Gift, ExternalLink, MessageCircle, ChevronRight, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import { ProductModal } from './product-modal'
 
@@ -143,17 +143,24 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
   const [priceRange, setPriceRange] = useState('all')
   const [category, setCategory] = useState('all')
   const [fromQuiz, setFromQuiz] = useState(false)
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [activeProduct, setActiveProduct] = useState<GiftProduct | null>(null)
 
   // Hydrate filter state from URL after mount.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    setOccasion(isValidKey(params.get('occasion'), OCCASIONS))
-    setRecipient(isValidKey(params.get('recipient'), RECIPIENTS))
-    setPriceRange(isValidKey(params.get('price'), PRICE_RANGES))
+    const o = isValidKey(params.get('occasion'), OCCASIONS)
+    const r = isValidKey(params.get('recipient'), RECIPIENTS)
+    const p = isValidKey(params.get('price'), PRICE_RANGES)
+    setOccasion(o)
+    setRecipient(r)
+    setPriceRange(p)
     setCategory(isValidKey(params.get('category'), CATEGORIES))
     setFromQuiz(params.get('from') === 'quiz')
+    // Auto-expand More filters if any of them are pre-set from URL — so user
+    // sees the active state without having to discover the panel.
+    if (o !== 'all' || r !== 'all' || p !== 'all') setShowMoreFilters(true)
   }, [])
 
   // Keep URL in sync when user changes filters (preserve other params like utm_*).
@@ -207,88 +214,74 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
         {hasActiveFilter ? `${filtered.length} of ${gifts.length}` : gifts.length} curated picks from trusted sources
       </p>
 
-      {/* Category pills (Books, Tech, Cooking, etc.) */}
-      <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Category</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => setCategory(c.key)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                category === c.key
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Primary filter row — Category is the most actionable filter, always
+          visible. The "More filters" toggle reveals the secondary filters
+          inline (Occasion, Recipient, Budget). Active count badge surfaces
+          hidden state so nothing's a surprise. */}
+      {(() => {
+        const moreActiveCount = (occasion !== 'all' ? 1 : 0) + (recipient !== 'all' ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
+        return (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex-1 flex gap-1.5 overflow-x-auto pb-1 -ml-4 pl-4 scrollbar-hide">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => setCategory(c.key)}
+                    className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                      category === c.key
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowMoreFilters(s => !s)}
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all border ${
+                  showMoreFilters || moreActiveCount > 0
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                <span className="hidden sm:inline">Filters</span>
+                {moreActiveCount > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    showMoreFilters ? 'bg-white text-gray-900' : 'bg-pink-500 text-white'
+                  }`}>
+                    {moreActiveCount}
+                  </span>
+                )}
+                <ChevronDown className={`h-3 w-3 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
 
-      {/* Occasion pills */}
-      <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Occasion</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          {OCCASIONS.map((o) => (
-            <button
-              key={o.key}
-              onClick={() => setOccasion(o.key)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                occasion === o.key
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+            {/* Secondary filters — collapsible */}
+            {showMoreFilters && (
+              <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 mb-5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <PillRow label="Occasion" options={OCCASIONS} selected={occasion} onSelect={setOccasion} />
+                <PillRow label="For" options={RECIPIENTS} selected={recipient} onSelect={setRecipient} />
+                <PillRow label="Budget" options={PRICE_RANGES} selected={priceRange} onSelect={setPriceRange} />
+                {hasActiveFilter && (
+                  <button
+                    onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all'); setCategory('all') }}
+                    className="text-xs text-pink-500 font-semibold hover:underline pt-1"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )
+      })()}
 
-      {/* Recipient pills */}
-      <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">For</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          {RECIPIENTS.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => setRecipient(r.key)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                recipient === r.key
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Price range pills */}
-      <div className="mb-6">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Budget</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          {PRICE_RANGES.map((pr) => (
-            <button
-              key={pr.key}
-              onClick={() => setPriceRange(pr.key)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                priceRange === pr.key
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              {pr.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Clear filters */}
-      {hasActiveFilter && (
+      {/* Inline clear when secondary panel is collapsed but a primary
+          filter is active — keeps the escape hatch one tap away. */}
+      {!showMoreFilters && category !== 'all' && (
         <button
           onClick={() => { setOccasion('all'); setRecipient('all'); setPriceRange('all'); setCategory('all') }}
           className="text-xs text-pink-500 font-medium mb-4 hover:underline"
@@ -467,6 +460,39 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
             <ChevronRight className="h-2.5 w-2.5" />
           </a>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Compact pill row used inside the secondary-filters panel. Renders a small
+// label + horizontally-scrollable pill list. Same visual language as the
+// primary Category row but scoped inside the gray panel.
+function PillRow({
+  label, options, selected, onSelect,
+}: {
+  label: string
+  options: Array<{ key: string; label: string }>
+  selected: string
+  onSelect: (k: string) => void
+}) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">{label}</p>
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => onSelect(o.key)}
+            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+              selected === o.key
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-600 bg-white border border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
     </div>
   )
