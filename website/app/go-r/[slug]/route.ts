@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { applyAffiliateTag } from '@/lib/affiliate'
+import { applyAffiliateTag, rewriteAmazonForCountry } from '@/lib/affiliate'
 import { sanitizeUrl } from '@/lib/product-link'
 
 export async function GET(
@@ -61,7 +61,12 @@ export async function GET(
       },
     }).catch(() => {})
 
-    const affiliateUrl = applyAffiliateTag(cleanUrl)
+    // Country-aware Amazon rewrite — non-US users get sent to their local
+    // Amazon storefront. Vercel sets x-vercel-ip-country on every edge req.
+    // Falls back to no-op for unknown countries / non-Amazon URLs / dev.
+    const country = request.headers.get('x-vercel-ip-country')
+    const localizedUrl = rewriteAmazonForCountry(cleanUrl, country)
+    const affiliateUrl = applyAffiliateTag(localizedUrl)
 
     return new Response(null, {
       status: 302,

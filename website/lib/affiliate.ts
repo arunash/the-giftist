@@ -18,8 +18,9 @@ export function applyAffiliateTag(url: string): string {
     const parsed = new URL(url)
     const hostname = parsed.hostname.toLowerCase()
 
-    // Amazon
-    if (hostname.includes('amazon.com') || hostname.includes('amzn.to')) {
+    // Amazon US — exact match so amazon.com.au / amazon.com.mx / etc. don't
+    // get the US tag (they need their own country's Associates program).
+    if (hostname === 'www.amazon.com' || hostname === 'amazon.com' || hostname === 'amzn.to') {
       if (AMAZON_TAG) {
         parsed.searchParams.set('tag', AMAZON_TAG)
         return parsed.toString()
@@ -94,4 +95,57 @@ export function applyAffiliateTag(url: string): string {
   }
 
   return url
+}
+
+// Country (ISO-2) → Amazon storefront. US is the default; everything else
+// gets rewritten so non-US users land on their local Amazon with the same
+// search/product path. Tag is only applied for amazon.com (we only have a
+// US Associates account); foreign Amazon clicks pass through untagged
+// until those programs are registered.
+const AMAZON_STOREFRONTS: Record<string, string> = {
+  US: 'www.amazon.com',
+  GB: 'www.amazon.co.uk',
+  UK: 'www.amazon.co.uk',
+  CA: 'www.amazon.ca',
+  IN: 'www.amazon.in',
+  JP: 'www.amazon.co.jp',
+  DE: 'www.amazon.de',
+  FR: 'www.amazon.fr',
+  IT: 'www.amazon.it',
+  ES: 'www.amazon.es',
+  AU: 'www.amazon.com.au',
+  MX: 'www.amazon.com.mx',
+  BR: 'www.amazon.com.br',
+  NL: 'www.amazon.nl',
+  SE: 'www.amazon.se',
+  AE: 'www.amazon.ae',
+  SG: 'www.amazon.sg',
+  PL: 'www.amazon.pl',
+  TR: 'www.amazon.com.tr',
+}
+
+const AMAZON_HOSTS = new Set(Object.values(AMAZON_STOREFRONTS))
+
+/**
+ * If the URL is an Amazon storefront and the user is in a different country,
+ * rewrite the host to that country's Amazon storefront. Path + query are
+ * preserved (works for both /s?k=... search URLs and /dp/ASIN product URLs).
+ *
+ * country = 2-letter ISO from Vercel's x-vercel-ip-country header. Falls
+ * back to no-rewrite for unknown countries (so they keep their existing host).
+ */
+export function rewriteAmazonForCountry(url: string, country: string | null | undefined): string {
+  if (!country) return url
+  const target = AMAZON_STOREFRONTS[country.toUpperCase()]
+  if (!target) return url  // unknown country → leave alone
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (!AMAZON_HOSTS.has(host) && !host.includes('amzn.to')) return url
+    if (host === target) return url
+    parsed.hostname = target
+    return parsed.toString()
+  } catch {
+    return url
+  }
 }
