@@ -100,11 +100,24 @@ export async function POST(req: NextRequest) {
       GROUP BY pc."productName"
     `
     const clickMap = new Map(clickRows.map(r => [r.productName, Number(r.clicks)]))
+
+    // Mother's Day weighting: when shopping for Mom (or "wife", "grandmother"
+    // in future), products tagged occasions:mothers-day go to the top of the
+    // pool. Falls back to the regular click + score order for non-MD picks.
+    const isMD = relationship === 'mom'
+
     pool.sort((a, b) => {
+      // 1. MD products first when shopping for Mom
+      if (isMD) {
+        const am = a.occasions?.includes('mothers-day') ? 1 : 0
+        const bm = b.occasions?.includes('mothers-day') ? 1 : 0
+        if (am !== bm) return bm - am
+      }
+      // 2. Click-engagement boost
       const ac = clickMap.get(a.name) || 0
       const bc = clickMap.get(b.name) || 0
       if (ac !== bc) return bc - ac
-      return 0 // keep totalScore order
+      return 0 // 3. Fallback to original totalScore order
     })
 
     // 3 picks across the price band, sorted by enriched score

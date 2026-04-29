@@ -19,6 +19,14 @@ import { trackClick, buildRetailerHref } from '@/lib/track-click'
 
 type Step = 'who' | 'love' | 'budget' | 'loading' | 'reveal'
 
+// Mother's Day 2026 — second Sunday of May.
+const MOTHERS_DAY = new Date('2026-05-10T07:00:00Z')
+const MD_ORDER_BY = new Date('2026-05-06T07:00:00Z')
+
+function daysUntil(d: Date): number {
+  return Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86400000))
+}
+
 const RELATIONSHIPS = [
   { v: 'mom',      label: 'Mom',         emoji: '🌸' },
   { v: 'dad',      label: 'Dad',         emoji: '🪴' },
@@ -161,10 +169,11 @@ export function MagicFlow() {
             error={error}
           />
         )}
-        {step === 'loading' && <StepLoading them={them} />}
+        {step === 'loading' && <StepLoading them={them} relationship={relationship} />}
         {step === 'reveal' && (
           <StepReveal
             them={them}
+            relationship={relationship}
             picks={picks}
             nextHref={nextHref}
             onRestart={() => {
@@ -341,7 +350,9 @@ function StepBudget({
 }
 
 // ── Loading reveal ──
-function StepLoading({ them }: { them: string }) {
+function StepLoading({ them, relationship }: { them: string; relationship: string | null }) {
+  const isMD = relationship === 'mom' && daysUntil(MOTHERS_DAY) > 0
+  const mdDays = daysUntil(MOTHERS_DAY)
   return (
     <div className="w-full max-w-md text-center animate-in fade-in zoom-in duration-500">
       <div className="relative inline-block mb-8">
@@ -351,17 +362,26 @@ function StepLoading({ them }: { them: string }) {
       <h2 className="font-serif text-3xl text-gray-900 leading-tight mb-3">
         Finding three perfect things for <span className="italic text-pink-500">{them}</span>…
       </h2>
-      <p className="text-sm text-gray-500">Vetting expert picks · matching tastes · checking prices</p>
+      {isMD ? (
+        <p className="text-sm text-pink-600 font-semibold">
+          🌸 Mother&apos;s Day in {mdDays} day{mdDays === 1 ? '' : 's'} · order by May 6 to arrive in time
+        </p>
+      ) : (
+        <p className="text-sm text-gray-500">Vetting expert picks · matching tastes · checking prices</p>
+      )}
     </div>
   )
 }
 
 // ── Reveal ──
 function StepReveal({
-  them, picks, onRestart, nextHref,
+  them, relationship, picks, onRestart, nextHref,
 }: {
-  them: string; picks: Pick[]; onRestart: () => void; nextHref: string | null
+  them: string; relationship: string | null; picks: Pick[]; onRestart: () => void; nextHref: string | null
 }) {
+  const isMD = relationship === 'mom' && daysUntil(MOTHERS_DAY) > 0
+  const mdDays = daysUntil(MOTHERS_DAY)
+  const orderByDays = Math.max(0, Math.ceil((MD_ORDER_BY.getTime() - Date.now()) / 86400000))
   const handleBuy = (p: Pick) => (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
     if (!p.slug) return
@@ -398,11 +418,24 @@ function StepReveal({
       <div className="text-center mb-10 sm:mb-14">
         <div className="inline-flex items-center gap-1.5 mb-4">
           <Sparkles className="h-3.5 w-3.5 text-pink-500" />
-          <p className="text-[10px] uppercase tracking-[0.2em] text-pink-500 font-bold">Three perfect things</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-pink-500 font-bold">
+            {isMD ? "🌸 Mother's Day picks" : 'Three perfect things'}
+          </p>
         </div>
         <h1 className="font-serif text-4xl sm:text-5xl text-gray-900 leading-[1.1] tracking-tight">
           For <span className="italic text-pink-500">{them}</span>
         </h1>
+        {isMD && (
+          <div className="inline-flex items-center gap-2 mt-5 bg-pink-50 border border-pink-200 rounded-full px-4 py-1.5">
+            <span className="text-base">🌸</span>
+            <p className="text-xs sm:text-sm font-semibold text-pink-700">
+              Mother&apos;s Day in {mdDays} day{mdDays === 1 ? '' : 's'}
+              {orderByDays > 0
+                ? <> · order by May 6 to arrive in time</>
+                : <> · last call — pick express shipping</>}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
