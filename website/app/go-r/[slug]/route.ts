@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { applyAffiliateTag, rewriteAmazonForCountry } from '@/lib/affiliate'
 import { sanitizeUrl } from '@/lib/product-link'
+import { isBotUserAgent } from '@/lib/is-bot'
 
 export async function GET(
   request: NextRequest,
@@ -23,43 +24,49 @@ export async function GET(
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Track retailer click-through
-    const referrer = request.headers.get('referer') || null
-    // Pull utm + sessionId off the query string OR fall back to the referer.
-    // Client wraps retailer links to append these so per-campaign attribution works.
-    const sp = request.nextUrl.searchParams
-    let utmCampaign = sp.get('utm_campaign')
-    let utmSource = sp.get('utm_source')
-    let sessionId = sp.get('sid')
-    // Fallback: parse referer (works when user lands on /shop?utm_campaign=X
-    // and clicks Buy from the card directly).
-    if (!utmCampaign && referrer) {
-      try {
-        const refUrl = new URL(referrer)
-        utmCampaign = refUrl.searchParams.get('utm_campaign')
-        utmSource = utmSource || refUrl.searchParams.get('utm_source')
-      } catch {}
+    // Track retailer click-through — but ONLY for real users. Crawlers
+    // (Meta link-preview, search bots, social previewers) hammer this
+    // endpoint and would inflate RETAILER_CLICK by 50-100x. Skip logging
+    // entirely for known bot user agents.
+    const userAgent = request.headers.get('user-agent') || null
+    const isBot = isBotUserAgent(userAgent)
+
+    if (!isBot) {
+      const referrer = request.headers.get('referer') || null
+      // Pull utm + sessionId off the query string OR fall back to the referer.
+      // Client wraps retailer links to append these so per-campaign attribution works.
+      const sp = request.nextUrl.searchParams
+      let utmCampaign = sp.get('utm_campaign')
+      let utmSource = sp.get('utm_source')
+      let sessionId = sp.get('sid')
+      if (!utmCampaign && referrer) {
+        try {
+          const refUrl = new URL(referrer)
+          utmCampaign = refUrl.searchParams.get('utm_campaign')
+          utmSource = utmSource || refUrl.searchParams.get('utm_source')
+        } catch {}
+      }
+      prisma.productClick.update({
+        where: { slug },
+        data: {
+          clicks: { increment: 1 },
+          lastClicked: new Date(),
+          lastReferrer: referrer,
+        },
+      }).catch(() => {})
+      prisma.clickEvent.create({
+        data: {
+          slug,
+          event: 'RETAILER_CLICK',
+          channel: referrer?.includes('from=wa') ? 'WHATSAPP' : 'WEB',
+          referrer,
+          userAgent,
+          utmCampaign: utmCampaign || null,
+          utmSource: utmSource || null,
+          sessionId: sessionId || null,
+        },
+      }).catch(() => {})
     }
-    prisma.productClick.update({
-      where: { slug },
-      data: {
-        clicks: { increment: 1 },
-        lastClicked: new Date(),
-        lastReferrer: referrer,
-      },
-    }).catch(() => {})
-    prisma.clickEvent.create({
-      data: {
-        slug,
-        event: 'RETAILER_CLICK',
-        channel: referrer?.includes('from=wa') ? 'WHATSAPP' : 'WEB',
-        referrer,
-        userAgent: request.headers.get('user-agent') || null,
-        utmCampaign: utmCampaign || null,
-        utmSource: utmSource || null,
-        sessionId: sessionId || null,
-      },
-    }).catch(() => {})
 
     // Country-aware Amazon rewrite — non-US users get sent to their local
     // Amazon storefront. Vercel sets x-vercel-ip-country on every edge req.

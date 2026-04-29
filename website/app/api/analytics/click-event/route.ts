@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isBotUserAgent } from '@/lib/is-bot'
 
 const ALLOWED_EVENTS = new Set([
   'IMPRESSION',
@@ -29,6 +30,12 @@ export async function POST(request: NextRequest) {
     const userId = (session?.user as any)?.id || null
     const userAgent = request.headers.get('user-agent') || null
     const referrer = request.headers.get('referer') || null
+
+    // Drop crawler hits — same rationale as /go-r. Returning ok=true keeps
+    // the response cheap; we just don't write to the DB.
+    if (isBotUserAgent(userAgent)) {
+      return NextResponse.json({ ok: true, skipped: 'bot' })
+    }
 
     prisma.clickEvent.create({
       data: {

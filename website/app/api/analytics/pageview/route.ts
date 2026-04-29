@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isBotUserAgent } from '@/lib/is-bot'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,11 @@ export async function POST(request: NextRequest) {
     const userId = (session?.user as any)?.id || null
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
     const userAgent = request.headers.get('user-agent') || null
+
+    // Drop crawlers — keeps PageView counts honest for funnel math
+    if (isBotUserAgent(userAgent)) {
+      return NextResponse.json({ ok: true, skipped: 'bot' })
+    }
 
     // Fire-and-forget
     prisma.pageView.create({
