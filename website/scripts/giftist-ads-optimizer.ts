@@ -28,9 +28,9 @@ const RESEND_KEY = 're_bcfGU5GA_vYLazycT9GSBMdwiLVyyg8z9'
 const ADMIN_EMAIL = 'arunash@gmail.com'
 
 const COOLDOWN_HOURS = 4
-const MAX_BUDGET = 25       // single-campaign cap: half the total cap
-const MIN_BUDGET = 2        // lowered from 5 so cat campaigns can be trimmed
-const TOTAL_BUDGET_CAP = 50
+const MAX_BUDGET = 15       // single-campaign cap
+const MIN_BUDGET = 2
+const TOTAL_BUDGET_CAP = 12 // V7-only mode: $10/day + small headroom for opt
 
 interface CampaignTarget {
   id: string
