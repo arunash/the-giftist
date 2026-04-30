@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Sparkles, ArrowRight, MessageCircle, ExternalLink, Loader2 } from 'lucide-react'
+import { Sparkles, ArrowRight, MessageCircle, ExternalLink, Loader2, Gift } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 
 type Step = 'who' | 'love' | 'budget' | 'loading' | 'reveal'
@@ -480,15 +480,28 @@ function StepReveal({
               <p className="text-sm text-gray-600 leading-relaxed mb-5 italic">
                 &ldquo;{p.why}&rdquo;
               </p>
+              {/* CTA priority: Gift via Giftist (primary) > View on retailer > Help.
+                  Same priority as /shop cards — gift-flow first because that's
+                  the monetization path. */}
+              {p.slug && (
+                <a
+                  href={`/p/${p.slug}`}
+                  onClick={() => trackClick(p.slug!, 'CARD_CLICK', 'WEB')}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
+                >
+                  <Gift className="h-4 w-4" />
+                  Gift via Giftist
+                </a>
+              )}
               <a
                 href={p.slug ? `/go-r/${p.slug}` : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleBuy(p)}
-                className="w-full inline-flex items-center justify-center gap-2 py-3.5 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition group/btn"
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-xs hover:border-gray-300 hover:bg-gray-50 transition"
               >
-                <ExternalLink className="h-4 w-4" />
-                Buy on {p.domain?.replace('www.', '')}
+                <ExternalLink className="h-3.5 w-3.5" />
+                View on {p.domain?.replace('www.', '')}
               </a>
             </div>
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Gift, ExternalLink, MessageCircle, ChevronRight, ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { Gift, ExternalLink, MessageCircle, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import { ProductModal } from './product-modal'
 
@@ -402,16 +402,35 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
           </p>
         )}
 
-        <div className="flex items-center gap-2 mt-2.5">
-          {giftistUrl && retailerUrl ? (
-            <>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB'); onOpen() }}
-                className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
-              >
-                Details
-              </button>
+        {/* CTA stack — priority: Gift via Giftist > View on retailer > Help.
+            Primary action is gift-through-Giftist (the /p/SLUG flow) since
+            that's the monetization path. Retailer link demoted to secondary. */}
+        <div className="mt-2.5 space-y-1.5">
+          {giftistUrl ? (
+            <a
+              href={giftistUrl}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
+                if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
+              }}
+              className="w-full flex items-center justify-center gap-1 py-1.5 bg-pink-500 text-white rounded-lg text-[11px] font-bold hover:bg-pink-600 transition"
+            >
+              <Gift className="h-3 w-3" />
+              Gift via Giftist
+            </a>
+          ) : (
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-1 py-1.5 bg-[#25D366] text-white rounded-lg text-[11px] font-bold hover:bg-[#20bd5a] transition"
+            >
+              <MessageCircle className="h-3 w-3" />
+              Ask about this
+            </a>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            {retailerUrl && (
               <a
                 href={retailerUrl}
                 target="_blank"
@@ -422,43 +441,23 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
                   e.preventDefault()
                   window.open(buildRetailerHref(p.trackedSlug), '_blank', 'noopener,noreferrer')
                 }}
-                className="flex items-center gap-0.5 text-[11px] font-semibold text-gray-700 hover:text-gray-900 transition"
-                aria-label={`Buy on ${p.domain?.replace('www.', '') || 'retailer'}`}
+                className="flex items-center gap-0.5 text-[10px] font-medium text-gray-500 hover:text-gray-900 transition"
               >
-                Buy
+                View on retailer
                 <ExternalLink className="h-2.5 w-2.5" />
               </a>
-            </>
-          ) : retailerUrl ? (
-            <a
-              href={retailerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-semibold text-pink-500 hover:text-pink-600 transition"
-            >
-              Buy
-              <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          ) : (
+            )}
             <a
               href={waLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-semibold text-[#25D366] hover:text-[#20bd5a] transition"
+              className="flex items-center gap-1 text-[10px] font-medium text-gray-400 hover:text-[#25D366] transition ml-auto"
+              aria-label="Get help via WhatsApp"
             >
-              Ask about this
               <MessageCircle className="h-2.5 w-2.5" />
+              Help
             </a>
-          )}
-          <a
-            href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Find me something similar to ${p.name}`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-600 transition ml-auto"
-          >
-            Find similar
-            <ChevronRight className="h-2.5 w-2.5" />
-          </a>
+          </div>
         </div>
       </div>
     </div>

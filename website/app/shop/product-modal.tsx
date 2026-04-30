@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { X, ExternalLink, MessageCircle, Sparkles, ShieldCheck, Star } from 'lucide-react'
+import { X, ExternalLink, MessageCircle, Sparkles, ShieldCheck, Star, Gift } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import type { GiftProduct } from './gift-grid'
 import { SaveReminderButton } from './save-reminder-button'
@@ -145,9 +145,24 @@ export function ProductModal({
             </div>
           </div>
 
-          {/* CTAs */}
+          {/* CTAs — priority: Gift via Giftist > View on retailer > WhatsApp help.
+              Gifting through Giftist (the /p/SLUG page) is our primary monetization
+              path: it captures recipient info, handles checkout, and creates a
+              shareable gift. Direct retailer buy is the fallback for users who
+              just want to buy for themselves. */}
           <div className="space-y-2.5 pt-1">
-            {slug ? (
+            {slug && (
+              <a
+                href={`/p/${slug}`}
+                onClick={() => trackClick(slug, 'CARD_CLICK', 'WEB')}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
+              >
+                <Gift className="h-4 w-4" />
+                Gift via Giftist
+              </a>
+            )}
+
+            {slug && (
               <a
                 href={`/go-r/${slug}`}
                 target="_blank"
@@ -157,21 +172,22 @@ export function ProductModal({
                   e.preventDefault()
                   window.open(buildRetailerHref(slug), '_blank', 'noopener,noreferrer')
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700 transition shadow-md shadow-violet-600/30"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition"
               >
                 <ExternalLink className="h-4 w-4" />
-                Buy on {retailerHostname}
+                View on {retailerHostname}
               </a>
-            ) : null}
+            )}
+
             <a
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => slug && trackClick(slug, 'WA_INTENT', 'WEB')}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-sm"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-[#25D366] hover:text-[#20bd5a] transition"
             >
-              <MessageCircle className="h-4 w-4" />
-              Or — get help via WhatsApp
+              <MessageCircle className="h-3.5 w-3.5" />
+              Need help? Chat with our concierge
             </a>
 
             {/* Save-for-later: capture phone, text reminder before the
@@ -182,10 +198,6 @@ export function ProductModal({
                 occasion={product.occasions?.includes('mothers-day') ? 'mothers-day' : null}
               />
             )}
-
-            <p className="text-[11px] text-gray-400 text-center">
-              Buy now, chat with our concierge, or save it for later — whatever works.
-            </p>
           </div>
         </div>
       </div>
