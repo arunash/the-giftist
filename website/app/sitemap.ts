@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { prisma } from '@/lib/db'
 import { seoSlugs } from '@/lib/seo-holidays'
+import { LISTICLES } from '@/lib/listicles'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://giftist.ai'
@@ -19,7 +20,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    {
+      url: `${baseUrl}/magic`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/guides`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ]
+
+  // SEO listicles — one per gift guide, high priority for indexing
+  const listiclePages: MetadataRoute.Sitemap = LISTICLES.map((l) => ({
+    url: `${baseUrl}/guides/${l.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }))
 
   // SEO holiday landing pages
   const holidayPages: MetadataRoute.Sitemap = seoSlugs.map((slug) => ({
@@ -44,5 +65,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
-  return [...staticPages, ...holidayPages, ...eventPages]
+  return [...staticPages, ...listiclePages, ...holidayPages, ...eventPages]
 }
