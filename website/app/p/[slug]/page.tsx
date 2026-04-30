@@ -397,7 +397,20 @@ function ProductPage() {
             </button>
           ) : !purchased ? (
             <>
-              {/* Buy on retailer — primary path for users who already know what they want */}
+              {/* PRIMARY: Send as a gift — opens recipient capture modal,
+                  then Stripe checkout. This is the path that monetizes
+                  (we charge price + handling fee + shipping). */}
+              <button
+                onClick={handleBuyClick}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
+              >
+                <Gift className="h-4 w-4" />
+                Send as a gift
+                {total ? <span className="opacity-90 text-xs font-medium ml-1">· ${total.toFixed(2)}</span> : null}
+              </button>
+
+              {/* SECONDARY: Buy directly on retailer — for users who just
+                  want to grab it for themselves. We earn affiliate commission. */}
               {hasRealProductUrl && (
                 <a
                   href={`/go-r/${slug}`}
@@ -408,13 +421,14 @@ function ProductPage() {
                     e.preventDefault()
                     window.open(buildRetailerHref(slug), '_blank', 'noopener,noreferrer')
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700 transition shadow-md shadow-violet-600/30"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Buy on {product.domain?.replace('www.', '') || 'retailer'}
+                  View on {product.domain?.replace('www.', '') || 'retailer'}
                 </a>
               )}
-              {/* Order via WhatsApp — for users who want concierge help */}
+
+              {/* TERTIARY: WhatsApp help */}
               <a
                 href={`https://wa.me/15014438478?text=${encodeURIComponent(
                   `Hi! I'd like help with "${product.productName}"${product.price ? ` (${product.price})` : ''}.\n\nProduct page: https://giftist.ai/p/${slug}`
@@ -422,13 +436,14 @@ function ProductPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackClick(slug, 'WA_INTENT', 'WEB')}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#20bd5a] transition shadow-md shadow-[#25D366]/30"
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-[#25D366] hover:text-[#20bd5a] transition"
               >
-                <MessageCircle className="h-4 w-4" />
-                Or — get help via WhatsApp
+                <MessageCircle className="h-3.5 w-3.5" />
+                Need help? Chat with our concierge
               </a>
-              <p className="text-xs text-gray-400 text-center">
-                Buy directly on the retailer, or chat with our concierge first
+
+              <p className="text-xs text-gray-400 text-center pt-1">
+                We&apos;ll capture their info, ship it gift-wrapped, and send a redeemable link.
               </p>
             </>
           ) : null}
