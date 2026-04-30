@@ -14,14 +14,16 @@ const BOT_SUBSTRINGS = [
   'facebookexternalhit',
   'facebookcatalog',
   'facebot',
-  // Other major social previewers
+  // Other major social previewers — KEEP THESE TARGETED. Substrings like
+  // bare "whatsapp" or "pinterest" match real users on those apps' in-app
+  // browsers, which we want to count.
   'twitterbot',
   'slackbot',
   'discordbot',
   'linkedinbot',
-  'whatsapp',
+  'whatsapp/',                 // WA link-preview crawler is "WhatsApp/2.x.x" without browser tokens
   'instagrambot',
-  'pinterest',
+  'pinterestbot',
   // Search engines
   'googlebot',
   'bingbot',
