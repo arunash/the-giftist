@@ -184,26 +184,53 @@ interface FunnelSnapshot {
   totalConversions24h: number
 }
 
+// Bot-aware filter: excludes the GoogleOther / GPTBot / ClaudeBot etc.
+// crawlers that hammer /go-r without user intent. Same patterns lib/is-bot.ts
+// uses at write time, expressed as Prisma NOT-ILIKE clauses so historical
+// rows (pre bot-filter shipdate) also get cleaned out of these counts.
+function humanOnly() {
+  // Returned fresh each call so Prisma's mutable WhereInput types accept it.
+  return {
+    userAgent: { not: null as any },
+    AND: [
+      { userAgent: { not: { contains: 'bot', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'crawl', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'external', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'spider', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'headless', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'googleother', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'gptbot', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'claudebot', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'anthropic', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'perplexity', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'amazonbot', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'bytespider', mode: 'insensitive' as const } } },
+      { userAgent: { not: { contains: 'curl/', mode: 'insensitive' as const } } },
+    ],
+  }
+}
+
 async function fetchFunnel(utm: string): Promise<FunnelSnapshot> {
   const since4h = new Date(Date.now() - 4 * 3600 * 1000)
   const since24h = new Date(Date.now() - 24 * 3600 * 1000)
   // ClickEvent now carries utmCampaign for events fired after Apr 26 ~12pm PT.
   // Older events have utmCampaign=null; per-campaign rules treat that period as
   // "no attribution" rather than attributing to a specific campaign.
+  // All click counts are bot-filtered — see HUMAN_ONLY above.
   const [sessions4h, sessions24h, cardClicks4h, retailerClicks4h, waIntents4h, retailerClicks24h, waIntents24h] = await Promise.all([
     prisma.pageView.findMany({
-      where: { utmCampaign: utm, createdAt: { gte: since4h }, sessionId: { not: null } },
+      where: { utmCampaign: utm, createdAt: { gte: since4h }, sessionId: { not: null }, ...humanOnly() },
       distinct: ['sessionId'], select: { sessionId: true },
     }).then(r => r.length),
     prisma.pageView.findMany({
-      where: { utmCampaign: utm, createdAt: { gte: since24h }, sessionId: { not: null } },
+      where: { utmCampaign: utm, createdAt: { gte: since24h }, sessionId: { not: null }, ...humanOnly() },
       distinct: ['sessionId'], select: { sessionId: true },
     }).then(r => r.length),
-    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', utmCampaign: utm, createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since24h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since24h } } }),
+    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', utmCampaign: utm, createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', utmCampaign: utm, createdAt: { gte: since24h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', utmCampaign: utm, createdAt: { gte: since24h }, ...humanOnly() } }),
   ])
   const totalConversions4h = retailerClicks4h + waIntents4h
   const totalConversions24h = retailerClicks24h + waIntents24h
@@ -466,15 +493,18 @@ async function fetchMetaToday(c: CampaignTarget): Promise<{ spend: number; impr:
 async function fetchGlobalFunnel(): Promise<{ f4h: any; f24h: any }> {
   const since4h = new Date(Date.now() - 4 * 3600 * 1000)
   const since24h = new Date(Date.now() - 24 * 3600 * 1000)
+  // All counts bot-filtered (HUMAN_ONLY). The Apr 28 inflation incident
+  // produced 240+ fake retailer clicks in a single day from GoogleOther —
+  // we filter those out so the email reports honest numbers.
   const [s4, c4, r4, w4, s24, c24, r24, w24] = await Promise.all([
-    prisma.pageView.findMany({ where: { path: { startsWith: '/shop' }, createdAt: { gte: since4h }, sessionId: { not: null } }, distinct: ['sessionId'], select: { sessionId: true } }).then(r => r.length),
-    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since4h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since4h } } }),
-    prisma.pageView.findMany({ where: { path: { startsWith: '/shop' }, createdAt: { gte: since24h }, sessionId: { not: null } }, distinct: ['sessionId'], select: { sessionId: true } }).then(r => r.length),
-    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', createdAt: { gte: since24h } } }),
-    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since24h } } }),
-    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since24h } } }),
+    prisma.pageView.findMany({ where: { path: { startsWith: '/shop' }, createdAt: { gte: since4h }, sessionId: { not: null }, ...humanOnly() }, distinct: ['sessionId'], select: { sessionId: true } }).then(r => r.length),
+    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since4h }, ...humanOnly() } }),
+    prisma.pageView.findMany({ where: { path: { startsWith: '/shop' }, createdAt: { gte: since24h }, sessionId: { not: null }, ...humanOnly() }, distinct: ['sessionId'], select: { sessionId: true } }).then(r => r.length),
+    prisma.clickEvent.count({ where: { event: 'CARD_CLICK', createdAt: { gte: since24h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'RETAILER_CLICK', channel: 'WEB', createdAt: { gte: since24h }, ...humanOnly() } }),
+    prisma.clickEvent.count({ where: { event: 'WA_INTENT', createdAt: { gte: since24h }, ...humanOnly() } }),
   ])
   return {
     f4h: { sessions: s4, cards: c4, retailer: r4, wa: w4 },

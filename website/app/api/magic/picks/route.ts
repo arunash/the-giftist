@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { createTrackedLink } from '@/lib/product-link'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { commissionMultiplier } from '@/lib/commission-rates'
 
 // POST /api/magic/picks
 // Body: { name?, relationship?, interests: string[], priceTier: 'budget'|'mid'|'premium'|'luxury' }
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
         sources: true,
         occasions: true,
         recipientTypes: true,
+        interests: true,  // needed for commission rate lookup
       },
     })
 
@@ -117,7 +119,13 @@ export async function POST(req: NextRequest) {
       const ac = clickMap.get(a.name) || 0
       const bc = clickMap.get(b.name) || 0
       if (ac !== bc) return bc - ac
-      return 0 // 3. Fallback to original totalScore order
+      // 3. Commission-rate boost: high-commission Amazon categories
+      //    (luxury beauty 10%, furniture 8%, fashion 4%) outrank low-
+      //    commission ones (tech 2%, kitchen 2%) at equal engagement.
+      //    Non-Amazon products are heavily penalized since we earn $0.
+      const am = commissionMultiplier(a)
+      const bm = commissionMultiplier(b)
+      return bm - am
     })
 
     // 3 picks across the price band, sorted by enriched score

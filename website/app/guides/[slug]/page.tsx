@@ -6,6 +6,7 @@ import { Sparkles, Gift, ExternalLink, MessageCircle } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { getListicle, LISTICLES } from '@/lib/listicles'
 import { createTrackedLink } from '@/lib/product-link'
+import { commissionMultiplier } from '@/lib/commission-rates'
 import { ListicleCard } from './listicle-card'
 
 export const revalidate = 3600 // hourly ISR
@@ -84,16 +85,18 @@ async function getPicks(slug: string): Promise<{ listicle: ReturnType<typeof get
     select: {
       id: true, name: true, price: true, priceValue: true, image: true,
       url: true, domain: true, why: true, totalScore: true, signalCount: true,
-      sources: true, occasions: true,
+      sources: true, occasions: true, interests: true,
     },
   })
 
-  // Sort Amazon-first within score order
+  // Rank by commission-weighted score: high-commission Amazon products
+  // (luxury beauty 10%, furniture 8%) bubble above books (4.5%) which bubble
+  // above tech (2%). Non-Amazon products are heavily penalized since we
+  // earn $0 on them. Tie-break on totalScore.
   pool.sort((a, b) => {
-    const aAmzn = a.domain === 'www.amazon.com' || a.domain === 'amzn.to' ? 1 : 0
-    const bAmzn = b.domain === 'www.amazon.com' || b.domain === 'amzn.to' ? 1 : 0
-    if (aAmzn !== bAmzn) return bAmzn - aAmzn
-    return (b.totalScore || 0) - (a.totalScore || 0)
+    const am = commissionMultiplier(a) * (a.totalScore || 0)
+    const bm = commissionMultiplier(b) * (b.totalScore || 0)
+    return bm - am
   })
 
   const picked = pool.slice(0, listicle.limit || 12)
