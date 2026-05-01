@@ -24,13 +24,31 @@ const BOT_SUBSTRINGS = [
   'whatsapp/',                 // WA link-preview crawler is "WhatsApp/2.x.x" without browser tokens
   'instagrambot',
   'pinterestbot',
-  // Search engines
+  // Search engines + Google crawler family (multiple variants beyond the
+  // classic Googlebot — these all hit /go-r without warning)
   'googlebot',
+  'googleother',
+  'google-extended',
+  'google-pagerenderer',
+  'storebot-google',
+  'mediapartners-google',
+  'apis-google',
+  'feedfetcher-google',
   'bingbot',
   'yandex',
   'baidu',
   'duckduckbot',
   'applebot',
+  // AI training / LLM crawlers (newer, aggressive)
+  'gptbot',
+  'chatgpt-user',
+  'claudebot',
+  'claude-web',
+  'anthropic-ai',
+  'perplexitybot',
+  'amazonbot',
+  'cohere-ai',
+  'bytespider',
   // Generic markers
   'bot/',
   'spider/',
