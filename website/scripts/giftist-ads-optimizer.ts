@@ -30,7 +30,7 @@ const ADMIN_EMAIL = 'arunash@gmail.com'
 const COOLDOWN_HOURS = 4
 const MAX_BUDGET = 15       // single-campaign cap
 const MIN_BUDGET = 2
-const TOTAL_BUDGET_CAP = 12 // V7-only mode: $10/day + small headroom for opt
+const TOTAL_BUDGET_CAP = 18 // MD final stretch: V7 $10 + V8 CTWA $5 + headroom
 
 interface CampaignTarget {
   id: string
@@ -51,6 +51,9 @@ const CAMPAIGNS: CampaignTarget[] = [
   // V7 = A/B test of /magic vs V6's /shop landing. Same audience + creative,
   // V6 + V7 share original $7/day budget at $3.50 each.
   { id: '120242029326430145', name: 'V7 Magic Test',   utmCampaign: 'md-magic-test',             adSetId: '120242029326540145' },
+  // V8 = Click-to-WhatsApp CTWA for the MD final stretch. Tap → WA chat →
+  // prefilled message contains "gift finder" which triggers our quiz flow.
+  { id: '120242570292020145', name: 'V8 CTWA',         utmCampaign: 'md-ctwa',                   adSetId: '120242570292490145' },
   // Category campaigns (Apr 27)
   { id: '120242024838470145', name: 'Cat Books',       utmCampaign: 'cat-books',                 adSetId: '120242024838800145' },
   { id: '120242024842910145', name: 'Cat Home',        utmCampaign: 'cat-home',                  adSetId: '120242024843120145' },

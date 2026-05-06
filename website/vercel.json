@@ -1,14 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/onboarding-followup",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/whatsapp-engagement",
-      "schedule": "0 15 * * *"
-    },
-    {
       "path": "/api/cron/archive-funded",
       "schedule": "0 6 * * *"
     },
