@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react'
 import { X, ExternalLink, MessageCircle, Sparkles, ShieldCheck, Star, Gift } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import type { GiftProduct } from './gift-grid'
-import { SaveReminderButton } from './save-reminder-button'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -190,14 +189,6 @@ export function ProductModal({
               Need help? Chat with our concierge
             </a>
 
-            {/* Save-for-later: capture phone, text reminder before the
-                occasion. Only shown when we have a slug to save against. */}
-            {slug && (
-              <SaveReminderButton
-                slug={slug}
-                occasion={product.occasions?.includes('mothers-day') ? 'mothers-day' : null}
-              />
-            )}
           </div>
         </div>
       </div>

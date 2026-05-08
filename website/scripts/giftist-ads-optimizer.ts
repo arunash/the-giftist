@@ -192,23 +192,18 @@ interface FunnelSnapshot {
 // uses at write time, expressed as Prisma NOT-ILIKE clauses so historical
 // rows (pre bot-filter shipdate) also get cleaned out of these counts.
 function humanOnly() {
-  // Returned fresh each call so Prisma's mutable WhereInput types accept it.
+  // Prisma 5 doesn't support `mode: 'insensitive'` nested under `not`.
+  // Move NOT to the top level so the inner contains+mode pair is a normal
+  // StringFilter that Prisma accepts.
+  const exclude = ['bot', 'crawl', 'external', 'spider', 'headless',
+    'googleother', 'gptbot', 'claudebot', 'anthropic', 'perplexity',
+    'amazonbot', 'bytespider', 'curl/']
   return {
-    userAgent: { not: null as any },
     AND: [
-      { userAgent: { not: { contains: 'bot', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'crawl', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'external', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'spider', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'headless', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'googleother', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'gptbot', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'claudebot', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'anthropic', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'perplexity', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'amazonbot', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'bytespider', mode: 'insensitive' as const } } },
-      { userAgent: { not: { contains: 'curl/', mode: 'insensitive' as const } } },
+      { userAgent: { not: null as any } },
+      ...exclude.map(s => ({
+        NOT: { userAgent: { contains: s, mode: 'insensitive' as const } },
+      })),
     ],
   }
 }
