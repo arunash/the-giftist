@@ -172,9 +172,15 @@ export async function handleQuizMessage(
       let session = await startQuiz(phone, 'whatsapp')
       const inferred = inferFromMessage(text)
 
+      // Default relationship to "mom" — Mother's Day is the dominant inbound
+      // intent for V7+V8 ads. The inference can override this if the message
+      // explicitly mentions a different recipient. Net effect: WA users skip
+      // Q1 by default and land on Q2 (interests).
+      const relationship = inferred.relationship || 'mom'
+
       // Apply inferences in order. recordAnswer advances step automatically.
-      if (inferred.relationship && session.step === 0) {
-        session = await recordAnswer(session.id, 'relationship', inferred.relationship)
+      if (session.step === 0) {
+        session = await recordAnswer(session.id, 'relationship', relationship)
       }
       if (inferred.interest && session.step === 1) {
         session = await recordAnswer(session.id, 'interest', inferred.interest)
@@ -188,15 +194,10 @@ export async function handleQuizMessage(
         await sendReveal(phone, session)
       } else {
         // Acknowledge what we picked up before asking the next question
-        const picked: string[] = []
-        if (inferred.relationship) {
-          const rLabel = { mom: 'Mom', dad: 'Dad', partner: 'your partner', friend: 'your friend', sibling: 'your sibling', self: 'yourself' } as any
-          picked.push(rLabel[inferred.relationship] || inferred.relationship)
-        }
+        const rLabel = { mom: 'Mom', dad: 'Dad', partner: 'your partner', friend: 'your friend', sibling: 'your sibling', self: 'yourself' } as any
+        const picked: string[] = [rLabel[relationship] || relationship]
         if (inferred.interest) picked.push(inferred.interest)
-        if (picked.length > 0) {
-          await sendTextMessage(phone, `Got it — picks for ${picked.join(' · ')} 🎁`)
-        }
+        await sendTextMessage(phone, `Got it — picks for ${picked.join(' · ')} 🎁`)
         await sendQuizPrompt(phone, session)
       }
       return { handled: true }
@@ -206,26 +207,26 @@ export async function handleQuizMessage(
   return { handled: false }
 }
 
-/** Used by the webhook for new users — kicks off the quiz, with optional
- *  context inference from their first inbound message so we skip questions
- *  they've already answered. */
+/** Used by the webhook for new users — kicks off the quiz with relationship
+ *  defaulted to "mom" (Mother's Day is the dominant inbound intent). The
+ *  user's first message can override the relationship via inference, but
+ *  by default we skip Q1 and start at Q2 (interests). */
 export async function startQuizForNewUser(phone: string, firstMessage?: string) {
   let session = await startQuiz(phone, 'whatsapp')
-  if (firstMessage) {
-    const inferred = inferFromMessage(firstMessage)
-    if (inferred.relationship && session.step === 0) {
-      session = await recordAnswer(session.id, 'relationship', inferred.relationship)
-    }
-    if (inferred.interest && session.step === 1) {
-      session = await recordAnswer(session.id, 'interest', inferred.interest)
-    }
-    if (inferred.priceTier && session.step === 2) {
-      session = await recordAnswer(session.id, 'budget', inferred.priceTier)
-    }
-    if (session.step >= 3) {
-      await sendReveal(phone, session)
-      return
-    }
+  const inferred = firstMessage ? inferFromMessage(firstMessage) : {} as ReturnType<typeof inferFromMessage>
+  const relationship = inferred.relationship || 'mom'
+
+  // Always set relationship — defaults to mom, overridden by inference.
+  session = await recordAnswer(session.id, 'relationship', relationship)
+  if (inferred.interest && session.step === 1) {
+    session = await recordAnswer(session.id, 'interest', inferred.interest)
+  }
+  if (inferred.priceTier && session.step === 2) {
+    session = await recordAnswer(session.id, 'budget', inferred.priceTier)
+  }
+  if (session.step >= 3) {
+    await sendReveal(phone, session)
+    return
   }
   await sendQuizPrompt(phone, session)
 }
