@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
     // Specific gift requests (isGiftRequest) still skip the quiz so high-
     // intent users don't get rerouted.
     if (isNewUser && !isGiftRequest) {
-      await startQuizForNewUser(phone)
+      await startQuizForNewUser(phone, firstMessageText)
       sendContactMessage(phone).catch(() => {})
       await prisma.whatsAppMessage.update({
         where: { id: waMsg.id },
