@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { findProductImage } from '@/lib/product-image'
 import { extractProductFromUrl } from '@/lib/extract'
 import { aiImageFallback } from '@/lib/ai-image-fallback'
+import { scrapeAmazonPrice } from '@/lib/scrape-amazon-price'
 
 export async function GET(
   request: NextRequest,
@@ -83,12 +84,35 @@ export async function GET(
       }
     }
 
+    // Live Amazon price scrape — only when we don't have a stored price
+    // and the URL is Amazon. Adds up to 6s of latency on the first visit
+    // for affected products, then caches forever. Subsequent visits are
+    // instant. Falls back gracefully (returns null) if Amazon blocks us.
+    let priceValue = product.priceValue
+    let priceStr = product.price
+    if (!priceValue && product.targetUrl) {
+      const scraped = await scrapeAmazonPrice(product.targetUrl)
+      if (scraped) {
+        priceValue = scraped
+        priceStr = `$${scraped.toFixed(2)}`
+        // Cache: ProductClick + matching TastemakerGift
+        prisma.productClick.update({
+          where: { slug },
+          data: { priceValue: scraped, price: priceStr },
+        }).catch(() => {})
+        prisma.tastemakerGift.updateMany({
+          where: { name: product.productName, priceValue: null },
+          data: { priceValue: scraped, price: priceStr },
+        }).catch(() => {})
+      }
+    }
+
     return NextResponse.json({
       slug: product.slug,
       productName: product.productName,
       targetUrl: product.targetUrl,
-      price: product.price,
-      priceValue: product.priceValue,
+      price: priceStr,
+      priceValue,
       image,
       domain,
     })
