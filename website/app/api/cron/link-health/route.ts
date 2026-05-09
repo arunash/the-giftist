@@ -159,7 +159,42 @@ export async function GET(req: NextRequest) {
     }).catch(() => {})
   }
 
+  // ── Gift-send health (added per user request after a "Continue to
+  //    payment" button silently failed on a product with no priceValue) ──
+  const totalProducts = await prisma.productClick.count()
+  const noPrice = await prisma.productClick.count({ where: { priceValue: null } })
+  const giftEligible = totalProducts - noPrice
+  const giftEligiblePct = totalProducts > 0 ? Math.round((giftEligible / totalProducts) * 100) : 0
+
+  // Page-render health: hit the listicle + magic + a known-good /p/SLUG
+  // and check they return 200. Catches deploy regressions.
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://giftist.ai'
+  const pages = [
+    `${baseUrl}/`,
+    `${baseUrl}/guides/mothers-day-under-50`,
+    `${baseUrl}/magic`,
+  ]
+  const pageHealth: Record<string, number> = {}
+  for (const url of pages) {
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': UA } })
+      pageHealth[new URL(url).pathname] = r.status
+    } catch {
+      pageHealth[new URL(url).pathname] = 0
+    }
+  }
+
+  const pageFails = Object.entries(pageHealth).filter(([_, s]) => s !== 200)
+  if (pageFails.length > 0 || giftEligiblePct < 75) {
+    await logError({
+      source: 'HEALTH_CHECK',
+      message: `Daily health: gift-eligible ${giftEligible}/${totalProducts} (${giftEligiblePct}%) · page failures: ${pageFails.length > 0 ? pageFails.map(([p, s]) => `${p}=${s}`).join(', ') : 'none'}`,
+      metadata: { giftEligible, totalProducts, giftEligiblePct, pageHealth, noPriceCount: noPrice },
+    }).catch(() => {})
+  }
+
   console.log(`[link-health] ${results.length} checked · ${ok} ok · ${hard.length} hard · ${soft.length} soft · ${errors.length} err`)
+  console.log(`[gift-health] ${giftEligible}/${totalProducts} gift-eligible (${giftEligiblePct}%) · pages: ${JSON.stringify(pageHealth)}`)
 
   return NextResponse.json({
     checked: results.length,
@@ -168,5 +203,8 @@ export async function GET(req: NextRequest) {
     softMismatches: soft.length,
     errors: errors.length,
     autoReverted: hard.length + soft.length,
+    giftEligible,
+    giftEligiblePct,
+    pageHealth,
   })
 }

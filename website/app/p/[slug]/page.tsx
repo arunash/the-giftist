@@ -65,6 +65,7 @@ function ProductPage() {
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [senderMessage, setSenderMessage] = useState('')
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   // Post-checkout: gift sharing
   const [giftData, setGiftData] = useState<GiftData | null>(null)
@@ -138,6 +139,7 @@ function ProductPage() {
   const handleCheckout = async () => {
     if (!product || buyingLoading || !recipientName.trim() || !recipientPhone.trim()) return
     setBuyingLoading(true)
+    setCheckoutError(null)
     try {
       const res = await fetch('/api/purchase/checkout', {
         method: 'POST',
@@ -149,15 +151,20 @@ function ProductPage() {
           senderMessage: senderMessage.trim() || undefined,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (res.ok && data.url) {
         window.location.href = data.url
+        return
       } else if (res.status === 401) {
         window.location.href = `/login?callbackUrl=${encodeURIComponent(`/p/${slug}`)}`
-      } else {
-        setBuyingLoading(false)
+        return
       }
-    } catch {
+      // Show user-facing error instead of silently failing — used to be a
+      // black hole for products without priceValue or any other API issue
+      setCheckoutError(data.error || `Checkout failed (${res.status}). Please try the retailer link instead.`)
+      setBuyingLoading(false)
+    } catch (e: any) {
+      setCheckoutError('Network error — please try again or use the retailer link.')
       setBuyingLoading(false)
     }
   }
@@ -397,17 +404,21 @@ function ProductPage() {
             </button>
           ) : !purchased ? (
             <>
-              {/* PRIMARY: Send as a gift — opens recipient capture modal,
-                  then Stripe checkout. This is the path that monetizes
-                  (we charge price + handling fee + shipping). */}
-              <button
-                onClick={handleBuyClick}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
-              >
-                <Gift className="h-4 w-4" />
-                Send as a gift
-                {total ? <span className="opacity-90 text-xs font-medium ml-1">· ${total.toFixed(2)}</span> : null}
-              </button>
+              {/* PRIMARY: Send as a gift — only when we have a priceValue,
+                  since Stripe checkout fails silently without one. ~15% of
+                  ProductClicks have no price (Amazon search-URL records
+                  created before pricing was scraped) and used to expose this
+                  button only to fail at checkout. */}
+              {product.priceValue ? (
+                <button
+                  onClick={handleBuyClick}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
+                >
+                  <Gift className="h-4 w-4" />
+                  Send as a gift
+                  {total ? <span className="opacity-90 text-xs font-medium ml-1">· ${total.toFixed(2)}</span> : null}
+                </button>
+              ) : null}
 
               {/* SECONDARY: Buy directly on retailer — for users who just
                   want to grab it for themselves. We earn affiliate commission. */}
@@ -646,13 +657,18 @@ function ProductPage() {
                 />
               </div>
 
+              {checkoutError && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {checkoutError}
+                </div>
+              )}
               <button
                 onClick={handleCheckout}
-                disabled={buyingLoading || !recipientName.trim() || !recipientPhone.trim()}
+                disabled={buyingLoading || !recipientName.trim() || !recipientPhone.trim() || !total}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition disabled:opacity-50"
               >
                 <ShoppingCart className="h-4 w-4" />
-                {buyingLoading ? 'Redirecting to payment...' : total ? `Pay $${total.toFixed(2)}` : 'Continue to payment'}
+                {buyingLoading ? 'Redirecting to payment...' : total ? `Pay $${total.toFixed(2)}` : 'Price unavailable — use retailer link'}
               </button>
               <button
                 onClick={handlePayPalCheckout}
