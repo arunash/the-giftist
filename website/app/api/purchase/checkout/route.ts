@@ -11,18 +11,29 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = (session.user as any).id
-  const { slug, recipientName, recipientPhone, senderMessage } = await request.json()
+  const { slug, recipientName, recipientPhone, senderMessage, customAmount } = await request.json()
 
   if (!slug || !recipientName || !recipientPhone) {
     return NextResponse.json({ error: 'slug, recipientName, and recipientPhone required' }, { status: 400 })
   }
 
   const product = await prisma.productClick.findUnique({ where: { slug } })
-  if (!product || !product.priceValue) {
-    return NextResponse.json({ error: 'Product not found or no price' }, { status: 404 })
+  if (!product) {
+    return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
-  const amount = product.priceValue
+  // Price resolution: catalog price wins when set; otherwise the user-
+  // chosen customAmount from the modal. Validate customAmount is one of
+  // the offered tiers to prevent abuse.
+  const VALID_CUSTOM_AMOUNTS = [25, 50, 75, 100]
+  let amount: number
+  if (product.priceValue) {
+    amount = product.priceValue
+  } else if (typeof customAmount === 'number' && VALID_CUSTOM_AMOUNTS.includes(customAmount)) {
+    amount = customAmount
+  } else {
+    return NextResponse.json({ error: 'Product has no fixed price — pick a gift amount' }, { status: 400 })
+  }
   const platformFee = Math.round(amount * (amount >= 100 ? 0.10 : 0.15) * 100) / 100
   const shippingFee = 5.99
   const totalCharged = Math.round((amount + platformFee + shippingFee) * 100) / 100

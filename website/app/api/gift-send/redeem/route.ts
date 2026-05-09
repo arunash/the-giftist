@@ -279,14 +279,18 @@ export async function POST(request: NextRequest) {
     sendGiftRedemptionReceipt(gift.id, 'SHIP').catch(() => {})
     cancelGiftReminders(gift.id).catch(() => {})
 
-    // Notify admin (you) to fulfill
+    // Notify admin (you) to fulfill — apply affiliate tag to retailer link
+    // so when the admin clicks through to buy, we earn the affiliate
+    // commission on our own purchase
     const { sendEmail } = await import('@/lib/email')
+    const { applyAffiliateTag } = await import('@/lib/affiliate')
+    const taggedUrl = gift.itemUrl ? applyAffiliateTag(gift.itemUrl) : null
     sendEmail({
       to: 'arunash@norbea.ch',
       subject: `🚚 Gift needs shipping: ${gift.itemName}`,
       html: `<h2>New shipping request</h2>
         <p><b>Item:</b> ${gift.itemName}</p>
-        <p><b>Item URL:</b> <a href="${gift.itemUrl}">${gift.itemUrl}</a></p>
+        ${taggedUrl ? `<p><b>Item URL:</b> <a href="${taggedUrl}">${taggedUrl}</a></p>` : ''}
         <p><b>Amount available:</b> $${gift.amount.toFixed(2)}</p>
         <p><b>Ship to:</b><br>${shippingName}<br>${shippingAddress}<br>${shippingCity}, ${shippingState} ${shippingZip}</p>
         <p><b>Gift ID:</b> ${gift.id}</p>`,

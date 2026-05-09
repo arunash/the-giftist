@@ -66,6 +66,9 @@ function ProductPage() {
   const [recipientPhone, setRecipientPhone] = useState('')
   const [senderMessage, setSenderMessage] = useState('')
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  // For products with no fixed price (~15% of catalog), let the user pick
+  // a gift amount. Default to $50 — matches the median typical price tier.
+  const [customAmount, setCustomAmount] = useState<number>(50)
 
   // Post-checkout: gift sharing
   const [giftData, setGiftData] = useState<GiftData | null>(null)
@@ -149,6 +152,9 @@ function ProductPage() {
           recipientName: recipientName.trim(),
           recipientPhone: recipientPhone.trim() || undefined,
           senderMessage: senderMessage.trim() || undefined,
+          // Sent only for products without a stored priceValue. Backend
+          // ignores this when product.priceValue is set (the catalog price wins).
+          ...(product.priceValue ? {} : { customAmount }),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -266,9 +272,12 @@ function ProductPage() {
     )
   }
 
-  const fee = product.priceValue ? Math.round(product.priceValue * (product.priceValue >= 100 ? 0.10 : 0.15) * 100) / 100 : null
+  // Effective price: catalog priceValue when set, otherwise customAmount
+  // chosen by the user in the modal (default $50).
+  const effectivePrice = product.priceValue || customAmount
+  const fee = Math.round(effectivePrice * (effectivePrice >= 100 ? 0.10 : 0.15) * 100) / 100
   const shippingFee = 5.99
-  const total = product.priceValue && fee ? Math.round((product.priceValue + fee + shippingFee) * 100) / 100 : null
+  const total = Math.round((effectivePrice + fee + shippingFee) * 100) / 100
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -404,21 +413,18 @@ function ProductPage() {
             </button>
           ) : !purchased ? (
             <>
-              {/* PRIMARY: Send as a gift — only when we have a priceValue,
-                  since Stripe checkout fails silently without one. ~15% of
-                  ProductClicks have no price (Amazon search-URL records
-                  created before pricing was scraped) and used to expose this
-                  button only to fail at checkout. */}
-              {product.priceValue ? (
-                <button
-                  onClick={handleBuyClick}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
-                >
-                  <Gift className="h-4 w-4" />
-                  Send as a gift
-                  {total ? <span className="opacity-90 text-xs font-medium ml-1">· ${total.toFixed(2)}</span> : null}
-                </button>
-              ) : null}
+              {/* PRIMARY: Send as a gift — works for all products. Products
+                  with a stored priceValue use that price. Products without
+                  one (~15% of catalog) prompt the user for a custom budget
+                  in the modal. */}
+              <button
+                onClick={handleBuyClick}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-pink-500 text-white rounded-xl font-semibold text-sm hover:bg-pink-600 transition shadow-md shadow-pink-500/30"
+              >
+                <Gift className="h-4 w-4" />
+                Send as a gift
+                {total ? <span className="opacity-90 text-xs font-medium ml-1">· ${total.toFixed(2)}</span> : null}
+              </button>
 
               {/* SECONDARY: Buy directly on retailer — for users who just
                   want to grab it for themselves. We earn affiliate commission. */}
@@ -656,6 +662,36 @@ function ProductPage() {
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition resize-none"
                 />
               </div>
+
+              {/* Custom amount picker — only shown when product has no
+                  catalog price. We use the chosen amount as the gift budget;
+                  fulfillment finds a similar product within that budget. */}
+              {!product.priceValue && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Your gift amount *
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[25, 50, 75, 100].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCustomAmount(amt)}
+                        className={`py-2.5 rounded-xl text-sm font-semibold border transition ${
+                          customAmount === amt
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    We&apos;ll find a similar gift within your budget. You only pay if we can fulfill.
+                  </p>
+                </div>
+              )}
 
               {checkoutError && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
