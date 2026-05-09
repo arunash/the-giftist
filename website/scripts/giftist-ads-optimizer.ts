@@ -28,9 +28,9 @@ const RESEND_KEY = 're_bcfGU5GA_vYLazycT9GSBMdwiLVyyg8z9'
 const ADMIN_EMAIL = 'arunash@gmail.com'
 
 const COOLDOWN_HOURS = 4
-const MAX_BUDGET = 15       // single-campaign cap
+const MAX_BUDGET = 55       // MD-DAY PUSH: V7 at $50/day for May 10 only
 const MIN_BUDGET = 2
-const TOTAL_BUDGET_CAP = 18 // MD final stretch: V7 $10 + V8 CTWA $5 + headroom
+const TOTAL_BUDGET_CAP = 60 // V7 $50 + V8 $5 + headroom for MD push (revert May 10 PM)
 
 interface CampaignTarget {
   id: string
