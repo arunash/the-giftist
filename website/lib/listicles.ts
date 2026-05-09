@@ -91,6 +91,26 @@ export const LISTICLES: Listicle[] = [
     limit: 12,
     hashtags: ['#LastMinuteGifts', '#MothersDayGifts'],
   },
+  {
+    slug: 'cooking-gifts-for-mom',
+    title: 'Cooking Gifts Mom Will Actually Use',
+    metaTitle: 'Best Cooking Gifts for Mom — Curated 2026 | Giftist',
+    description: 'Premium kitchen gear, gourmet ingredients, and cooking-class subscriptions for moms who love to cook. Vetted by experts, all on Amazon.',
+    intro: 'For the mom who turns the kitchen into a happy place. These picks are weight-tested, dishwasher-survived, and actually-used in real kitchens. Le Creuset to artisan olive oils — every category covered.',
+    filter: { interests: ['cooking'], recipientTypes: ['mom', 'universal'] },
+    limit: 16,
+    hashtags: ['#CookingGifts', '#GiftsForMom', '#KitchenGifts'],
+  },
+  {
+    slug: 'home-gifts-for-mom',
+    title: 'Home & Decor Gifts for Mom',
+    metaTitle: 'Best Home Gifts for Mom — 2026 Curated Picks | Giftist',
+    description: 'Cozy throws, statement vases, smart-home upgrades — home gifts moms love. Curated from Wirecutter, NY Mag, and Brooklinen.',
+    intro: 'Things that make her place feel more like hers. Whether she\'s about cozy textures, sleek minimal upgrades, or that one perfect candle, this list pulls from the home goods we\'d actually buy ourselves.',
+    filter: { interests: ['home'], recipientTypes: ['mom', 'universal'] },
+    limit: 16,
+    hashtags: ['#HomeGifts', '#GiftsForMom'],
+  },
 ]
 
 export function getListicle(slug: string): Listicle | undefined {

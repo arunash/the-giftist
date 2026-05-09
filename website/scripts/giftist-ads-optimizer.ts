@@ -30,7 +30,7 @@ const ADMIN_EMAIL = 'arunash@gmail.com'
 const COOLDOWN_HOURS = 4
 const MAX_BUDGET = 55       // MD-DAY PUSH: V7 at $50/day for May 10 only
 const MIN_BUDGET = 2
-const TOTAL_BUDGET_CAP = 60 // V7 $50 + V8 $5 + headroom for MD push (revert May 10 PM)
+const TOTAL_BUDGET_CAP = 80 // V7 $50 + V8 $5 + V9/V10/V11 $5 each + headroom
 
 interface CampaignTarget {
   id: string
@@ -54,6 +54,11 @@ const CAMPAIGNS: CampaignTarget[] = [
   // V8 = Click-to-WhatsApp CTWA for the MD final stretch. Tap → WA chat →
   // prefilled message contains "gift finder" which triggers our quiz flow.
   { id: '120242570292020145', name: 'V8 CTWA',         utmCampaign: 'md-ctwa',                   adSetId: '120242570292490145' },
+  // V9-V11 = MD final-stretch category clones of V7. Each lands on a
+  // distinct /guides/* listicle (books, cooking, home). $5/day each.
+  { id: '120242771013100145', name: 'V9 Books',        utmCampaign: 'md-books',                  adSetId: '120242771028840145' },
+  { id: '120242771032300145', name: 'V10 Cooking',     utmCampaign: 'md-cooking',                adSetId: '120242771032450145' },
+  { id: '120242771039900145', name: 'V11 Home',        utmCampaign: 'md-home',                   adSetId: '120242771040630145' },
   // Category campaigns (Apr 27)
   { id: '120242024838470145', name: 'Cat Books',       utmCampaign: 'cat-books',                 adSetId: '120242024838800145' },
   { id: '120242024842910145', name: 'Cat Home',        utmCampaign: 'cat-home',                  adSetId: '120242024843120145' },
