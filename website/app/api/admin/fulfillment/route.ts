@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   const gift = await prisma.giftSend.findUnique({
     where: { id: giftSendId },
     include: {
-      sender: { select: { name: true } },
+      sender: { select: { name: true, email: true } },
       recipient: { select: { email: true, phone: true, name: true } },
     },
   })
@@ -151,7 +151,35 @@ export async function POST(request: NextRequest) {
         </div>
         ${trackingHtml ? `<p style="margin: 0; font-size: 14px; color: #444;">${trackingHtml}</p>` : ''}
       `),
-    }).catch((err) => console.error('[Fulfillment] Email failed:', err))
+    }).catch((err) => console.error('[Fulfillment] recipient email failed:', err))
+  }
+
+  // Email the sender too — they want to know their gift made it out the door.
+  if (gift.sender.email) {
+    const senderTrackingHtml = trackingUrl
+      ? `<a href="${trackingUrl}" style="color: #7c3aed; font-weight: 600;">Track package</a>`
+      : trackingNumber ? `Tracking: <strong>${trackingNumber}</strong>` : ''
+    const senderDeliveryHtml = expectedDelivery
+      ? `<tr><td style="padding:4px 0;font-size:13px;color:#166534;">Arrives</td><td style="padding:4px 0;font-size:14px;font-weight:600;color:#111;">${new Date(expectedDelivery).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</td></tr>`
+      : ''
+    sendEmail({
+      to: gift.sender.email,
+      subject: `Your gift to ${gift.recipientName || 'them'} just shipped 🚚`,
+      html: emailWrapper(`
+        <p style="margin: 0 0 16px; font-size: 17px; font-weight: 600; color: #111;">Your gift is on its way!</p>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #444;">
+          We just shipped your gift to <strong>${gift.recipientName || 'your recipient'}</strong>.
+        </p>
+        <div style="background: #f0fdf4; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534; width: 100px;">Gift</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${gift.itemName}</td></tr>
+            <tr><td style="padding: 4px 0; font-size: 13px; color: #166534;">To</td><td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${gift.recipientName || '—'}</td></tr>
+            ${senderDeliveryHtml}
+          </table>
+        </div>
+        ${senderTrackingHtml ? `<p style="margin: 0; font-size: 14px; color: #444;">${senderTrackingHtml}</p>` : ''}
+      `),
+    }).catch((err) => console.error('[Fulfillment] sender email failed:', err))
   }
 
   return NextResponse.json({ success: true })

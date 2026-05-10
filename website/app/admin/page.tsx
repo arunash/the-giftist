@@ -125,6 +125,105 @@ interface Stats {
   }
 }
 
+// Status legend — definitions for the gift status badges so admin
+// doesn't have to remember what each one means.
+const STATUS_DEFS: Record<string, { color: string; meaning: string }> = {
+  PENDING:                     { color: 'bg-gray-200 text-gray-700',     meaning: 'Sender started checkout but Stripe didn\'t confirm' },
+  PAID:                        { color: 'bg-yellow-100 text-yellow-800', meaning: 'Sender paid; recipient hasn\'t opened the link yet' },
+  NOTIFIED:                    { color: 'bg-yellow-100 text-yellow-800', meaning: 'Recipient was notified via WhatsApp/SMS' },
+  REDEEMED:                    { color: 'bg-emerald-100 text-emerald-800', meaning: 'Recipient redeemed (cash sent / item shipping pending)' },
+  REDEEMED_PENDING_SHIPMENT:   { color: 'bg-blue-100 text-blue-800',     meaning: 'Recipient chose SHIP — needs admin to fulfill' },
+  REDEEMED_PENDING_REWARD:     { color: 'bg-red-100 text-red-800',       meaning: 'Recipient chose cash but payout failed — STUCK' },
+  SHIPPED:                     { color: 'bg-emerald-100 text-emerald-800', meaning: 'Admin shipped the physical gift' },
+  DELIVERED:                   { color: 'bg-emerald-100 text-emerald-800', meaning: 'Carrier confirmed delivery' },
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const def = STATUS_DEFS[status] || { color: 'bg-gray-200 text-gray-700', meaning: 'Unknown' }
+  return (
+    <span title={def.meaning} className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${def.color}`}>
+      {status}
+    </span>
+  )
+}
+
+function StatusLegend() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="text-xs">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="text-muted hover:text-foreground transition underline decoration-dotted underline-offset-2"
+      >
+        {open ? 'Hide' : 'Show'} status definitions
+      </button>
+      {open && (
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 p-3 bg-surface rounded-lg border border-border">
+          {Object.entries(STATUS_DEFS).map(([s, def]) => (
+            <div key={s} className="flex items-baseline gap-2">
+              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium flex-shrink-0 ${def.color}`}>{s}</span>
+              <span className="text-muted text-[11px] leading-snug">{def.meaning}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Top-of-admin Recent Gift Sends — same table as before but persistent
+// across tabs (was nested inside the Dashboard tab).
+function RecentGiftSends() {
+  const [gifts, setGifts] = useState<Array<{ id: string; sender: string; recipient: string; itemName: string; totalCharged: number; platformFee: number; status: string; createdAt: string }> | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/gifts-recent')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setGifts(d?.gifts || []))
+      .catch(() => setGifts([]))
+  }, [])
+
+  if (!gifts) return <div className="h-24 bg-surface rounded-xl animate-pulse" />
+  if (gifts.length === 0) return null
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-muted">Recent Gift Sends</h3>
+        <StatusLegend />
+      </div>
+      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left p-3 font-medium text-muted text-xs">From</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">To</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">Item</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">Amount</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">Fee</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">Status</th>
+              <th className="text-left p-3 font-medium text-muted text-xs">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gifts.map(g => (
+              <tr key={g.id} className="border-b border-border/50 hover:bg-surface-hover">
+                <td className="p-3">{g.sender}</td>
+                <td className="p-3">{g.recipient}</td>
+                <td className="p-3 max-w-[200px] truncate">{g.itemName}</td>
+                <td className="p-3">${g.totalCharged.toFixed(2)}</td>
+                <td className="p-3 text-emerald-600">${g.platformFee.toFixed(2)}</td>
+                <td className="p-3"><StatusBadge status={g.status} /></td>
+                <td className="p-3 text-muted text-xs">{new Date(g.createdAt).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // Persistent strip at the top of the admin dashboard showing today's gift
 // activity. Same data as the daily email digest, served live. Keeps the
 // most important metric (gifts moving) visible regardless of which tab
@@ -1336,8 +1435,9 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold">Admin</h1>
       </div>
 
-      {/* Persistent gift activity strip — visible on every tab */}
+      {/* Persistent gift activity strip + Recent Gift Sends table — visible on every tab */}
       <GiftsTodayStrip />
+      <RecentGiftSends />
 
       {/* Top-level tabs */}
       <div className="flex gap-1 p-1 bg-surface rounded-xl w-fit">
@@ -1599,46 +1699,9 @@ export default function AdminDashboard() {
           </KpiCard>
         </div>
 
-        {/* Recent Gift Sends */}
-        {stats.revenue.recentGiftSends.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-muted mb-2">Recent Gift Sends</h3>
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <Th label="From" sortKey="sender.name" active={giftSendsSort.sortKey === 'sender.name'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="To" sortKey="recipientName" active={giftSendsSort.sortKey === 'recipientName'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="Item" sortKey="itemName" active={giftSendsSort.sortKey === 'itemName'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="Amount" sortKey="totalCharged" active={giftSendsSort.sortKey === 'totalCharged'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="Fee" sortKey="platformFee" active={giftSendsSort.sortKey === 'platformFee'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="Status" sortKey="status" active={giftSendsSort.sortKey === 'status'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                    <Th label="Date" sortKey="createdAt" active={giftSendsSort.sortKey === 'createdAt'} dir={giftSendsSort.sortDir} onClick={giftSendsSort.toggle} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortBy(stats.revenue.recentGiftSends, giftSendsSort.sortKey, giftSendsSort.sortDir).map((g) => (
-                    <tr key={g.id} className="border-b border-border/50 hover:bg-surface-hover">
-                      <td className="p-3">{g.sender.name || '—'}</td>
-                      <td className="p-3">{g.recipientName || '—'}</td>
-                      <td className="p-3 max-w-[200px] truncate">{g.itemName}</td>
-                      <td className="p-3">${g.totalCharged.toFixed(2)}</td>
-                      <td className="p-3 text-green-500">${g.platformFee.toFixed(2)}</td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                          g.status === 'REDEEMED' ? 'bg-green-500/20 text-green-500' :
-                          g.status === 'PAID' || g.status === 'NOTIFIED' ? 'bg-yellow-500/20 text-yellow-500' :
-                          'bg-gray-500/20 text-gray-400'
-                        }`}>{g.status}</span>
-                      </td>
-                      <td className="p-3 text-muted text-xs">{new Date(g.createdAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* Recent Gift Sends moved to the top of the admin page (above tabs)
+            — see RecentGiftSends component. Removed from here to avoid
+            duplicate rendering. */}
       </div>
 
       {/* Costs by Provider */}

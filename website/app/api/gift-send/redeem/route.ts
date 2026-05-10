@@ -5,6 +5,60 @@ import { prisma } from '@/lib/db'
 import { smartWhatsAppSend } from '@/lib/notifications'
 import { sendPayout } from '@/lib/paypal'
 import { sendGiftRedemptionReceipt, cancelGiftReminders } from '@/lib/gift-notifications'
+import { sendEmail } from '@/lib/email'
+
+const ADMIN_EMAIL = 'arunash@norbea.ch'
+
+/** Fire-and-forget admin email on every successful redemption. Previously
+ *  only SHIP triggered an admin email (the fulfillment-needed one). Now
+ *  every method (VENMO / PAYPAL / WALLET / ITEM_CLICK / SHIP) sends a
+ *  notification so the admin sees real-time activity. */
+function notifyAdminOfRedemption(gift: any, method: string, payoutAmount?: number, extra?: Record<string, any>) {
+  const lines: string[] = [
+    `<p><b>Recipient:</b> ${gift.recipientName || '—'} (${gift.recipientPhone || 'no phone'})</p>`,
+    `<p><b>Sender:</b> ${gift.sender?.name || '—'}</p>`,
+    `<p><b>Item:</b> ${gift.itemName}</p>`,
+    `<p><b>Method:</b> ${method}</p>`,
+  ]
+  if (typeof payoutAmount === 'number') {
+    lines.push(`<p><b>Payout:</b> $${payoutAmount.toFixed(2)}</p>`)
+  } else {
+    lines.push(`<p><b>Amount:</b> $${gift.amount.toFixed(2)}${gift.shippingFee ? ' + $' + gift.shippingFee.toFixed(2) + ' shipping refund' : ''}</p>`)
+  }
+  if (extra?.shippingAddress) {
+    lines.push(`<p><b>Ship to:</b><br>${extra.shippingName}<br>${extra.shippingAddress}<br>${extra.shippingCity}, ${extra.shippingState} ${extra.shippingZip}</p>`)
+  }
+  if (extra?.payoutBatchId) {
+    lines.push(`<p><b>PayPal batch:</b> ${extra.payoutBatchId}</p>`)
+  }
+  lines.push(`<p style="color:#666;font-size:11px;">Gift ID: ${gift.id}</p>`)
+
+  sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `🎉 Gift redeemed: ${gift.recipientName || 'someone'} chose ${method}${typeof payoutAmount === 'number' ? ` ($${payoutAmount.toFixed(2)})` : ''}`,
+    html: `<h2>Gift redeemed</h2>${lines.join('')}`,
+  }).catch(err => console.error('[Redeem] admin email failed:', err))
+}
+
+/** Fire-and-forget admin alert when a payout fails. This is the alarm
+ *  that was missing — Marigold's gift sat in REDEEMED_PENDING_REWARD
+ *  for 42 days with no notification. */
+function notifyAdminOfPayoutFailure(gift: any, method: string, error: any) {
+  const errMsg = error?.message || String(error).slice(0, 200)
+  sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `⚠️ Payout FAILED: ${gift.recipientName || 'recipient'} stuck in REDEEMED_PENDING_REWARD`,
+    html: `<h2 style="color:#dc2626;">Payout failed — recipient is stuck</h2>
+      <p><b>Recipient:</b> ${gift.recipientName || '—'} (${gift.recipientPhone || 'no phone'})</p>
+      <p><b>Sender:</b> ${gift.sender?.name || '—'}</p>
+      <p><b>Item:</b> ${gift.itemName}</p>
+      <p><b>Method attempted:</b> ${method}</p>
+      <p><b>Amount owed:</b> $${(gift.amount + (gift.shippingFee || 0) - 0.25).toFixed(2)}</p>
+      <p><b>Error:</b> <code style="background:#fee2e2;padding:2px 6px;border-radius:4px;">${errMsg}</code></p>
+      <p><b>Gift ID:</b> ${gift.id}</p>
+      <p style="color:#dc2626;font-weight:600;">Action required: manually pay the recipient OR fix the credential/config and have them retry.</p>`,
+  }).catch(err => console.error('[Redeem] admin error-email failed:', err))
+}
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -99,6 +153,7 @@ export async function POST(request: NextRequest) {
     }
     sendGiftRedemptionReceipt(gift.id, 'ITEM_CLICK').catch(() => {})
     cancelGiftReminders(gift.id).catch(() => {})
+    notifyAdminOfRedemption(gift, 'ITEM_CLICK')
 
     return NextResponse.json({ success: true, method: 'ITEM_CLICK' })
   }
@@ -169,6 +224,7 @@ export async function POST(request: NextRequest) {
       }
       sendGiftRedemptionReceipt(gift.id, method, payoutAmount).catch(() => {})
       cancelGiftReminders(gift.id).catch(() => {})
+      notifyAdminOfRedemption(gift, method, payoutAmount, { payoutBatchId: result.payoutBatchId })
 
       return NextResponse.json({
         success: true,
@@ -181,6 +237,7 @@ export async function POST(request: NextRequest) {
         where: { id: gift.id },
         data: { status: 'REDEEMED_PENDING_REWARD' },
       })
+      notifyAdminOfPayoutFailure(gift, method, err)
       return NextResponse.json({ error: 'Failed to send payout. Please try again.' }, { status: 500 })
     }
   }
@@ -240,6 +297,7 @@ export async function POST(request: NextRequest) {
     }
     sendGiftRedemptionReceipt(gift.id, 'WALLET').catch(() => {})
     cancelGiftReminders(gift.id).catch(() => {})
+    notifyAdminOfRedemption(gift, 'WALLET', walletAmount)
 
     return NextResponse.json({ success: true, method: 'WALLET' })
   }
@@ -286,6 +344,9 @@ export async function POST(request: NextRequest) {
     }
     sendGiftRedemptionReceipt(gift.id, 'SHIP').catch(() => {})
     cancelGiftReminders(gift.id).catch(() => {})
+    notifyAdminOfRedemption(gift, 'SHIP', undefined, {
+      shippingName, shippingAddress, shippingCity, shippingState, shippingZip,
+    })
 
     // Notify admin (you) to fulfill — apply affiliate tag to retailer link
     // so when the admin clicks through to buy, we earn the affiliate
