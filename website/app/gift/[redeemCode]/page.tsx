@@ -161,9 +161,17 @@ export default async function GiftRedeemPage({
               )}
 
               <h2 className="text-lg font-bold text-gray-900 mb-1">{gift.itemName}</h2>
-              <p className="text-2xl font-bold text-primary mb-3">
-                ${gift.amount.toFixed(2)}
-              </p>
+              {(() => {
+                // Cash-redemption value = item + shipping refund (since
+                // shipping isn't used on cash methods). SHIP method gets
+                // the physical item instead.
+                const cashValue = gift.amount + (gift.shippingFee || 0)
+                return (
+                  <p className="text-2xl font-bold text-primary mb-3">
+                    ${cashValue.toFixed(2)}
+                  </p>
+                )
+              })()}
 
               {/* Show the recipient what the gift IS — direct retailer link
                   with affiliate tag attached, so they can preview/research.
@@ -193,7 +201,7 @@ export default async function GiftRedeemPage({
                 redeemCode={redeemCode}
                 itemUrl={gift.itemUrl}
                 itemName={gift.itemName}
-                amount={gift.amount}
+                amount={gift.amount + (gift.shippingFee || 0)}
                 senderName={senderName}
                 isLoggedIn={isLoggedIn}
                 isPendingRetry={gift.status === 'REDEEMED_PENDING_REWARD'}

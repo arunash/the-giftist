@@ -126,10 +126,12 @@ export function ShopHero() {
     <div className="max-w-6xl mx-auto px-4 pt-12 pb-8">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-          Gifts people actually want
+          Send a gift they&apos;ll actually love.
+          <br />
+          <span className="text-primary">Or cash if they don&apos;t.</span>
         </h1>
         <p className="text-gray-500 mt-3 text-base sm:text-lg leading-relaxed">
-          Every pick is backed by expert reviews from Wirecutter, The Strategist, Reddit, and real purchase data. No filler, no generic candles.
+          Pick anything — they choose ship, cash, or wallet. No wrong gifts, no awkward exchanges. Curated by Wirecutter, NY Mag, and real reviews.
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center items-center mt-5">
           <Link

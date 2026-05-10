@@ -78,8 +78,11 @@ export default async function Home() {
             <span className="text-primary">Gift Concierge</span>
           </h1>
 
-          <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-10">
-            Describe who you're shopping for. Get curated gift ideas instantly.
+          <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-3">
+            Describe who you&apos;re shopping for. Get curated gift ideas instantly.
+          </p>
+          <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed mb-10">
+            They pick: ship the gift, take cash, or save it. No wrong gifts, no awkward exchanges.
           </p>
 
           <HeroChatInput />

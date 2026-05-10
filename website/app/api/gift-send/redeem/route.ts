@@ -136,9 +136,12 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Deduct $0.25 PayPal payout fee from recipient amount
+      // Recipient gets item price + shipping refund (since shipping isn't
+      // being used on a cash redemption). Platform fee stays with Giftist —
+      // that's our cut for facilitating the gift.
       const PAYOUT_FEE = 0.25
-      const payoutAmount = Math.round((gift.amount - PAYOUT_FEE) * 100) / 100
+      const redemptionBase = gift.amount + (gift.shippingFee || 0)
+      const payoutAmount = Math.round((redemptionBase - PAYOUT_FEE) * 100) / 100
 
       const result = await sendPayout({
         recipientType: method === 'VENMO' ? 'PHONE' : 'EMAIL',
@@ -201,25 +204,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gift already redeemed' }, { status: 400 })
     }
 
-    // Deposit full amount to recipient's wallet (no payout fee)
+    // Deposit item price + shipping refund (no payout fee). Platform fee
+    // stays with Giftist — that's our cut for facilitating the gift.
     await prisma.giftSend.update({
       where: { id: gift.id },
       data: { recipientUserId: userId },
     })
 
+    const walletAmount = gift.amount + (gift.shippingFee || 0)
+
     const wallet = await prisma.wallet.upsert({
       where: { userId },
-      create: { userId, balance: gift.amount },
-      update: { balance: { increment: gift.amount } },
+      create: { userId, balance: walletAmount },
+      update: { balance: { increment: walletAmount } },
     })
 
     await prisma.walletTransaction.create({
       data: {
         walletId: wallet.id,
         type: 'GIFT_RECEIVED',
-        amount: gift.amount,
+        amount: walletAmount,
         status: 'COMPLETED',
-        description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}"`,
+        description: `Gift from ${gift.sender.name || 'a friend'}: "${gift.itemName}" (incl. shipping refund)`,
       },
     })
 
