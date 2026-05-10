@@ -1,12 +1,13 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { Gift, Check, AlertCircle } from 'lucide-react'
+import { Gift, Check, AlertCircle, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { RedeemActions } from './redeem-actions'
 import { GiftPageClient } from './gift-page-client'
+import { applyAffiliateTag } from '@/lib/affiliate'
 
 export default async function GiftRedeemPage({
   params,
@@ -160,9 +161,24 @@ export default async function GiftRedeemPage({
               )}
 
               <h2 className="text-lg font-bold text-gray-900 mb-1">{gift.itemName}</h2>
-              <p className="text-2xl font-bold text-primary mb-4">
+              <p className="text-2xl font-bold text-primary mb-3">
                 ${gift.amount.toFixed(2)}
               </p>
+
+              {/* Show the recipient what the gift IS — direct retailer link
+                  with affiliate tag attached, so they can preview/research.
+                  Earns commission if they click through and buy anything. */}
+              {gift.itemUrl && (
+                <a
+                  href={applyAffiliateTag(gift.itemUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 mb-4 underline decoration-violet-300 underline-offset-2"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  See it on {(() => { try { return new URL(gift.itemUrl).hostname.replace(/^www\./, '') } catch { return 'retailer' } })()}
+                </a>
+              )}
 
               {gift.senderMessage && (
                 <div className="bg-violet-50 border-l-4 border-violet-300 rounded-r-xl px-4 py-3 mb-6">
