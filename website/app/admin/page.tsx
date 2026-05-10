@@ -125,6 +125,49 @@ interface Stats {
   }
 }
 
+// Persistent strip at the top of the admin dashboard showing today's gift
+// activity. Same data as the daily email digest, served live. Keeps the
+// most important metric (gifts moving) visible regardless of which tab
+// the admin is on.
+function GiftsTodayStrip() {
+  const [data, setData] = useState<{
+    newToday: number; redeemedToday: number; pendingShipment: number;
+    stuck: number; revenue7d: number
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/gifts-today')
+      .then(r => (r.ok ? r.json() : null))
+      .then(setData)
+      .catch(() => {})
+  }, [])
+
+  if (!data) {
+    return (
+      <div className="h-16 bg-gradient-to-r from-violet-50 via-pink-50 to-amber-50 rounded-xl animate-pulse" />
+    )
+  }
+
+  const cells = [
+    { label: 'New gifts today', value: data.newToday, accent: 'text-violet-700', bg: 'bg-violet-50' },
+    { label: 'Redeemed today', value: data.redeemedToday, accent: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Awaiting shipment', value: data.pendingShipment, accent: 'text-blue-700', bg: 'bg-blue-50', urgent: data.pendingShipment > 0 },
+    { label: 'Stuck >1d', value: data.stuck, accent: 'text-amber-700', bg: 'bg-amber-50', urgent: data.stuck > 3 },
+    { label: 'Revenue 7d', value: `$${data.revenue7d.toFixed(0)}`, accent: 'text-gray-900', bg: 'bg-gray-50' },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      {cells.map((c, i) => (
+        <div key={i} className={`${c.bg} rounded-xl px-4 py-3 ${c.urgent ? 'ring-2 ring-current' : ''}`}>
+          <div className="text-[10px] uppercase tracking-wider text-muted font-semibold">{c.label}</div>
+          <div className={`text-2xl font-bold mt-0.5 ${c.accent}`}>{c.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function KpiCard({ icon: Icon, label, value, sub, children }: { icon: any; label: string; value: string | number; sub?: string; children?: React.ReactNode }) {
   return (
     <div className="bg-surface rounded-xl p-5 border border-border">
@@ -1263,7 +1306,10 @@ function FunnelSection() {
 }
 
 export default function AdminDashboard() {
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links' | 'funnel'>('dashboard')
+  // Default to 'fulfillment' — it's the actionable tab (gifts that need
+  // shipping or have problems). Analytics tabs are secondary now that the
+  // daily gift report email handles the digest.
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'fulfillment' | 'pnl' | 'analytics' | 'product-links' | 'funnel'>('fulfillment')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -1289,6 +1335,9 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Admin</h1>
       </div>
+
+      {/* Persistent gift activity strip — visible on every tab */}
+      <GiftsTodayStrip />
 
       {/* Top-level tabs */}
       <div className="flex gap-1 p-1 bg-surface rounded-xl w-fit">
