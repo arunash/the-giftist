@@ -239,15 +239,17 @@ export async function POST(request: NextRequest) {
   }
 
   if (method === 'SHIP') {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Login required to redeem' }, { status: 401 })
-    }
-    const shipUserId = (session.user as any).id
-
     if (!shippingName || !shippingAddress || !shippingCity || !shippingState || !shippingZip) {
       return NextResponse.json({ error: 'Missing shipping address' }, { status: 400 })
     }
+
+    // Login optional — the redeemCode (22-char base64url) is itself a
+    // capability token. Requiring an account just to enter a shipping
+    // address is friction with no security upside. If the recipient
+    // happens to be logged in, link them; otherwise leave recipientUserId
+    // null and identify them by phone + redeemCode.
+    const session = await getServerSession(authOptions).catch(() => null)
+    const shipUserId = (session?.user as any)?.id || null
 
     const updated = await prisma.giftSend.updateMany({
       where: { id: gift.id, redeemedAt: null },
@@ -255,7 +257,7 @@ export async function POST(request: NextRequest) {
         status: 'REDEEMED_PENDING_SHIPMENT',
         redeemedAt: new Date(),
         redemptionMethod: 'SHIP',
-        recipientUserId: shipUserId,
+        ...(shipUserId ? { recipientUserId: shipUserId } : {}),
         shippingName,
         shippingAddress,
         shippingCity,
