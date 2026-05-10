@@ -34,6 +34,12 @@ export function ShopHero() {
     return occasion === 'mothers-day' || campaign.startsWith('md-') || campaign === 'mothers-day-shop-test'
   }, [searchParams])
 
+  // Post-gift-redemption: recipient just shipped their gift; we land them
+  // here to convert them into a sender. Show a warm banner above whatever
+  // hero would otherwise render.
+  const fromGiftRedeem = mounted && searchParams.get('from') === 'gift-redeem'
+  const senderName = mounted ? (searchParams.get('recipient') || '') : ''
+
   const md = useMemo(() => {
     const days = daysUntil(MOTHERS_DAY)
     return {
@@ -43,6 +49,27 @@ export function ShopHero() {
       shipBy: new Date(MOTHERS_DAY.getTime() - 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     }
   }, [])
+
+  // ── Post-gift-redemption — recipient just shipped their gift ──
+  if (fromGiftRedeem) {
+    return (
+      <section className="bg-gradient-to-b from-violet-50 to-white border-b border-violet-100">
+        <div className="max-w-3xl mx-auto px-4 pt-10 pb-8 text-center">
+          <div className="text-4xl mb-3">🎁</div>
+          <h1 className="font-serif text-3xl sm:text-4xl text-gray-900 leading-tight tracking-tight mb-3">
+            Your gift is on its way
+          </h1>
+          <p className="text-base text-gray-600 leading-relaxed mb-2">
+            {senderName ? <>{senderName} sent you something thoughtful.</> : <>Someone sent you something thoughtful.</>}
+            {' '}Now browse and send a gift of your own.
+          </p>
+          <p className="text-xs text-gray-400">
+            Pick someone, set a budget, we&apos;ll handle the rest — same way it just happened for you.
+          </p>
+        </div>
+      </section>
+    )
+  }
 
   // ── Mother's Day variant — above-the-fold conversion engine ──
   if (mounted && isMothersDay) {

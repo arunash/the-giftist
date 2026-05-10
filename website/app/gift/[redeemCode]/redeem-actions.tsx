@@ -79,6 +79,14 @@ export function RedeemActions({
       }
 
       if (data.success) {
+        // After a SHIP redemption, send the recipient straight into the
+        // shop so they can become a sender themselves. We've delivered
+        // the value moment ("your gift is on the way") — pivot into
+        // discovery while goodwill is high.
+        if (method === 'SHIP') {
+          window.location.href = `/shop?from=gift-redeem&recipient=${encodeURIComponent(senderName)}`
+          return
+        }
         setRedeemed(true)
       } else {
         setError(data.error || 'Failed to redeem gift')
