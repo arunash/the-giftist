@@ -1,10 +1,37 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Sparkles, ExternalLink, BookOpen, Heart, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sparkles, ExternalLink, BookOpen, Heart, Star, Gift } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import type { GiftProduct } from './gift-grid'
 import { ProductModal } from './product-modal'
+
+// Per-image error state. CDNs occasionally 404 product photos (especially
+// stale Amazon / Etsy URLs). On error we swap to a labeled placeholder so
+// the carousel never renders a broken-image icon.
+function CarouselImage({ src, alt, eager }: { src: string; alt: string; eager: boolean }) {
+  const [errored, setErrored] = useState(false)
+  if (errored) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center px-4 bg-gradient-to-br from-gray-50 to-gray-100">
+        <Gift className="h-6 w-6 text-gray-300 mb-2" />
+        <p className="text-[11px] text-gray-400 text-center leading-tight line-clamp-2 font-medium">
+          {alt}
+        </p>
+      </div>
+    )
+  }
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover"
+      loading={eager ? 'eager' : 'lazy'}
+      onError={() => setErrored(true)}
+    />
+  )
+}
 
 const ROTATE_MS = 5000
 
@@ -139,15 +166,12 @@ export function PicksCarousel({ picks }: { picks: GiftProduct[] }) {
             >
               <div className="relative aspect-[4/3] bg-gray-50 overflow-hidden">
                 {p.image ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="w-full h-full object-cover"
-                    loading={i < 3 ? 'eager' : 'lazy'}
-                  />
+                  <CarouselImage src={p.image} alt={p.name} eager={i < 3} />
                 ) : (
-                  <div className="w-full h-full bg-gray-100" />
+                  <div className="w-full h-full flex flex-col items-center justify-center px-4 bg-gradient-to-br from-gray-50 to-gray-100">
+                    <Gift className="h-6 w-6 text-gray-300 mb-2" />
+                    <p className="text-[11px] text-gray-400 text-center leading-tight line-clamp-2 font-medium">{p.name}</p>
+                  </div>
                 )}
                 {/* Top-left chip: source / book glyph */}
                 <div className="absolute top-2 left-2 flex flex-wrap gap-1">

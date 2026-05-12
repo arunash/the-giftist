@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, ExternalLink, MessageCircle, Sparkles, ShieldCheck, Star, Gift } from 'lucide-react'
 import { trackClick, buildRetailerHref } from '@/lib/track-click'
 import type { GiftProduct } from './gift-grid'
@@ -34,6 +34,7 @@ export function ProductModal({
   onClose: () => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [imgError, setImgError] = useState(false)
 
   // ESC closes; lock body scroll while open
   useEffect(() => {
@@ -78,25 +79,31 @@ export function ProductModal({
         </button>
 
         {/* Image */}
-        {product.image ? (
-          <div className="relative aspect-square bg-gray-50 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+          {product.image && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={product.image}
               alt={product.name}
               className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
             />
-            <div className="absolute top-3 left-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm text-gray-900 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
-              <Sparkles className="h-3 w-3 text-amber-500" />
-              Picked by Giftist
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center px-6">
+              <Gift className="h-12 w-12 text-gray-300 mb-3" />
+              <p className="text-sm text-gray-500 text-center font-medium line-clamp-3">{product.name}</p>
             </div>
-            {product.occasions?.includes('mothers-day') && (
-              <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 bg-pink-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-                🌸 Mother&apos;s Day
-              </div>
-            )}
+          )}
+          <div className="absolute top-3 left-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm text-gray-900 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+            <Sparkles className="h-3 w-3 text-amber-500" />
+            Picked by Giftist
           </div>
-        ) : null}
+          {product.occasions?.includes('mothers-day') && (
+            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 bg-pink-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+              🌸 Mother&apos;s Day
+            </div>
+          )}
+        </div>
 
         <div className="p-5 sm:p-6 space-y-5">
           {/* Title + price + retailer */}

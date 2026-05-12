@@ -11,7 +11,7 @@ import { ShopPageViewTracker } from './page-view-tracker'
 import { ShopHero } from './shop-hero'
 import { StickyConciergeBar } from './sticky-concierge-bar'
 
-export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build.
+export const revalidate = 3600 // ISR: revalidate every hour. Edit this comment to force a fresh build. (https-upgrade)
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
@@ -81,7 +81,10 @@ async function getGifts(): Promise<{ allGifts: GiftProduct[] }> {
   )
 
   for (const p of products) {
-    withSlugs.push({ ...p, trackedSlug: slugMap.get(p.id) })
+    // Upgrade http→https on third-party image URLs. Most CDNs auto-redirect,
+    // and the http variants frequently fail to render in the browser.
+    const image = p.image && p.image.startsWith('http://') ? 'https://' + p.image.slice(7) : p.image
+    withSlugs.push({ ...p, image, trackedSlug: slugMap.get(p.id) })
   }
 
   return { allGifts: withSlugs }
