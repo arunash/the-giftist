@@ -15,6 +15,11 @@ const SMS_BLOCKLIST = new Set([
 ])
 
 export async function sendSms(to: string, body: string): Promise<void> {
+  if (process.env.MESSAGING_DISABLED === '1') {
+    console.log(`[SMS] Kill switch active (MESSAGING_DISABLED=1) — dropped message to ${to}`)
+    return
+  }
+
   const toFormatted = to.startsWith('+') ? to : `+${to}`
   const phone = to.replace(/^\+/, '')
 

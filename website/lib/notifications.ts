@@ -69,6 +69,11 @@ export async function smartWhatsAppSend(
 ): Promise<void> {
   if (!phone) return
 
+  if (process.env.MESSAGING_DISABLED === '1') {
+    console.log(`[Notify] Kill switch active (MESSAGING_DISABLED=1) — dropped message to ${phone}`)
+    return
+  }
+
   // Check messaging time window (skip for transactional/reply messages)
   if (!opts?.skipTimeCheck && !isWithinMessagingWindow(opts?.timezone)) {
     console.log(`[Notify] Skipping message to ${phone} — outside messaging window`)

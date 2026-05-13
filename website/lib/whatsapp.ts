@@ -16,6 +16,10 @@ function isBlocked(phone: string): boolean {
 }
 
 async function graphPost(endpoint: string, body: object) {
+  if (process.env.MESSAGING_DISABLED === '1') {
+    console.log(`[WhatsApp] Kill switch active (MESSAGING_DISABLED=1) — dropped ${endpoint}`)
+    return { messages: [] }
+  }
   const res = await fetch(`${GRAPH_API}${endpoint}`, {
     method: 'POST',
     headers: {

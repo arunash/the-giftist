@@ -23,6 +23,7 @@ function getOpenAI() {
 
 let _perplexityClient: OpenAI | null = null
 function getPerplexity(): OpenAI | null {
+  if (process.env.PERPLEXITY_DISABLED === '1') return null
   if (!process.env.PERPLEXITY_API_KEY) return null
   if (!_perplexityClient) {
     _perplexityClient = new OpenAI({
