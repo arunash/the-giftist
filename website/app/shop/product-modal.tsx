@@ -98,9 +98,9 @@ export function ProductModal({
             <Sparkles className="h-3 w-3 text-amber-500" />
             Picked by Giftist
           </div>
-          {product.occasions?.includes('mothers-day') && (
-            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 bg-pink-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-              🌸 Mother&apos;s Day
+          {product.occasions?.includes('fathers-day') && (
+            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 bg-sky-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+              🎩 Father&apos;s Day
             </div>
           )}
         </div>

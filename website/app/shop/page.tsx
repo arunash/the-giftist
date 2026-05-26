@@ -31,6 +31,10 @@ async function getGifts(): Promise<{ allGifts: GiftProduct[] }> {
   const products = await prisma.tastemakerGift.findMany({
     where: {
       reviewStatus: 'approved',
+      // Belt-and-suspenders: never render cards without an image or URL.
+      // The admin route also blocks this at approval time.
+      image: { not: null },
+      url: { not: null },
     },
     orderBy: { totalScore: 'desc' },
     select: {
@@ -157,8 +161,8 @@ export default async function ShopPage() {
         </div>
       </nav>
 
-      {/* Occasion-aware hero — swaps to a Mother's Day variant when arriving via
-          ?occasion=mothers-day or utm_campaign=md-* */}
+      {/* Occasion-aware hero — swaps to a Father's Day variant when arriving via
+          ?occasion=fathers-day or utm_campaign=fd-* */}
       <Suspense fallback={
         <div className="max-w-6xl mx-auto px-4 pt-12 pb-8">
           <div className="text-center max-w-2xl mx-auto">

@@ -60,6 +60,25 @@ export async function POST(req: NextRequest) {
   const { action, id, status, comment } = body
 
   if (action === 'review' && id && status) {
+    // Guard: a product missing image or url can never be approved — it would
+    // render as a broken card on /shop. Force it to rejected instead.
+    if (status === 'approved') {
+      const gift = await prisma.tastemakerGift.findUnique({
+        where: { id },
+        select: { image: true, url: true },
+      })
+      if (!gift?.image || !gift?.url) {
+        await prisma.tastemakerGift.update({
+          where: { id },
+          data: {
+            reviewStatus: 'rejected',
+            reviewComment: 'Cannot approve: missing image or url',
+            reviewedAt: new Date(),
+          },
+        })
+        return NextResponse.json({ error: 'Missing image or url — cannot approve' }, { status: 400 })
+      }
+    }
     await prisma.tastemakerGift.update({
       where: { id },
       data: {

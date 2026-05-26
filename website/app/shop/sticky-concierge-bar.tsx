@@ -29,19 +29,19 @@ export function StickyConciergeBar() {
     }
   }, [])
 
-  const isMothersDay = useMemo(() => {
+  const isFathersDay = useMemo(() => {
     const occasion = searchParams.get('occasion')
     const campaign = searchParams.get('utm_campaign') || ''
-    return occasion === 'mothers-day' || campaign.startsWith('md-') || campaign === 'mothers-day-shop-test'
+    return occasion === 'fathers-day' || campaign.startsWith('fd-') || campaign === 'fathers-day-shop-test'
   }, [searchParams])
 
   if (!mounted || dismissed) return null
 
-  const prefill = isMothersDay
-    ? `Hi! I'm shopping for a Mother's Day gift. Can you help me find something she'll love?`
+  const prefill = isFathersDay
+    ? `Hi! I'm shopping for a Father's Day gift. Can you help me find something he'll love?`
     : `Hi! I need help finding a gift. Can you help me?`
 
-  const ctaText = isMothersDay ? 'Help me pick a Mother\'s Day gift' : 'Chat with concierge — free'
+  const ctaText = isFathersDay ? 'Help me pick a Father\'s Day gift' : 'Chat with concierge — free'
 
   function dismiss() {
     setDismissed(true)

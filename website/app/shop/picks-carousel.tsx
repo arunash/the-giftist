@@ -55,7 +55,7 @@ function topSourceBadge(sources: any) {
 
 function categoryGlyph(p: GiftProduct) {
   if (p.interests?.includes('reading')) return <BookOpen className="h-3 w-3" />
-  if (p.occasions?.includes('mothers-day')) return <span className="text-xs">🌸</span>
+  if (p.occasions?.includes('fathers-day')) return <span className="text-xs">🎩</span>
   return <Heart className="h-3 w-3" />
 }
 
@@ -194,9 +194,9 @@ export function PicksCarousel({ picks }: { picks: GiftProduct[] }) {
                   </div>
                 )}
                 {/* Bottom-left: occasion */}
-                {p.occasions?.includes('mothers-day') && (
-                  <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                    🌸 Mother&apos;s Day
+                {p.occasions?.includes('fathers-day') && (
+                  <div className="absolute bottom-2 left-2 bg-sky-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                    🎩 Father&apos;s Day
                   </div>
                 )}
               </div>

@@ -8,8 +8,8 @@ import { trackClick } from '@/lib/track-click'
 
 const WHATSAPP_URL = 'https://wa.me/15014438478'
 
-// Mother's Day 2026 — 2nd Sunday of May
-const MOTHERS_DAY = new Date(2026, 4, 10) // May 10, 2026
+// Father's Day 2026 — 3rd Sunday of June
+const FATHERS_DAY = new Date(2026, 5, 21) // June 21, 2026
 
 function daysUntil(date: Date): number {
   return Math.ceil((date.getTime() - Date.now()) / 86400000)
@@ -23,15 +23,12 @@ export function ShopHero() {
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
 
-  // Mounted gate so server-rendered HTML matches the default hero on first paint,
-  // then we swap to the personalized variant after hydration. Avoids hydration mismatch
-  // and lets the page-cache deliver the same HTML to everyone.
   useEffect(() => { setMounted(true) }, [])
 
-  const isMothersDay = useMemo(() => {
+  const isFathersDay = useMemo(() => {
     const occasion = searchParams.get('occasion')
     const campaign = searchParams.get('utm_campaign') || ''
-    return occasion === 'mothers-day' || campaign.startsWith('md-') || campaign === 'mothers-day-shop-test'
+    return occasion === 'fathers-day' || campaign.startsWith('fd-') || campaign === 'fathers-day-shop-test'
   }, [searchParams])
 
   // Post-gift-redemption: recipient just shipped their gift; we land them
@@ -40,13 +37,12 @@ export function ShopHero() {
   const fromGiftRedeem = mounted && searchParams.get('from') === 'gift-redeem'
   const senderName = mounted ? (searchParams.get('recipient') || '') : ''
 
-  const md = useMemo(() => {
-    const days = daysUntil(MOTHERS_DAY)
+  const fd = useMemo(() => {
+    const days = daysUntil(FATHERS_DAY)
     return {
       days,
       daysLabel: days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`,
-      // Latest order date to ship in time (3-day buffer)
-      shipBy: new Date(MOTHERS_DAY.getTime() - 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      shipBy: new Date(FATHERS_DAY.getTime() - 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     }
   }, [])
 
@@ -71,22 +67,22 @@ export function ShopHero() {
     )
   }
 
-  // ── Mother's Day variant — above-the-fold conversion engine ──
-  if (mounted && isMothersDay) {
-    const waPrefill = `Hi! I'm shopping for a Mother's Day gift. Can you help me find something she'll love?`
+  // ── Father's Day variant — above-the-fold conversion engine ──
+  if (mounted && isFathersDay) {
+    const waPrefill = `Hi! I'm shopping for a Father's Day gift. Can you help me find something he'll love?`
     return (
-      <section className="bg-gradient-to-b from-pink-50 to-white border-b border-pink-100">
+      <section className="bg-gradient-to-b from-sky-50 to-white border-b border-sky-100">
         <div className="max-w-6xl mx-auto px-4 pt-10 pb-8 sm:pt-14 sm:pb-12">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-1.5 bg-pink-100 text-pink-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+            <div className="inline-flex items-center gap-1.5 bg-sky-100 text-sky-800 text-xs font-semibold px-3 py-1 rounded-full mb-4">
               <Sparkles className="h-3 w-3" />
-              Mother's Day · {md.daysLabel}
+              Father's Day · {fd.daysLabel}
             </div>
             <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 tracking-tight leading-tight">
-              Find Mom a gift she&apos;ll <span className="text-pink-600">actually</span> love
+              Find Dad a gift he&apos;ll <span className="text-sky-700">actually</span> love
             </h1>
             <p className="text-gray-600 mt-4 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-              700+ hand-picked gifts vetted by Wirecutter, The Strategist, and Oprah&apos;s editors. Order by <span className="font-semibold text-gray-900">{md.shipBy}</span> to ship in time.
+              700+ hand-picked gifts vetted by Wirecutter, The Strategist, and Reddit. Order by <span className="font-semibold text-gray-900">{fd.shipBy}</span> to ship in time.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-7">
               <a

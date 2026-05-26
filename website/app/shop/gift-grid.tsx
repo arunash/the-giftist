@@ -49,9 +49,8 @@ function getSourceStack(sources: any): string[] {
 
 const OCCASIONS = [
   { key: 'all', label: 'All' },
-  { key: 'birthday', label: 'Birthday' },
-  { key: 'mothers-day', label: "Mother's Day" },
   { key: 'fathers-day', label: "Father's Day" },
+  { key: 'birthday', label: 'Birthday' },
   { key: 'christmas', label: 'Christmas' },
   { key: 'anniversary', label: 'Anniversary' },
   { key: 'wedding', label: 'Wedding' },
@@ -380,9 +379,9 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
             </div>
           )}
 
-          {p.occasions?.includes('mothers-day') && (
-            <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-              <span>🌸</span> Mother&apos;s Day
+          {p.occasions?.includes('fathers-day') && (
+            <div className="absolute bottom-2 left-2 bg-sky-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+              <span>🎩</span> Father&apos;s Day
             </div>
           )}
         </div>

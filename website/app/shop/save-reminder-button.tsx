@@ -2,7 +2,7 @@
 
 // "Text me this gift" save-for-later UI. Tapped from the product modal,
 // expands inline to a phone input + send button. Posts to /api/save-reminder
-// which schedules a WhatsApp reminder for the matching occasion (Mother's
+// which schedules a WhatsApp reminder for the matching occasion (Father's
 // Day if applicable, otherwise +7 days).
 
 import { useState } from 'react'
@@ -42,11 +42,11 @@ export function SaveReminderButton({
   }
 
   if (status === 'success') {
-    const isMD = occasion === 'mothers-day'
+    const isFD = occasion === 'fathers-day'
     return (
       <div className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm font-semibold">
         <Check className="h-4 w-4" />
-        <span>{isMD ? "Saved! I'll text you May 7." : "Saved! I'll text you next week."}</span>
+        <span>{isFD ? "Saved! I'll text you June 18." : "Saved! I'll text you next week."}</span>
       </div>
     )
   }
@@ -96,7 +96,7 @@ export function SaveReminderButton({
       {error && <p className="text-[11px] text-red-500">{error}</p>}
       <p className="text-[10px] text-gray-400 leading-relaxed">
         We&apos;ll send one WhatsApp reminder
-        {occasion === 'mothers-day' ? ' on May 7 (3 days before Mother’s Day)' : ' next week'}.
+        {occasion === 'fathers-day' ? ' on June 18 (3 days before Father’s Day)' : ' next week'}.
         That’s it — no other messages.
       </p>
     </div>

@@ -74,9 +74,9 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
             </div>
           )}
 
-          {p.occasions?.includes('mothers-day') && (
-            <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-              <span>🌸</span> Mother&apos;s Day
+          {p.occasions?.includes('fathers-day') && (
+            <div className="absolute bottom-2 left-2 bg-sky-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+              <span>🎩</span> Father&apos;s Day
             </div>
           )}
         </div>
