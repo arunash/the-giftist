@@ -446,16 +446,7 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
                 <ExternalLink className="h-2.5 w-2.5" />
               </a>
             )}
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] font-medium text-gray-400 hover:text-[#25D366] transition ml-auto"
-              aria-label="Get help via WhatsApp"
-            >
-              <MessageCircle className="h-2.5 w-2.5" />
-              Help
-            </a>
+            {/* WhatsApp "Help" link removed 2026-06-10 — affiliate-only pivot. */}
           </div>
         </div>
       </div>

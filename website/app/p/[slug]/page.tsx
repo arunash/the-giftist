@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Gift, ExternalLink, ShoppingCart, MessageCircle, ArrowRight, Check, Copy, Share2, X, Loader2, Heart, Sparkles, ShieldCheck, Star, RefreshCw, Headphones, DollarSign, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
-import { trackClick, buildRetailerHref } from '@/lib/track-click'
+import { trackClick, buildRetailerHref, persistAttribution } from '@/lib/track-click'
 
 interface ProductData {
   slug: string
@@ -59,6 +59,40 @@ function ProductPage() {
       .then(s => setIsLoggedIn(!!s?.user))
       .catch(() => setIsLoggedIn(false))
   }, [])
+
+  // Affiliate-funnel telemetry — fire PAGE_VIEW once per session per slug.
+  // Top-of-funnel for /p/SLUG was previously invisible to the loop (PageView
+  // tracker only existed on /shop). Adding it here lets us compute real LP→
+  // retailer CTR. Also persists utm_* for downstream RETAILER_CLICK attribution.
+  useEffect(() => {
+    if (!slug) return
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    persistAttribution(params.get('utm_source'), params.get('utm_campaign'))
+    const sessionKey = `gf_pv_${slug}`
+    if (window.sessionStorage.getItem(sessionKey)) return
+    window.sessionStorage.setItem(sessionKey, '1')
+    let sid = window.sessionStorage.getItem('gf_sid')
+    if (!sid) {
+      sid = `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+      window.sessionStorage.setItem('gf_sid', sid)
+    }
+    fetch('/api/analytics/pageview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: `/p/${slug}`,
+        slug,
+        referrer: document.referrer || null,
+        utmSource: params.get('utm_source'),
+        utmMedium: params.get('utm_medium'),
+        utmCampaign: params.get('utm_campaign'),
+        sessionId: sid,
+      }),
+      keepalive: true,
+    }).catch(() => {})
+    trackClick(slug, 'PAGE_VIEW', channel === 'whatsapp' ? 'WHATSAPP' : 'WEB')
+  }, [slug, channel])
 
   // Pre-checkout: recipient info
   const [showRecipientModal, setShowRecipientModal] = useState(false)

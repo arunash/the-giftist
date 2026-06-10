@@ -134,17 +134,7 @@ export function EditorsPickCard({ product: p }: { product: GiftProduct }) {
               <ExternalLink className="h-2.5 w-2.5" />
             </a>
           )}
-          {p.trackedSlug && (
-            <a
-              href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-600 transition ml-auto"
-            >
-              Find similar
-              <ChevronRight className="h-2.5 w-2.5" />
-            </a>
-          )}
+          {/* WhatsApp "Find similar" link removed 2026-06-10 — affiliate-only pivot. */}
         </div>
       </div>
     </div>
