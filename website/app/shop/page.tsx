@@ -19,6 +19,8 @@ export const dynamic = "force-dynamic";
 interface ShopPageProps {
   searchParams: {
     variant?: string;
+    occasion?: string;
+    utm_campaign?: string;
     name?: string;
     redeemed?: string;
     layout?: string;
@@ -31,7 +33,18 @@ type Variant = "default" | "fathers-day" | "redeemed";
 type Layout = "grid" | "carousel" | "story";
 
 function pickVariant(sp: ShopPageProps["searchParams"]): Variant {
-  if (sp.variant === "fathers-day") return "fathers-day";
+  // Accept variant=, occasion=, OR utm_campaign starting with "fd-" so any of
+  // these URLs resolve to the FD experience:
+  //   /shop?variant=fathers-day
+  //   /shop?occasion=fathers-day
+  //   /shop?utm_campaign=fd-magic (ad-driven)
+  if (
+    sp.variant === "fathers-day" ||
+    sp.occasion === "fathers-day" ||
+    (sp.utm_campaign || "").startsWith("fd-")
+  ) {
+    return "fathers-day";
+  }
   if (sp.variant === "redeemed" || sp.redeemed === "1") return "redeemed";
   return "default";
 }
@@ -55,13 +68,25 @@ async function fetchGifts(variant: Variant, limit = 60) {
   const rows = await prisma.tastemakerGift.findMany({
     where,
     orderBy: [{ totalScore: "desc" }, { trustScore: "desc" }],
-    take: limit,
+    take: limit * 2, // pull extra so the Amazon-first re-rank below has headroom
   });
+
+  // Amazon-first ranking — affiliate commission is fastest + most reliable
+  // through Associates. Push amazon.com URLs to the top, preserve relative
+  // order within each bucket.
+  const amazon: typeof rows = [];
+  const other: typeof rows = [];
+  for (const r of rows) {
+    const isAmazon = r.url?.toLowerCase().includes("amazon.com") ?? false;
+    (isAmazon ? amazon : other).push(r);
+  }
+  const ranked = [...amazon, ...other].slice(0, limit);
+  const rowsRanked = ranked;
 
   // Attach tracked-link slug so each card routes through /go-r/<slug> for
   // attribution. createTrackedLink upserts a ProductClick row + returns slug.
   const enriched = await Promise.all(
-    rows.map(async (r) => {
+    rowsRanked.map(async (r) => {
       let slug: string | undefined;
       try {
         slug = await createTrackedLink({
