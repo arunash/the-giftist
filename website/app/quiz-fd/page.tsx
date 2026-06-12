@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import QuizFdTracking from './QuizFdTracking';
 
 export const metadata: Metadata = {
   title: "Top Gift Ideas — Curated by Giftist AI",
@@ -51,6 +52,22 @@ const PRODUCTS = [
     emoji: '📚',
     why: 'A gripping thriller — perfect for anyone who always has a book on the nightstand.',
   },
+  {
+    slug: 'HrMcUcIx',
+    name: "My Husband's Wife by Alice Feeney",
+    price: '$15',
+    tag: 'Book Lover',
+    emoji: '📖',
+    why: 'A twisty psychological thriller. Consistently one of our most-clicked titles.',
+  },
+  {
+    slug: '3_1mt-R4',
+    name: 'Theragun Mini (2nd Gen)',
+    price: '$179',
+    tag: 'Fitness',
+    emoji: '💪',
+    why: 'Pocket-sized percussion massager. Perfect for the active person who deserves recovery.',
+  },
 ];
 
 export default function GiftFinderPage() {
@@ -69,6 +86,7 @@ export default function GiftFinderPage() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       padding: '0 0 80px',
     }}>
+      <QuizFdTracking />
       {showFDBanner && (
         <div style={{
           background: daysToDeadline <= 2 ? '#dc2626' : '#b45309',
@@ -132,6 +150,8 @@ export default function GiftFinderPage() {
           <Link
             key={product.slug}
             href={`/p/${product.slug}`}
+            data-slug={product.slug}
+            data-name={product.name}
             style={{
               display: 'flex',
               flexDirection: 'column',
