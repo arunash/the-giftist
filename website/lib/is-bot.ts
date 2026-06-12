@@ -68,6 +68,11 @@ const BOT_SUBSTRINGS = [
   'uptimerobot',
   'pingdom',
   'statuscake',
+  // Internal Giftist tooling — catalog-health sub-agent + manual audits.
+  // These hit /go-r every hour to verify the funnel works; without this
+  // exclusion they would dominate the RETAILER_CLICK count by 70%+.
+  'giftistaudit',
+  'giftistloop',
   // SEO crawlers
   'ahrefsbot',
   'semrushbot',
