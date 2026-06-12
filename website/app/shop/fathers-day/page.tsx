@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
+// Skip static generation to avoid build-time timeout (the static export hung
+// during the June 10 affiliate-first pivot).
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Best Father's Day Gifts 2026 — Curated by Giftist",
   description: "Thoughtful Father's Day gift ideas for every dad. Curated picks across tech, food, wellness, and more. Order by June 17 for delivery by June 21.",

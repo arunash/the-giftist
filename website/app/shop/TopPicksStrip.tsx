@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
 
 interface TopPick {
@@ -59,9 +58,11 @@ export default function TopPicksStrip() {
           paddingBottom: 4,
         }}>
           {TOP_PICKS.map((pick) => (
-            <Link
+            <a
               key={pick.slug}
-              href={`/p/${pick.slug}`}
+              href={`/go-r/${pick.slug}`}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
               onClick={() => handleClick(pick.slug, pick.name)}
               style={{
                 display: 'flex',
@@ -100,7 +101,7 @@ export default function TopPicksStrip() {
               {pick.price && (
                 <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>{pick.price}</p>
               )}
-            </Link>
+            </a>
           ))}
         </div>
       </div>

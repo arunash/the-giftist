@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Gift, ExternalLink, MessageCircle, ChevronDown, SlidersHorizontal } from 'lucide-react'
-import { trackClick, buildRetailerHref } from '@/lib/track-click'
-import { ProductModal } from './product-modal'
-
-const WHATSAPP_URL = 'https://wa.me/15014438478'
+import { Gift, ExternalLink, ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { trackClick } from '@/lib/track-click'
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
   wirecutter: { label: 'Wirecutter Pick', color: 'bg-blue-50 text-blue-700' },
@@ -143,7 +140,6 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
   const [category, setCategory] = useState('all')
   const [fromQuiz, setFromQuiz] = useState(false)
   const [showMoreFilters, setShowMoreFilters] = useState(false)
-  const [activeProduct, setActiveProduct] = useState<GiftProduct | null>(null)
 
   // Hydrate filter state from URL after mount.
   useEffect(() => {
@@ -299,56 +295,37 @@ export function GiftGrid({ gifts }: { gifts: GiftProduct[] }) {
           >
             Clear filters
           </button>
-          <div className="mt-4">
-            <a
-              href={`${WHATSAPP_URL}?text=${encodeURIComponent("I need help finding a gift")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#25D366] hover:underline"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Ask our concierge instead
-            </a>
-          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {filtered.map((p) => (
-            <GiftCard key={p.id} product={p} onOpen={() => setActiveProduct(p)} />
+            <GiftCard key={p.id} product={p} />
           ))}
         </div>
       )}
-
-      {/* Click-to-preview modal */}
-      <ProductModal product={activeProduct} onClose={() => setActiveProduct(null)} />
     </section>
   )
 }
 
-function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => void }) {
+function GiftCard({ product: p }: { product: GiftProduct }) {
   const [imgError, setImgError] = useState(false)
   const badge = getSourceBadge(p.sources)
-  const giftistUrl = p.trackedSlug ? `/p/${p.trackedSlug}` : null
-  const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : p.url
-  const waLink = `${WHATSAPP_URL}?text=${encodeURIComponent(`Tell me more about the ${p.name}`)}`
+  // Affiliate-only: every card goes straight to the retailer redirect.
+  const retailerUrl = p.trackedSlug ? `/go-r/${p.trackedSlug}` : (p.url || '#')
 
-  // Card body click → open the in-page details modal (no navigation, no
-  // popup-blocker, no losing scroll position). Cmd/Ctrl/middle-click still
-  // opens /p/SLUG in a new tab using the underlying anchor href.
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
-    e.preventDefault()
-    if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
-    onOpen()
+    if (p.trackedSlug) trackClick(p.trackedSlug, 'RETAILER_CLICK', 'WEB')
   }
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-lg transition-all duration-200">
       <a
-        href={giftistUrl || retailerUrl || waLink}
+        href={retailerUrl}
+        target="_blank"
+        rel="noopener noreferrer sponsored"
         onClick={handleCardClick}
         className="block cursor-pointer"
-        {...(!giftistUrl && !retailerUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       >
         <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
           {p.image && !imgError ? (
@@ -387,69 +364,28 @@ function GiftCard({ product: p, onOpen }: { product: GiftProduct; onOpen: () => 
         </div>
       </a>
 
-      <div className="p-3">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
-          {p.domain?.replace('www.', '') || 'Shop'}
-        </p>
+      <a
+        href={retailerUrl}
+        target="_blank"
+        rel="noopener noreferrer sponsored"
+        onClick={handleCardClick}
+        className="block p-3 cursor-pointer"
+      >
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">
+            {p.domain?.replace('www.', '') || 'Shop'}
+          </p>
+          <ExternalLink className="h-3 w-3 text-gray-300 flex-shrink-0" />
+        </div>
         <p className="text-sm font-semibold text-gray-900 leading-tight mt-0.5 line-clamp-2">
           {p.name}
         </p>
-
         {p.why && (
           <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 leading-snug">
             {p.why}
           </p>
         )}
-
-        {/* CTA stack — priority: Gift via Giftist > View on retailer > Help.
-            Primary action is gift-through-Giftist (the /p/SLUG flow) since
-            that's the monetization path. Retailer link demoted to secondary. */}
-        <div className="mt-2.5 space-y-1.5">
-          {giftistUrl ? (
-            <a
-              href={giftistUrl}
-              onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
-                if (p.trackedSlug) trackClick(p.trackedSlug, 'CARD_CLICK', 'WEB')
-              }}
-              className="w-full flex items-center justify-center gap-1 py-1.5 bg-pink-500 text-white rounded-lg text-[11px] font-bold hover:bg-pink-600 transition"
-            >
-              <Gift className="h-3 w-3" />
-              Gift via Giftist
-            </a>
-          ) : (
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-1 py-1.5 bg-[#25D366] text-white rounded-lg text-[11px] font-bold hover:bg-[#20bd5a] transition"
-            >
-              <MessageCircle className="h-3 w-3" />
-              Ask about this
-            </a>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            {retailerUrl && (
-              <a
-                href={retailerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button > 0) return
-                  if (!p.trackedSlug) return
-                  e.preventDefault()
-                  window.open(buildRetailerHref(p.trackedSlug), '_blank', 'noopener,noreferrer')
-                }}
-                className="flex items-center gap-0.5 text-[10px] font-medium text-gray-500 hover:text-gray-900 transition"
-              >
-                View on retailer
-                <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-            )}
-            {/* WhatsApp "Help" link removed 2026-06-10 — affiliate-only pivot. */}
-          </div>
-        </div>
-      </div>
+      </a>
     </div>
   )
 }
