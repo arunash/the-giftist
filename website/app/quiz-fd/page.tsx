@@ -2,32 +2,30 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Curated Gifts for Every Occasion — Giftist",
-  description: "Hand-picked gifts for birthdays, Father's Day, anniversaries and more. Curated by AI. Click any gift to shop instantly.",
+  title: "Top Gift Ideas — Curated by Giftist AI",
+  description: "Hand-picked gifts for birthdays, Father's Day, anniversaries and more. Curated by AI. Click any gift to shop instantly — no account needed.",
   openGraph: {
-    title: "Curated Gifts — Giftist",
-    description: "AI-curated gifts for every occasion. Click to shop instantly.",
+    title: "Top Gift Ideas — Giftist AI",
+    description: "AI-curated gifts. Click to shop instantly. No signup needed.",
   },
 };
 
-const FD_PRODUCTS = [
+const PRODUCTS = [
   {
     slug: '1rmUI4g4',
     name: 'Noise-Canceling Headphones',
     price: '$279',
-    tag: 'Tech Dad',
+    tag: 'Tech',
     emoji: '🎧',
-    why: 'Top-rated for blocking out the world. Perfect for the dad who loves music or needs focus time.',
-    occasion: 'fathers-day',
+    why: 'Top-rated for blocking out the world. A crowd favorite for music lovers and remote workers.',
   },
   {
     slug: 'jCmp7G0B',
     name: 'Apple AirPods Pro (2nd Gen)',
     price: '$249',
     tag: 'Apple Fan',
-    emoji: '🍎',
-    why: 'Spatial Audio + Adaptive Transparency. The gift he will use every single day.',
-    occasion: 'fathers-day',
+    emoji: '🎵',
+    why: 'Spatial Audio + Adaptive Transparency. The gift they will use every single day.',
   },
   {
     slug: 'ezK5Cv9s',
@@ -36,7 +34,6 @@ const FD_PRODUCTS = [
     tag: 'Foodie',
     emoji: '🥤',
     why: 'Professional-grade blending at home. Smoothies, soups, sauces — all effortless.',
-    occasion: 'birthday',
   },
   {
     slug: '1pIuIMhN',
@@ -45,7 +42,6 @@ const FD_PRODUCTS = [
     tag: 'Self-Care',
     emoji: '💆',
     why: 'Redeemable at 20,000+ spas nationwide. Give the gift of real relaxation.',
-    occasion: 'birthday',
   },
   {
     slug: 'SkyaeFhK',
@@ -54,7 +50,6 @@ const FD_PRODUCTS = [
     tag: 'Book Lover',
     emoji: '📚',
     why: 'A gripping thriller — perfect for anyone who always has a book on the nightstand.',
-    occasion: 'birthday',
   },
 ];
 
@@ -87,37 +82,44 @@ export default function GiftFinderPage() {
         </div>
       )}
 
-      {/* Hero */}
       <div style={{
         maxWidth: 720,
         margin: '0 auto',
-        padding: '48px 24px 32px',
+        padding: '40px 24px 24px',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🎁</div>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🎁</div>
         <h1 style={{
-          fontSize: 'clamp(28px, 5vw, 40px)',
+          fontSize: 'clamp(26px, 5vw, 38px)',
           fontWeight: 800,
           color: '#a78bfa',
-          margin: '0 0 16px',
+          margin: '0 0 12px',
           lineHeight: 1.2,
         }}>
           Gifts They&apos;ll Actually Use
         </h1>
         <p style={{
-          fontSize: 18,
+          fontSize: 17,
           color: '#9ca3af',
-          margin: '0 0 8px',
+          margin: '0 0 6px',
           lineHeight: 1.6,
         }}>
-          AI-curated picks for every occasion. Click any gift to shop directly — no signup needed.
+          AI-curated picks. Click any gift to shop directly — no account needed.
         </p>
-        <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
-          Every link goes straight to the retailer. Free shipping on most orders.
-        </p>
+        <div style={{
+          display: 'inline-block',
+          background: 'rgba(167,139,250,0.15)',
+          border: '1px solid rgba(167,139,250,0.3)',
+          borderRadius: 8,
+          padding: '6px 14px',
+          fontSize: 13,
+          color: '#a78bfa',
+          marginTop: 8,
+        }}>
+          ✓ Direct retailer links &nbsp;·&nbsp; ✓ Free shipping on most &nbsp;·&nbsp; ✓ No signup
+        </div>
       </div>
 
-      {/* Product Grid */}
       <div style={{
         maxWidth: 960,
         margin: '0 auto',
@@ -126,7 +128,7 @@ export default function GiftFinderPage() {
         gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
         gap: 20,
       }}>
-        {FD_PRODUCTS.map((product) => (
+        {PRODUCTS.map((product) => (
           <Link
             key={product.slug}
             href={`/p/${product.slug}`}
@@ -140,6 +142,7 @@ export default function GiftFinderPage() {
               padding: '24px 20px',
               textDecoration: 'none',
               color: 'inherit',
+              cursor: 'pointer',
             }}
           >
             <div style={{
@@ -193,15 +196,14 @@ export default function GiftFinderPage() {
         ))}
       </div>
 
-      {/* WA CTA */}
       <div style={{
         maxWidth: 560,
         margin: '48px auto 0',
         padding: '0 24px',
         textAlign: 'center',
       }}>
-        <p style={{ fontSize: 16, color: '#d1d5db', margin: '0 0 16px', lineHeight: 1.6 }}>
-          Want a personalized recommendation? Our AI concierge is on WhatsApp — tell us who you&apos;re shopping for and get 3 picks in 60 seconds.
+        <p style={{ fontSize: 15, color: '#d1d5db', margin: '0 0 16px', lineHeight: 1.6 }}>
+          Want a personalized pick? Tell our AI who you&apos;re shopping for — get 3 curated ideas in 60 seconds, free.
         </p>
         <a
           href="https://wa.me/15014438478"
@@ -220,7 +222,6 @@ export default function GiftFinderPage() {
         </a>
       </div>
 
-      {/* Trust footer */}
       <div style={{
         maxWidth: 720,
         margin: '32px auto 0',
