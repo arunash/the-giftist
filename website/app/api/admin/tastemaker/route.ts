@@ -78,6 +78,33 @@ export async function POST(req: NextRequest) {
         })
         return NextResponse.json({ error: 'Missing image or url — cannot approve' }, { status: 400 })
       }
+      // Guard: target URL must point at a real product page, not a retailer
+      // homepage. Homepages get no affiliate commission.
+      try {
+        const parsed = new URL(gift.url)
+        const path = parsed.pathname.replace(/\/+$/, '')
+        if (!path || path === '') {
+          await prisma.tastemakerGift.update({
+            where: { id },
+            data: {
+              reviewStatus: 'rejected',
+              reviewComment: 'Cannot approve: URL is a retailer homepage',
+              reviewedAt: new Date(),
+            },
+          })
+          return NextResponse.json({ error: 'URL is a retailer homepage — cannot approve' }, { status: 400 })
+        }
+      } catch {
+        await prisma.tastemakerGift.update({
+          where: { id },
+          data: {
+            reviewStatus: 'rejected',
+            reviewComment: 'Cannot approve: invalid URL',
+            reviewedAt: new Date(),
+          },
+        })
+        return NextResponse.json({ error: 'Invalid URL — cannot approve' }, { status: 400 })
+      }
     }
     await prisma.tastemakerGift.update({
       where: { id },
