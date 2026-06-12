@@ -106,17 +106,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Sample SAMPLE_SIZE random products with /dp/ASIN URLs (the only ones
-  // that can be wrong from scraping; search URLs are always valid)
+  // Sample SAMPLE_SIZE random Amazon /dp/ products. The domain field on
+  // TastemakerGift isn't always populated, so match on URL contents instead.
   const total = await prisma.tastemakerGift.count({
-    where: { reviewStatus: 'approved', domain: 'www.amazon.com', url: { contains: '/dp/' } },
+    where: { reviewStatus: 'approved', url: { contains: 'amazon.com/dp/' } },
   })
   if (total === 0) return NextResponse.json({ checked: 0, message: 'no PDP products to check' })
 
-  // Random offsets — Postgres ORDER BY RANDOM() is fine at this size
   const products = await prisma.$queryRaw<{ id: string; name: string; url: string }[]>`
     SELECT id, name, url FROM "TastemakerGift"
-    WHERE "reviewStatus" = 'approved' AND domain = 'www.amazon.com' AND url LIKE '%/dp/%'
+    WHERE "reviewStatus" = 'approved' AND url LIKE '%amazon.com/dp/%'
     ORDER BY RANDOM() LIMIT ${SAMPLE_SIZE}
   `
 
