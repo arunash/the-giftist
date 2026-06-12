@@ -51,14 +51,24 @@ export function ShopHero({
           Hand-picked by our AI concierge. Click any card to see it on the
           retailer&apos;s site — no signup, no quiz, no app.
         </p>
-        <a
-          href="#catalog"
-          data-cta="hero-browse-fd"
-          onClick={() => fireGtag("hero_browse_click", { label: "hero-browse-fd" })}
-          className="inline-flex items-center gap-2 px-10 py-4 rounded-full text-white font-semibold text-lg shadow-lg bg-amber-600 hover:bg-amber-700 transition"
-        >
-          Browse top gifts ↓
-        </a>
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <a
+            href="#catalog"
+            data-cta="hero-browse-fd"
+            onClick={() => fireGtag("hero_browse_click", { label: "hero-browse-fd" })}
+            className="inline-flex items-center gap-2 px-10 py-4 rounded-full text-white font-semibold text-lg shadow-lg bg-amber-600 hover:bg-amber-700 transition"
+          >
+            Browse top gifts ↓
+          </a>
+          <a
+            href="/quiz"
+            data-cta="hero-quiz-fd"
+            onClick={() => fireGtag("hero_quiz_click", { label: "hero-quiz-fd" })}
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-amber-700 font-semibold text-base bg-white border-2 border-amber-200 hover:bg-amber-50 transition"
+          >
+            Take 30s quiz →
+          </a>
+        </div>
         <p className="text-xs text-gray-500 mt-4">
           Order by June 17 to arrive by Father&apos;s Day
         </p>
