@@ -89,13 +89,16 @@ async function fetchGifts(variant: Variant, limit = 60) {
     rowsRanked.map(async (r) => {
       let slug: string | undefined;
       try {
-        slug = await createTrackedLink({
+        // createTrackedLink returns a full URL "https://giftist.ai/p/<slug>"
+        // — pull just the slug out for /go-r/<slug> routing.
+        const trackedUrl = await createTrackedLink({
           productName: r.name,
           targetUrl: r.url ?? "",
           price: r.price ?? null,
           priceValue: r.priceValue ?? null,
           image: r.image ?? null,
         });
+        slug = trackedUrl.split("/p/")[1];
       } catch {
         // bad URL or dedup race — fall back to raw target
         slug = undefined;
