@@ -4,6 +4,7 @@ import { findProductImage } from '@/lib/product-image'
 import { extractProductFromUrl } from '@/lib/extract'
 import { aiImageFallback } from '@/lib/ai-image-fallback'
 import { scrapeAmazonPrice } from '@/lib/scrape-amazon-price'
+import { isBotUserAgent } from '@/lib/is-bot'
 
 export async function GET(
   request: NextRequest,
@@ -26,21 +27,25 @@ export async function GET(
       domain = new URL(product.targetUrl).hostname.replace(/^www\./, '')
     } catch {}
 
-    // Track page view (fire-and-forget) — separate from retailer clicks
-    prisma.productClick.update({
-      where: { slug },
-      data: { views: { increment: 1 } },
-    }).catch(() => {})
-    prisma.clickEvent.create({
-      data: {
-        slug,
-        event: 'PAGE_VIEW',
-        channel: request.nextUrl.searchParams.get('from') === 'wa' ? 'WHATSAPP' : 'WEB',
-        userId: null,
-        referrer: request.headers.get('referer') || null,
-        userAgent: request.headers.get('user-agent') || null,
-      },
-    }).catch(() => {})
+    // Track page view (fire-and-forget) — separate from retailer clicks.
+    // Skip bots so the metrics reflect real users only.
+    const isBot = isBotUserAgent(request.headers.get('user-agent'))
+    if (!isBot) {
+      prisma.productClick.update({
+        where: { slug },
+        data: { views: { increment: 1 } },
+      }).catch(() => {})
+      prisma.clickEvent.create({
+        data: {
+          slug,
+          event: 'PAGE_VIEW',
+          channel: request.nextUrl.searchParams.get('from') === 'wa' ? 'WHATSAPP' : 'WEB',
+          userId: null,
+          referrer: request.headers.get('referer') || null,
+          userAgent: request.headers.get('user-agent') || null,
+        },
+      }).catch(() => {})
+    }
 
     let image = product.image
 
