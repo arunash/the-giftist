@@ -73,6 +73,11 @@ const BOT_SUBSTRINGS = [
   // exclusion they would dominate the RETAILER_CLICK count by 70%+.
   'giftistaudit',
   'giftistloop',
+  // Known crawler fingerprints we observed in production:
+  // - iOS 13.2.3 (Oct 2019, abandoned by Apple; lots of bots use this exact
+  //   UA, identical repeats in our logs). Real iPhone users in 2026 are
+  //   on iOS 17 / 18 / 19.
+  'cpu iphone os 13_2_3',
   // SEO crawlers
   'ahrefsbot',
   'semrushbot',
