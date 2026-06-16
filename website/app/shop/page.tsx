@@ -126,12 +126,108 @@ async function fetchGifts(variant: Variant, limit = 60) {
   return enriched;
 }
 
+// Pull the top-clicked products in the last 7 days, joined back to the
+// approved catalog so the cards have full metadata. Used for the
+// "Most clicked this week" strip above the catalog.
+async function fetchTopClickedProducts(variant: Variant, limit = 8) {
+  type Row = {
+    id: string;
+    name: string;
+    price: string | null;
+    priceValue: number | null;
+    image: string | null;
+    url: string | null;
+    domain: string | null;
+    why: string | null;
+    recipientTypes: string[];
+    occasions: string[];
+    interests: string[];
+    priceRange: string;
+    totalScore: number;
+    clicks: number;
+  };
+  // For FD variant, prefer FD-relevant products; otherwise show whatever
+  // is converting catalog-wide.
+  const fdFilter =
+    variant === "fathers-day"
+      ? `AND (
+          'fathers-day' = ANY(tg.occasions) OR
+          'dad' = ANY(tg."recipientTypes") OR
+          'father' = ANY(tg."recipientTypes")
+        )`
+      : "";
+  const rows = await prisma.$queryRawUnsafe<Row[]>(`
+    SELECT tg.id, tg.name, tg.price, tg."priceValue", tg.image, tg.url, tg.domain,
+           tg.why, tg."recipientTypes", tg.occasions, tg.interests, tg."priceRange",
+           tg."totalScore",
+           COALESCE(SUM(ce_count.c), 0)::int AS clicks
+    FROM "TastemakerGift" tg
+    JOIN "ProductClick" pc ON pc."productName" = tg.name
+    JOIN LATERAL (
+      SELECT COUNT(*)::int AS c
+      FROM "ClickEvent" ce
+      WHERE ce.slug = pc.slug
+        AND ce."createdAt" >= NOW() - INTERVAL '7 days'
+        AND ce.event = 'RETAILER_CLICK'
+    ) ce_count ON TRUE
+    WHERE tg."reviewStatus" = 'approved'
+      AND tg.image IS NOT NULL
+      AND tg.url IS NOT NULL
+      ${fdFilter}
+    GROUP BY tg.id
+    HAVING COALESCE(SUM(ce_count.c), 0) > 0
+    ORDER BY clicks DESC, tg."totalScore" DESC NULLS LAST
+    LIMIT ${limit}
+  `);
+
+  const enriched = await Promise.all(
+    rows.map(async (r) => {
+      let slug: string | undefined;
+      try {
+        const trackedUrl = await createTrackedLink({
+          productName: r.name,
+          targetUrl: r.url ?? "",
+          price: r.price ?? null,
+          priceValue: r.priceValue ?? null,
+          image: r.image ?? null,
+        });
+        slug = trackedUrl.split("/p/")[1];
+      } catch {
+        slug = undefined;
+      }
+      return {
+        id: r.id,
+        name: r.name,
+        price: r.price,
+        priceValue: r.priceValue,
+        image: r.image,
+        url: r.url,
+        domain: r.domain,
+        why: r.why,
+        totalScore: r.totalScore,
+        signalCount: 0,
+        sources: {},
+        recipientTypes: r.recipientTypes,
+        occasions: r.occasions,
+        interests: r.interests,
+        priceRange: r.priceRange,
+        trackedSlug: slug,
+        clicks: r.clicks,
+      };
+    })
+  );
+  return enriched;
+}
+
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const variant = pickVariant(searchParams);
   const layout = pickLayout(searchParams);
   const recipientName = searchParams.name;
 
-  const gifts = await fetchGifts(variant);
+  const [gifts, topClicked] = await Promise.all([
+    fetchGifts(variant),
+    fetchTopClickedProducts(variant, 8),
+  ]);
 
   return (
     <main>
@@ -155,7 +251,22 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       {/* Curated top picks above the fold — biggest click driver per the data */}
       <TopPicksStrip />
 
-      {/* Catalog — the actual 573-product grid that has been orphaned. */}
+      {/* Most clicked this week — data-driven social proof. Server-rendered
+          from real ClickEvent counts joined to the approved catalog. Only
+          renders when there are at least 4 products with traffic this week. */}
+      {topClicked.length >= 4 && (
+        <section className="max-w-6xl mx-auto px-4 pt-4 pb-2">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              🔥 Most clicked this week
+            </h2>
+            <span className="text-xs text-gray-400">based on real Giftist traffic</span>
+          </div>
+          <ShowcaseLayout layout="grid" gifts={topClicked as any} />
+        </section>
+      )}
+
+      {/* Catalog */}
       <section id="catalog" className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
           {variant === "fathers-day"

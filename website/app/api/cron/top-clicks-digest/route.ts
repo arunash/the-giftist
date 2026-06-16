@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     LIMIT 10
   `
 
-  const total = Number(rows.reduce((s, r) => s + Number(r.clicks), 0n))
+  const total = rows.reduce((s, r) => s + Number(r.clicks), 0)
 
   if (total === 0) {
     return NextResponse.json({ sent: false, reason: 'no clicks in last hour' })
