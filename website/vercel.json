@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/daily-gift-report",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/awin-conversions",
+      "schedule": "0 7 * * *"
     }
   ]
 }

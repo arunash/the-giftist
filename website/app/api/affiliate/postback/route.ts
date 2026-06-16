@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { recordConversion } from '@/lib/affiliate-conversion'
 
 /**
  * Unified affiliate conversion postback (server-to-server).
@@ -50,49 +50,20 @@ async function handle(request: NextRequest) {
     return new NextResponse('missing network or orderId', { status: 400 })
   }
 
-  const clickId = sp.get('clickId') || sp.get('subid') || null
-  const commission = num(sp.get('commission')) ?? 0
-  const saleAmount = num(sp.get('sale'))
-  const currency = (sp.get('currency') || 'USD').toUpperCase().slice(0, 8)
-  // Normalize status across networks to pending|approved|declined.
-  const rawStatus = (sp.get('status') || 'pending').toLowerCase()
-  const status =
-    /approv|confirm|paid|valid|complete/.test(rawStatus) ? 'approved' :
-    /declin|reject|cancel|void|invalid|return/.test(rawStatus) ? 'declined' :
-    'pending'
-
-  // Resolve the click → slug + campaign for per-product / per-campaign EPC.
-  let slug: string | null = null
-  let utmCampaign: string | null = null
-  let utmSource: string | null = null
-  if (clickId) {
-    const click = await prisma.clickEvent
-      .findUnique({ where: { id: clickId }, select: { slug: true, utmCampaign: true, utmSource: true } })
-      .catch(() => null)
-    if (click) {
-      slug = click.slug
-      utmCampaign = click.utmCampaign
-      utmSource = click.utmSource
-    }
-  }
-
   const rawPayload = JSON.stringify(Object.fromEntries(
     Array.from(sp.entries()).filter(([k]) => k !== 'key') // never persist the secret
   ))
 
   try {
-    await prisma.affiliateConversion.upsert({
-      where: { network_orderId: { network, orderId } },
-      create: { network, orderId, clickId, commission, saleAmount, currency, status, slug, utmCampaign, utmSource, rawPayload },
-      // On a repeat/status-update postback, refresh the mutable money + status
-      // fields. Keep the original click resolution if this one couldn't resolve.
-      update: {
-        commission, saleAmount, currency, status, rawPayload,
-        ...(clickId ? { clickId } : {}),
-        ...(slug ? { slug } : {}),
-        ...(utmCampaign ? { utmCampaign } : {}),
-        ...(utmSource ? { utmSource } : {}),
-      },
+    await recordConversion({
+      network,
+      orderId,
+      clickId: sp.get('clickId') || sp.get('subid') || null,
+      commission: num(sp.get('commission')) ?? 0,
+      saleAmount: num(sp.get('sale')),
+      currency: sp.get('currency'),
+      status: sp.get('status'),
+      rawPayload,
     })
   } catch (err) {
     console.error('affiliate postback upsert failed:', err)
