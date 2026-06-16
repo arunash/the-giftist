@@ -13,6 +13,7 @@ const tabs = [
   { href: '/admin/groups', label: 'Groups' },
   { href: '/admin/campaigns', label: 'Campaigns' },
   { href: '/admin/ads', label: 'Ads' },
+  { href: '/admin/epc', label: 'EPC' },
   { href: '/admin/catalog', label: 'Catalog' },
   { href: '/admin/tastemaker', label: 'Tastemaker' },
 ]

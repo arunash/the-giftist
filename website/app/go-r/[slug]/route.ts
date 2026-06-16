@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { prisma } from '@/lib/db'
 import { applyAffiliateTag, rewriteAmazonForCountry } from '@/lib/affiliate'
 import { sanitizeUrl } from '@/lib/product-link'
@@ -31,7 +32,14 @@ export async function GET(
     const userAgent = request.headers.get('user-agent') || null
     const isBot = isBotUserAgent(userAgent)
 
+    // Stable click id stamped into the affiliate link as the network sub-id
+    // AND used as the ClickEvent primary key, so a conversion postback echoing
+    // this id can be joined back to the click. Only generated for real users —
+    // bots never get a persisted ClickEvent (and never convert).
+    let clickId: string | null = null
+
     if (!isBot) {
+      clickId = randomUUID()
       const referrer = request.headers.get('referer') || null
       // Pull utm + sessionId off the query string OR fall back to the referer.
       // Client wraps retailer links to append these so per-campaign attribution works.
@@ -56,6 +64,7 @@ export async function GET(
       }).catch(() => {})
       prisma.clickEvent.create({
         data: {
+          id: clickId,
           slug,
           event: 'RETAILER_CLICK',
           channel: referrer?.includes('from=wa') ? 'WHATSAPP' : 'WEB',
@@ -73,7 +82,7 @@ export async function GET(
     // Falls back to no-op for unknown countries / non-Amazon URLs / dev.
     const country = request.headers.get('x-vercel-ip-country')
     const localizedUrl = rewriteAmazonForCountry(cleanUrl, country)
-    const affiliateUrl = applyAffiliateTag(localizedUrl)
+    const affiliateUrl = applyAffiliateTag(localizedUrl, clickId)
 
     return new Response(null, {
       status: 302,

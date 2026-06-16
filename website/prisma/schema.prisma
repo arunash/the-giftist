@@ -451,6 +451,35 @@ model PageView {
   @@index([utmSource])
 }
 
+// Inbound affiliate conversions (the EPC numerator). Networks fire a
+// server-to-server postback to /api/affiliate/postback when a sale is
+// confirmed; we echo our click id into each link as the network's sub-id so
+// the postback can be joined back to the originating ClickEvent (clickId ==
+// ClickEvent.id). Amazon Associates does NOT postback — those rows arrive via
+// a manual/report import and have a null clickId.
+model AffiliateConversion {
+  id          String   @id @default(cuid())
+  clickId     String?  // our ClickEvent.id, echoed back via the network sub-id (null for Amazon report imports)
+  network     String   // amazon, awin, impact, rakuten, partnerize, shareasale, walmart
+  orderId     String   // network's transaction/order id — dedup key
+  saleAmount  Float?   // order/basket value reported by the network
+  commission  Float    @default(0) // our commission in `currency` — the EPC numerator
+  currency    String   @default("USD")
+  status      String   @default("pending") // pending, approved, declined
+  slug        String?  // product slug resolved from the click (for per-product EPC)
+  utmCampaign String?  // campaign resolved from the click (for per-campaign EPC)
+  utmSource   String?
+  rawPayload  String?  // full postback query/payload, for audit + reprocessing
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([network, orderId]) // idempotent: repeated postbacks for one order update, never duplicate
+  @@index([clickId])
+  @@index([createdAt])
+  @@index([network])
+  @@index([utmCampaign])
+}
+
 model ProductUrlCache {
   id          String   @id @default(cuid())
   productName String   // normalized lowercase name used as lookup key

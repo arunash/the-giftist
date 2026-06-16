@@ -13,7 +13,19 @@ const CRATEJOY_IMPACT_ID = process.env.NEXT_PUBLIC_CRATEJOY_IMPACT_ID
 const FOOD52_PARTNERIZE_ID = process.env.NEXT_PUBLIC_FOOD52_PARTNERIZE_ID
 const NORDSTROM_RAKUTEN_ID = process.env.NEXT_PUBLIC_NORDSTROM_RAKUTEN_ID
 
-export function applyAffiliateTag(url: string): string {
+// Each network carries our click id back to us in a postback via its own
+// "sub-id" parameter. We stamp `clickId` (== ClickEvent.id) into that param so
+// /api/affiliate/postback can join a confirmed sale to the click that produced
+// it. The param name differs per network — this is the authoritative mapping.
+//   amazon      -> ascsubtag   (reports only; no real-time postback)
+//   awin        -> clickref
+//   impact      -> subId1
+//   shareasale  -> afftrack
+//   partnerize  -> pubref (path segment)
+//   rakuten     -> u1
+// `cid` is the safe, encoded click id (or '' when none / for bots).
+export function applyAffiliateTag(url: string, clickId?: string | null): string {
+  const cid = clickId ? encodeURIComponent(clickId) : ''
   try {
     const parsed = new URL(url)
     const hostname = parsed.hostname.toLowerCase()
@@ -23,6 +35,9 @@ export function applyAffiliateTag(url: string): string {
     if (hostname === 'www.amazon.com' || hostname === 'amazon.com' || hostname === 'amzn.to') {
       if (AMAZON_TAG) {
         parsed.searchParams.set('tag', AMAZON_TAG)
+        // ascsubtag surfaces in Associates "Tracking ID" / link-type reports.
+        // Amazon does not postback, so this is attribution-via-report only.
+        if (cid) parsed.searchParams.set('ascsubtag', cid)
         return parsed.toString()
       }
     }
@@ -30,7 +45,8 @@ export function applyAffiliateTag(url: string): string {
     // Etsy (Awin — merchant 6220)
     if (hostname.includes('etsy.com')) {
       if (AWIN_PUBLISHER_ID) {
-        return `https://www.awin1.com/cread.php?awinmid=6220&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`
+        const ref = cid ? `&clickref=${cid}` : ''
+        return `https://www.awin1.com/cread.php?awinmid=6220&awinaffid=${AWIN_PUBLISHER_ID}${ref}&ued=${encodeURIComponent(url)}`
       }
     }
 
@@ -38,6 +54,7 @@ export function applyAffiliateTag(url: string): string {
     if (hostname.includes('walmart.com')) {
       if (WALMART_ID) {
         parsed.searchParams.set('affiliateCampaignId', WALMART_ID)
+        if (cid) parsed.searchParams.set('sourceid', cid)
         return parsed.toString()
       }
     }
@@ -45,49 +62,56 @@ export function applyAffiliateTag(url: string): string {
     // Target (Impact)
     if (hostname.includes('target.com')) {
       if (TARGET_ID) {
-        return `https://goto.target.com/c/${TARGET_ID}/2?u=${encodeURIComponent(url)}`
+        const ref = cid ? `&subId1=${cid}` : ''
+        return `https://goto.target.com/c/${TARGET_ID}/2?u=${encodeURIComponent(url)}${ref}`
       }
     }
 
     // Uncommon Goods (Impact)
     if (hostname.includes('uncommongoods.com')) {
       if (UNCOMMON_GOODS_IMPACT_ID) {
-        return `https://uncommongoods.sjv.io/c/${UNCOMMON_GOODS_IMPACT_ID}/2?u=${encodeURIComponent(url)}`
+        const ref = cid ? `&subId1=${cid}` : ''
+        return `https://uncommongoods.sjv.io/c/${UNCOMMON_GOODS_IMPACT_ID}/2?u=${encodeURIComponent(url)}${ref}`
       }
     }
 
     // Bookshop.org (Awin — merchant 92005)
     if (hostname.includes('bookshop.org')) {
       if (AWIN_PUBLISHER_ID) {
-        return `https://www.awin1.com/cread.php?awinmid=92005&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`
+        const ref = cid ? `&clickref=${cid}` : ''
+        return `https://www.awin1.com/cread.php?awinmid=92005&awinaffid=${AWIN_PUBLISHER_ID}${ref}&ued=${encodeURIComponent(url)}`
       }
     }
 
     // MasterClass (ShareASale / Awin)
     if (hostname.includes('masterclass.com')) {
       if (MASTERCLASS_SHAREASALE_ID) {
-        return `https://shareasale.com/r.cfm?b=999&u=${MASTERCLASS_SHAREASALE_ID}&m=62509&urllink=${encodeURIComponent(url)}`
+        const ref = cid ? `&afftrack=${cid}` : ''
+        return `https://shareasale.com/r.cfm?b=999&u=${MASTERCLASS_SHAREASALE_ID}&m=62509${ref}&urllink=${encodeURIComponent(url)}`
       }
     }
 
     // Cratejoy (Impact)
     if (hostname.includes('cratejoy.com')) {
       if (CRATEJOY_IMPACT_ID) {
-        return `https://cratejoy.sjv.io/c/${CRATEJOY_IMPACT_ID}/2?u=${encodeURIComponent(url)}`
+        const ref = cid ? `&subId1=${cid}` : ''
+        return `https://cratejoy.sjv.io/c/${CRATEJOY_IMPACT_ID}/2?u=${encodeURIComponent(url)}${ref}`
       }
     }
 
-    // Food52 (Partnerize)
+    // Food52 (Partnerize) — pubref is a path segment, not a query param
     if (hostname.includes('food52.com')) {
       if (FOOD52_PARTNERIZE_ID) {
-        return `https://food52.prf.hn/click/camref:${FOOD52_PARTNERIZE_ID}/destination:${encodeURIComponent(url)}`
+        const ref = cid ? `/pubref:${cid}` : ''
+        return `https://food52.prf.hn/click/camref:${FOOD52_PARTNERIZE_ID}${ref}/destination:${encodeURIComponent(url)}`
       }
     }
 
     // Nordstrom (Rakuten)
     if (hostname.includes('nordstrom.com')) {
       if (NORDSTROM_RAKUTEN_ID) {
-        return `https://click.linksynergy.com/deeplink?id=${NORDSTROM_RAKUTEN_ID}&mid=1237&murl=${encodeURIComponent(url)}`
+        const ref = cid ? `&u1=${cid}` : ''
+        return `https://click.linksynergy.com/deeplink?id=${NORDSTROM_RAKUTEN_ID}&mid=1237${ref}&murl=${encodeURIComponent(url)}`
       }
     }
   } catch {
