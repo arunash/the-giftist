@@ -156,6 +156,28 @@ async function fetchTopClickedProducts(variant: Variant, limit = 8) {
           'father' = ANY(tg."recipientTypes")
         )`
       : "";
+  // Image-host allowlist: only retailer CDNs we know render reliably.
+  // Bing image-search thumbnails (mm.bing.net) hot-link-protect and 403.
+  // Random retailer-blog hosts are unreliable. This keeps the "Most clicked"
+  // strip looking clean.
+  const RELIABLE_HOSTS = [
+    'm.media-amazon.com',
+    'images-amazon.com',
+    'images-na.ssl-images-amazon.com',
+    'i.etsystatic.com',
+    'images.uncommongoods.com',
+    'image.hm.com',
+    'image-cdn.hm.com',
+    'i5.walmartimages.com',
+    'pisces.bbystatic.com',
+    'n.nordstrommedia.com',
+    'target.scene7.com',
+    'cdn.shopify.com',
+    'pictures.abebooks.com',
+    'images.bookshop.org',
+  ];
+  const hostFilter = RELIABLE_HOSTS.map(h => `tg.image LIKE 'https://${h}/%' OR tg.image LIKE 'http://${h}/%'`).join(' OR ');
+
   const rows = await prisma.$queryRawUnsafe<Row[]>(`
     SELECT tg.id, tg.name, tg.price, tg."priceValue", tg.image, tg.url, tg.domain,
            tg.why, tg."recipientTypes", tg.occasions, tg.interests, tg."priceRange",
@@ -173,6 +195,7 @@ async function fetchTopClickedProducts(variant: Variant, limit = 8) {
     WHERE tg."reviewStatus" = 'approved'
       AND tg.image IS NOT NULL
       AND tg.url IS NOT NULL
+      AND (${hostFilter})
       ${fdFilter}
     GROUP BY tg.id
     HAVING COALESCE(SUM(ce_count.c), 0) > 0
