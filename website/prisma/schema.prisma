@@ -735,6 +735,18 @@ model TastemakerGift {
   totalScore        Float     @default(0)
   signalCount       Int       @default(0)
 
+  // Commerce signals — OWNED & WRITTEN by the external Tastemaker engine
+  // (/Users/arunash/tastemaker/core/db.py), NOT by this app. That engine adds
+  // them via raw `ALTER TABLE ADD COLUMN IF NOT EXISTS` and recomputes them
+  // daily. Declared here ONLY so `prisma db push` recognizes them as existing
+  // columns and does not drop them (they hold real prod data). Do not read or
+  // write them from the website — they are the engine's.
+  // Nullable to exactly mirror the engine's DDL (`INT/FLOAT DEFAULT 0`, no NOT
+  // NULL) so `db push` stays a no-op on these.
+  purchaseSignals   Int?      @default(0)
+  redemptionSignals Int?      @default(0)
+  commerceScore     Float?    @default(0)
+
   // Provenance
   sources           Json      @default("{}")
   affiliateReady    Boolean   @default(false)
@@ -752,6 +764,14 @@ model TastemakerGift {
   @@index([totalScore(sort: Desc)])
   @@index([reviewStatus])
   @@index([priceRange])
+  // map: matches the engine's existing `idx_gift_commerce` so Prisma adopts it
+  // instead of creating a duplicate index on the same column.
+  @@index([commerceScore(sort: Desc)], map: "idx_gift_commerce")
+  // GIN tag indexes — also owned by the Tastemaker engine. Declared with
+  // matching map names so `db push` adopts them instead of dropping them.
+  @@index([recipientTypes(ops: ArrayOps)], type: Gin, map: "idx_gift_recipients")
+  @@index([occasions(ops: ArrayOps)], type: Gin, map: "idx_gift_occasions")
+  @@index([interests(ops: ArrayOps)], type: Gin, map: "idx_gift_interests")
 }
 
 // QuizSession — tracks an in-progress gift-finder quiz across multiple
