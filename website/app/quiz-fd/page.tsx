@@ -6,13 +6,11 @@ const FD_PRODUCTS = [
   { slug: 'GmY_aTcb', name: 'SKG Neck Massager', price: '$129', emoji: '💆', badge: '🔥 #3 this week' },
   { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers', price: '$28', emoji: '🗂️', badge: null },
   { slug: 'LZl79hpy', name: 'Dad Joke QR Mug', price: '$19', emoji: '☕', badge: null },
-  { slug: 'ezK5Cv9s', name: 'Vitamix Explorian Blender', price: '$349', emoji: '🥤', badge: null },
-  { slug: '3_1mt-R4', name: 'Theragun Mini', price: '$149', emoji: '💪', badge: null },
   { slug: '1rmUI4g4', name: 'Noise-Canceling Headphones', price: '$249', emoji: '🎧', badge: null },
 ];
 
 export default function QuizFdPage() {
-  const daysToFD = 3;
+  const daysToFD = 2;
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
