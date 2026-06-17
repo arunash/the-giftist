@@ -16,6 +16,7 @@ export default function QuizFdPage() {
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
+
       {/* Urgency Banner */}
       <div style={{
         background: '#dc2626',
@@ -27,12 +28,12 @@ export default function QuizFdPage() {
         fontSize: 15,
         marginBottom: 16,
       }}>
-        🎁 Father&#39;s Day is Sunday — {daysToFD} days away · Expedited shipping still available
+        🎁 Father&apos;s Day is Sunday — {daysToFD} days away · Expedited shipping still available
       </div>
 
       {/* Hero */}
       <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
-        Gifts dads actually want this Father&#39;s Day
+        Gifts dads actually want this Father&apos;s Day
       </h1>
       <p style={{ color: '#555', margin: '0 0 16px', fontSize: 15 }}>
         Curated picks shipping in time. Click any gift to shop now.
@@ -118,9 +119,10 @@ export default function QuizFdPage() {
         paddingTop: 20,
       }}>
         <div style={{ marginBottom: 6 }}>✅ Curated from Wirecutter, Strategist, Reddit top picks</div>
-        <div style={{ marginBottom: 6 }}>🚚 Ships in time for Father&#39;s Day with expedited shipping</div>
+        <div style={{ marginBottom: 6 }}>🚚 Ships in time for Father&apos;s Day with expedited shipping</div>
         <div>Powered by <strong>Giftist</strong> — AI gift concierge</div>
       </div>
+
     </main>
   );
 }
