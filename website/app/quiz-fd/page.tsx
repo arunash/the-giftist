@@ -1,18 +1,18 @@
 import Link from 'next/link';
 
 const FD_PRODUCTS = [
-  { slug: '1rmUI4g4', name: 'Noise-Canceling Headphones', price: '$249', emoji: '🎧', badge: '🔥 #1 this week' },
+  { slug: 'nKB-SPAQ', name: 'Anker Power Bank 200W', price: '$89', emoji: '🔋', badge: '🔥 #1 this week' },
   { slug: '0SlUlvJE', name: 'Victorinox Multi-Tool', price: '$95', emoji: '🔧', badge: '🔥 #2 this week' },
   { slug: 'GmY_aTcb', name: 'SKG Neck Massager', price: '$129', emoji: '💆', badge: '🔥 #3 this week' },
   { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers', price: '$28', emoji: '🗂️', badge: null },
   { slug: 'LZl79hpy', name: 'Dad Joke QR Mug', price: '$19', emoji: '☕', badge: null },
-  { slug: 'nKB-SPAQ', name: 'Anker Power Bank 200W', price: '$89', emoji: '🔋', badge: null },
   { slug: 'ezK5Cv9s', name: 'Vitamix Explorian Blender', price: '$349', emoji: '🥤', badge: null },
   { slug: '3_1mt-R4', name: 'Theragun Mini', price: '$149', emoji: '💪', badge: null },
+  { slug: '1rmUI4g4', name: 'Noise-Canceling Headphones', price: '$249', emoji: '🎧', badge: null },
 ];
 
 export default function QuizFdPage() {
-  const daysToFD = 4;
+  const daysToFD = 3;
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
@@ -28,7 +28,7 @@ export default function QuizFdPage() {
         fontSize: 15,
         marginBottom: 16,
       }}>
-        🎁 Father&apos;s Day is Sunday — {daysToFD} days away · Expedited shipping still available
+        🎁 Father&apos;s Day is THIS SUNDAY — {daysToFD} days · Order now with expedited shipping
       </div>
 
       {/* Hero */}
