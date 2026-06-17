@@ -17,24 +17,42 @@ export default function QuizFdPage() {
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
       {/* Urgency Banner */}
-      <div style={{ background: '#dc2626', color: '#fff', padding: '10px 16px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
-        🎁 Father's Day is Sunday — {daysToFD} days away · Expedited shipping still available
+      <div style={{
+        background: '#dc2626',
+        color: '#fff',
+        padding: '10px 16px',
+        borderRadius: 8,
+        textAlign: 'center',
+        fontWeight: 700,
+        fontSize: 15,
+        marginBottom: 16,
+      }}>
+        🎁 Father&#39;s Day is Sunday — {daysToFD} days away · Expedited shipping still available
       </div>
 
       {/* Hero */}
       <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
-        Gifts dads actually want this Father's Day
+        Gifts dads actually want this Father&#39;s Day
       </h1>
-      <p style={{ color: '#555', margin: '0 0 20px', fontSize: 15 }}>
+      <p style={{ color: '#555', margin: '0 0 16px', fontSize: 15 }}>
         Curated picks shipping in time. Click any gift to shop now.
       </p>
 
       {/* Social Proof Bar */}
-      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 20 }}>🔥</span>
+      <div style={{
+        background: '#f9fafb',
+        border: '1px solid #e5e7eb',
+        borderRadius: 8,
+        padding: '10px 14px',
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <span style={{ fontSize: 22 }}>🔥</span>
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>Most clicked this week</div>
-          <div style={{ fontSize: 13, color: '#555' }}>Real-time picks from thousands of gift shoppers</div>
+          <div style={{ fontSize: 12, color: '#666' }}>Top picks from thousands of gift shoppers right now</div>
         </div>
       </div>
 
@@ -52,21 +70,38 @@ export default function QuizFdPage() {
               padding: '14px 12px',
               background: p.badge ? '#fff5f5' : '#fff',
               cursor: 'pointer',
-              transition: 'box-shadow 0.15s',
               display: 'flex',
               flexDirection: 'column',
               gap: 6,
-              minHeight: 110,
+              minHeight: 120,
             }}>
               {p.badge && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', alignSelf: 'flex-start' }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#dc2626',
+                  background: '#fee2e2',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  alignSelf: 'flex-start',
+                  marginBottom: 2,
+                }}>
                   {p.badge}
                 </span>
               )}
-              <div style={{ fontSize: 28 }}>{p.emoji}</div>
-              <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{p.name}</div>
+              <div style={{ fontSize: 26 }}>{p.emoji}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>{p.name}</div>
               <div style={{ color: '#16a34a', fontWeight: 700, fontSize: 14 }}>{p.price}</div>
-              <div style={{ marginTop: 'auto', background: '#111', color: '#fff', borderRadius: 6, padding: '6px 0', textAlign: 'center', fontSize: 13, fontWeight: 600 }}>
+              <div style={{
+                marginTop: 'auto',
+                background: '#111',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '6px 0',
+                textAlign: 'center',
+                fontSize: 13,
+                fontWeight: 600,
+              }}>
                 Shop Now →
               </div>
             </div>
@@ -75,9 +110,15 @@ export default function QuizFdPage() {
       </div>
 
       {/* Trust Footer */}
-      <div style={{ textAlign: 'center', color: '#888', fontSize: 13, borderTop: '1px solid #f0f0f0', paddingTop: 20 }}>
+      <div style={{
+        textAlign: 'center',
+        color: '#888',
+        fontSize: 13,
+        borderTop: '1px solid #f0f0f0',
+        paddingTop: 20,
+      }}>
         <div style={{ marginBottom: 6 }}>✅ Curated from Wirecutter, Strategist, Reddit top picks</div>
-        <div style={{ marginBottom: 6 }}>🚚 Ships in time for Father's Day with expedited shipping</div>
+        <div style={{ marginBottom: 6 }}>🚚 Ships in time for Father&#39;s Day with expedited shipping</div>
         <div>Powered by <strong>Giftist</strong> — AI gift concierge</div>
       </div>
     </main>
