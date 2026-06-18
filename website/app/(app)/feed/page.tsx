@@ -114,6 +114,7 @@ export default function FeedPage() {
   const [walletBalance, setWalletBalance] = useState(0)
   const [useDummy, setUseDummy] = useState(false)
   const [events, setEvents] = useState<{ id: string; name: string; type: string; date: string; shareUrl: string | null; itemCount: number; fundedAmount: number; itemImages: string[] }[]>([])
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([])
   const observerRef = useRef<HTMLDivElement>(null)
   const [userName, setUserName] = useState<string>('')
 
@@ -205,6 +206,14 @@ export default function FeedPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.name) setUserName(data.name)
+      })
+      .catch(() => {})
+    fetch('/api/lists')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setLists(data.map((l: any) => ({ id: l.id, name: l.name })))
+        }
       })
       .catch(() => {})
   }, [])
@@ -377,6 +386,8 @@ export default function FeedPage() {
                         onFund={setFundingItem}
                         onRemove={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
                         events={events}
+                        lists={lists}
+                        onListCreated={(list) => setLists((prev) => [...prev, list])}
                       />
                     ))}
                   </div>

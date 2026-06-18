@@ -2,11 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Gift, ExternalLink, Share2, Check, Trash2, Calendar, Heart } from 'lucide-react'
+import { Gift, ExternalLink, Share2, Check, Trash2, Calendar, Heart, ListPlus } from 'lucide-react'
 import { formatPrice, getProgressPercentage, shareOrCopy, giftistShareText } from '@/lib/utils'
 import { applyAffiliateTag } from '@/lib/affiliate'
+import { SendGiftModal } from '@/components/feed/send-gift-modal'
 
 interface EventOption {
+  id: string
+  name: string
+}
+
+interface ListOption {
   id: string
   name: string
 }
@@ -34,12 +40,15 @@ interface ItemCardProps {
   ownerName?: string
   onFund?: (item: any) => void
   onRemove?: (id: string) => void
+  onRemoveFromList?: (id: string) => void
   events?: EventOption[]
+  lists?: ListOption[]
+  onListCreated?: (list: ListOption) => void
 }
 
 const WHATSAPP_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_PHONE_NUMBER || ''
 
-export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCardProps) {
+export function ItemCard({ item, ownerName, onFund, onRemove, onRemoveFromList, events, lists, onListCreated }: ItemCardProps) {
   const goal = item.goalAmount || item.priceValue || 0
   const progress = getProgressPercentage(item.fundedAmount, goal)
   const isFullyFunded = progress >= 100 || item.isPurchased
@@ -47,6 +56,9 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
   const [copied, setCopied] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState('')
   const [imgBroken, setImgBroken] = useState(false)
+  const [showSend, setShowSend] = useState(false)
+  const [savedToList, setSavedToList] = useState(false)
+  const [savingList, setSavingList] = useState(false)
 
   const itemShareLink = `https://giftist.ai/items/${item.id}`
 
@@ -86,6 +98,68 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
         body: JSON.stringify({ eventId: eventId || null }),
       })
     } catch {}
+  }
+
+  const handleSendClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowSend(true)
+  }
+
+  const handleRemoveFromList = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onRemoveFromList?.(item.id)
+  }
+
+  const addItemToList = async (listId: string) => {
+    setSavingList(true)
+    try {
+      const res = await fetch(`/api/lists/${listId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id }),
+      })
+      if (res.ok) {
+        setSavedToList(true)
+        setTimeout(() => setSavedToList(false), 2000)
+      }
+    } catch {}
+    finally {
+      setSavingList(false)
+    }
+  }
+
+  const handleListChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const value = e.target.value
+    e.target.value = '' // act as an action menu, not a persistent selection
+    if (!value) return
+
+    if (value === '__new__') {
+      const name = window.prompt('Name your new list')
+      if (!name?.trim()) return
+      setSavingList(true)
+      try {
+        const res = await fetch('/api/lists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim() }),
+        })
+        if (res.ok) {
+          const list = await res.json()
+          onListCreated?.({ id: list.id, name: list.name })
+          await addItemToList(list.id)
+        }
+      } catch {}
+      finally {
+        setSavingList(false)
+      }
+      return
+    }
+
+    await addItemToList(value)
   }
 
   const itemEvent = item.eventItems?.[0]?.event
@@ -146,6 +220,13 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
                 {copied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
                 {copied ? 'Shared!' : 'Share'}
               </button>
+              <button
+                onClick={handleSendClick}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs hover:bg-white/30 transition"
+              >
+                <Gift className="h-3 w-3" />
+                Send
+              </button>
               {onRemove && (
                 <button
                   onClick={handleRemove}
@@ -154,6 +235,37 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
                   <Trash2 className="h-3 w-3" />
                 </button>
               )}
+              {onRemoveFromList && (
+                <button
+                  onClick={handleRemoveFromList}
+                  title="Remove from list"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs hover:bg-red-500/50 transition ml-auto"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Save to list */}
+            <div className="mt-2 relative" onClick={(e) => e.preventDefault()}>
+              <ListPlus className="h-3 w-3 text-white/80 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+              <select
+                value=""
+                onChange={handleListChange}
+                onClick={(e) => e.stopPropagation()}
+                disabled={savingList}
+                className="w-full text-xs bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full pl-8 pr-3 py-1.5 outline-none appearance-none cursor-pointer disabled:opacity-60"
+              >
+                <option value="" className="text-gray-900 bg-white">
+                  {savedToList ? '✓ Saved to list' : savingList ? 'Saving…' : 'Save to list…'}
+                </option>
+                {(lists || []).map((l) => (
+                  <option key={l.id} value={l.id} className="text-gray-900 bg-white">
+                    {l.name}
+                  </option>
+                ))}
+                <option value="__new__" className="text-gray-900 bg-white">+ New list…</option>
+              </select>
             </div>
 
             {/* Event dropdown */}
@@ -228,6 +340,19 @@ export function ItemCard({ item, ownerName, onFund, onRemove, events }: ItemCard
           )}
         </div>
       </Link>
+
+      {showSend && (
+        <SendGiftModal
+          item={{
+            id: item.id,
+            name: item.name,
+            priceValue: item.priceValue,
+            url: item.url,
+            image: item.image,
+          }}
+          onClose={() => setShowSend(false)}
+        />
+      )}
     </div>
   )
 }

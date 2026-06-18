@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Sparkles, Send, Lightbulb } from 'lucide-react'
+import { Sparkles, Send, Lightbulb, ListPlus, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const quickSuggestions = [
@@ -10,9 +10,17 @@ const quickSuggestions = [
   'What\'s trending?',
 ]
 
+interface CircleMember {
+  id: string
+  name: string | null
+  relationship: string | null
+}
+
 export function HomeChatBar() {
   const [inputValue, setInputValue] = useState('')
   const [insight, setInsight] = useState<string | null>(null)
+  const [members, setMembers] = useState<CircleMember[]>([])
+  const [creatingFor, setCreatingFor] = useState<string | null>(null)
   const fetched = useRef(false)
   const router = useRouter()
 
@@ -25,7 +33,36 @@ export function HomeChatBar() {
         if (data.suggestion) setInsight(data.suggestion)
       })
       .catch(() => {})
+    fetch('/api/circle')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          // Only members with a name make a sensible "Start a list for X" chip
+          setMembers(data.filter((m: CircleMember) => m.name))
+        }
+      })
+      .catch(() => {})
   }, [])
+
+  const startListFor = async (member: CircleMember) => {
+    if (creatingFor) return
+    setCreatingFor(member.id)
+    try {
+      const res = await fetch('/api/lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `Gifts for ${member.name}` }),
+      })
+      if (res.ok) {
+        const list = await res.json()
+        router.push(`/lists/${list.id}`)
+      } else {
+        setCreatingFor(null)
+      }
+    } catch {
+      setCreatingFor(null)
+    }
+  }
 
   const navigateToChat = (message: string) => {
     router.push(`/chat?q=${encodeURIComponent(message)}`)
@@ -78,6 +115,28 @@ export function HomeChatBar() {
           <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-secondary leading-relaxed line-clamp-2">{insight}</p>
         </button>
+      )}
+
+      {/* Per-persona "start a list" prompts */}
+      {members.length > 0 && (
+        <div className="flex items-center gap-2 mt-3 overflow-x-auto">
+          <span className="text-xs text-muted whitespace-nowrap flex-shrink-0">Start a list for</span>
+          {members.slice(0, 5).map((m) => (
+            <button
+              key={m.id}
+              onClick={() => startListFor(m)}
+              disabled={!!creatingFor}
+              className="inline-flex items-center gap-1 px-3 py-1 text-xs text-gray-700 bg-surface-hover border border-border rounded-full hover:border-primary hover:text-primary transition whitespace-nowrap disabled:opacity-60"
+            >
+              {creatingFor === m.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ListPlus className="h-3 w-3" />
+              )}
+              {m.name}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Quick suggestions */}
