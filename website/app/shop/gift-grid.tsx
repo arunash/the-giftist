@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { Gift, ExternalLink, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { trackClick } from '@/lib/track-click'
 
@@ -386,6 +387,30 @@ function GiftCard({ product: p }: { product: GiftProduct }) {
           </p>
         )}
       </a>
+
+      {/* Dual CTA: "Send a gift" → Giftist send-via-Giftist product page;
+          "Get it" → retailer redirect (RETAILER_CLICK, the affiliate goal). */}
+      <div className="px-3 pb-3 flex gap-2">
+        {p.trackedSlug && (
+          <Link
+            href={`/p/${p.trackedSlug}`}
+            data-cta="card-grid-send"
+            className="flex-1 inline-flex items-center justify-center rounded-full border border-green-600 text-green-700 text-xs font-semibold py-1.5 hover:bg-green-50 transition"
+          >
+            Send a gift
+          </Link>
+        )}
+        <a
+          href={retailerUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          onClick={handleCardClick}
+          data-cta="card-grid-get"
+          className="flex-1 inline-flex items-center justify-center rounded-full bg-green-500 text-white text-xs font-semibold py-1.5 hover:bg-green-600 transition"
+        >
+          Get it →
+        </a>
+      </div>
     </div>
   )
 }
