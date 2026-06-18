@@ -26,6 +26,7 @@ interface ShopPageProps {
     layout?: string;
     category?: string;
     price?: string;
+    segment?: string;
   };
 }
 
@@ -242,14 +243,203 @@ async function fetchTopClickedProducts(variant: Variant, limit = 8) {
   return enriched;
 }
 
+// Shared enrichment: attach a tracked-link slug to each raw gift row so cards
+// route through /go-r/<slug> for attribution. Used by every fetcher below.
+async function enrichRows(rows: any[]) {
+  return Promise.all(
+    rows.map(async (r) => {
+      let slug: string | undefined;
+      try {
+        const trackedUrl = await createTrackedLink({
+          productName: r.name,
+          targetUrl: r.url ?? "",
+          price: r.price ?? null,
+          priceValue: r.priceValue ?? null,
+          image: r.image ?? null,
+        });
+        slug = trackedUrl.split("/p/")[1];
+      } catch {
+        slug = undefined;
+      }
+      return {
+        id: r.id,
+        name: r.name,
+        price: r.price,
+        priceValue: r.priceValue,
+        image: r.image,
+        url: r.url,
+        domain: r.domain,
+        why: r.why,
+        totalScore: r.totalScore,
+        signalCount: 0,
+        sources: {},
+        recipientTypes: r.recipientTypes,
+        occasions: r.occasions,
+        interests: r.interests,
+        priceRange: r.priceRange,
+        trackedSlug: slug,
+      };
+    })
+  );
+}
+
+export interface SegmentShelf {
+  slug: string;
+  title: string;
+  persona: string | null;
+  priceBand: string | null;
+  gifts: Awaited<ReturnType<typeof enrichRows>>;
+}
+
+// Mosaic: the catalog organized BY audience persona. Pulls the top-priority
+// approved segments and each one's rank-ordered gifts (SegmentProduct is the
+// source of truth for per-persona ordering). Returns one shelf per persona.
+async function fetchSegmentShelves(segLimit = 10, perSegment = 12): Promise<SegmentShelf[]> {
+  type ShelfRow = {
+    seg_slug: string; seg_title: string; seg_persona: string | null;
+    seg_price: string | null;
+    id: string; name: string; price: string | null; priceValue: number | null;
+    image: string | null; url: string | null; domain: string | null; why: string | null;
+    recipientTypes: string[]; occasions: string[]; interests: string[];
+    priceRange: string; totalScore: number; rank: number | null;
+  };
+  const rows = await prisma.$queryRawUnsafe<ShelfRow[]>(`
+    WITH seg AS (
+      SELECT id, slug, title, persona, "priceBand", priority
+      FROM "Segment"
+      WHERE status = 'approved'
+      ORDER BY priority DESC, title
+      LIMIT ${segLimit}
+    )
+    SELECT s.slug AS seg_slug, s.title AS seg_title, s.persona AS seg_persona,
+           s."priceBand" AS seg_price,
+           tg.id, tg.name, tg.price, tg."priceValue", tg.image, tg.url, tg.domain,
+           tg.why, tg."recipientTypes", tg.occasions, tg.interests, tg."priceRange",
+           tg."totalScore", sp.rank
+    FROM seg s
+    JOIN "SegmentProduct" sp ON sp."segmentId" = s.id
+    JOIN "TastemakerGift" tg ON tg.id = sp."giftId"
+    WHERE tg."reviewStatus" = 'approved'
+    ORDER BY s.priority DESC, s.title, sp.rank ASC NULLS LAST
+  `);
+
+  // Group by segment, preserving the priority/rank order from SQL.
+  const order: string[] = [];
+  const bySlug = new Map<string, { meta: ShelfRow; rows: ShelfRow[] }>();
+  for (const r of rows) {
+    let bucket = bySlug.get(r.seg_slug);
+    if (!bucket) {
+      bucket = { meta: r, rows: [] };
+      bySlug.set(r.seg_slug, bucket);
+      order.push(r.seg_slug);
+    }
+    if (bucket.rows.length < perSegment) bucket.rows.push(r);
+  }
+
+  const shelves: SegmentShelf[] = [];
+  for (const slug of order) {
+    const b = bySlug.get(slug)!;
+    const gifts = await enrichRows(b.rows);
+    // Only show a shelf with enough fillable cards so the carousel reads well.
+    if (gifts.length >= 4) {
+      shelves.push({
+        slug,
+        title: b.meta.seg_title,
+        persona: b.meta.seg_persona,
+        priceBand: b.meta.seg_price,
+        gifts,
+      });
+    }
+  }
+  return shelves;
+}
+
+// Focus view for /shop?segment=<slug> — one persona's full ranked set.
+async function fetchSingleSegment(slug: string): Promise<SegmentShelf | null> {
+  const rows = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT s.title AS seg_title, s.persona AS seg_persona, s."priceBand" AS seg_price,
+           tg.id, tg.name, tg.price, tg."priceValue", tg.image, tg.url, tg.domain,
+           tg.why, tg."recipientTypes", tg.occasions, tg.interests, tg."priceRange",
+           tg."totalScore", sp.rank
+    FROM "Segment" s
+    JOIN "SegmentProduct" sp ON sp."segmentId" = s.id
+    JOIN "TastemakerGift" tg ON tg.id = sp."giftId"
+    WHERE s.slug = $1 AND s.status = 'approved' AND tg."reviewStatus" = 'approved'
+    ORDER BY sp.rank ASC NULLS LAST
+  `,
+    slug
+  );
+  if (!rows.length) return null;
+  const gifts = await enrichRows(rows);
+  if (!gifts.length) return null;
+  return {
+    slug,
+    title: rows[0].seg_title,
+    persona: rows[0].seg_persona,
+    priceBand: rows[0].seg_price,
+    gifts,
+  };
+}
+
+const PRICE_BAND_LABEL: Record<string, string> = {
+  budget: "Budget-friendly",
+  mid: "Mid-range",
+  premium: "Premium",
+  luxury: "Luxury",
+};
+
+function PriceBandChip({ band }: { band: string | null }) {
+  if (!band) return null;
+  const label = PRICE_BAND_LABEL[band] ?? band;
+  return (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+      {label}
+    </span>
+  );
+}
+
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const variant = pickVariant(searchParams);
   const layout = pickLayout(searchParams);
   const recipientName = searchParams.name;
+  const segmentSlug = (searchParams.segment || "").trim();
 
-  const [gifts, topClicked] = await Promise.all([
+  // Focus view: a single persona's full ranked set.
+  if (segmentSlug) {
+    const shelf = await fetchSingleSegment(segmentSlug);
+    if (shelf) {
+      return (
+        <main>
+          <ShopPageViewTracker path={`/shop?segment=${shelf.slug}`} />
+          <ShopHero variant="default" recipientName={recipientName} />
+          <section className="max-w-6xl mx-auto px-4 py-10">
+            <a href="/shop" className="text-sm text-gray-500 hover:text-gray-800">
+              ← All personas
+            </a>
+            <div className="mt-3 mb-2 flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Gifts for {shelf.title}
+              </h2>
+              <PriceBandChip band={shelf.priceBand} />
+            </div>
+            {shelf.persona && (
+              <p className="text-gray-500 mb-8 max-w-2xl">{shelf.persona}</p>
+            )}
+            <ShowcaseLayout layout={layout} gifts={shelf.gifts as any} />
+          </section>
+        </main>
+      );
+    }
+    // Unknown/empty segment → fall through to the default catalog.
+  }
+
+  // Mosaic persona shelves drive the default catalog; FD variant keeps its
+  // dedicated dad-focused grid. topClicked stays as social proof up top.
+  const [gifts, topClicked, shelves] = await Promise.all([
     fetchGifts(variant),
     fetchTopClickedProducts(variant, 8),
+    variant === "default" ? fetchSegmentShelves() : Promise.resolve([] as SegmentShelf[]),
   ]);
 
   return (
@@ -289,18 +479,59 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </section>
       )}
 
-      {/* Catalog */}
-      <section id="catalog" className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-          {variant === "fathers-day"
-            ? `${gifts.length} Father's Day gifts, ranked`
-            : "Curated gift catalog"}
-        </h2>
-        <p className="text-gray-500 mb-8">
-          Hand-picked by our AI concierge. Click any card to see the gift and outbound to the retailer.
-        </p>
-        <ShowcaseLayout layout={layout} gifts={gifts as any} />
-      </section>
+      {/* Catalog — Mosaic persona shelves for the default view, flat ranked
+          grid for FD (or as a fallback when no segments are populated). */}
+      {variant === "default" && shelves.length > 0 ? (
+        <section id="catalog" className="max-w-6xl mx-auto px-4 py-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            Shop by who you&apos;re shopping for
+          </h2>
+          <p className="text-gray-500 mb-10">
+            Our AI concierge keeps a fresh, ranked gift set for every kind of
+            person. Find your match below — or tap a persona to see the full list.
+          </p>
+          <div className="space-y-12">
+            {shelves.map((shelf) => (
+              <div key={shelf.slug}>
+                <div className="flex items-end justify-between gap-4 mb-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h3 className="text-xl md:text-2xl font-bold text-gray-900">
+                        For the {shelf.title}
+                      </h3>
+                      <PriceBandChip band={shelf.priceBand} />
+                    </div>
+                    {shelf.persona && (
+                      <p className="text-sm text-gray-500 mt-1 max-w-2xl line-clamp-2">
+                        {shelf.persona}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href={`/shop?segment=${shelf.slug}`}
+                    className="shrink-0 text-sm font-medium text-rose-600 hover:text-rose-700 whitespace-nowrap"
+                  >
+                    See all →
+                  </a>
+                </div>
+                <ShowcaseLayout layout="carousel" gifts={shelf.gifts as any} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section id="catalog" className="max-w-6xl mx-auto px-4 py-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            {variant === "fathers-day"
+              ? `${gifts.length} Father's Day gifts, ranked`
+              : "Curated gift catalog"}
+          </h2>
+          <p className="text-gray-500 mb-8">
+            Hand-picked by our AI concierge. Click any card to see the gift and outbound to the retailer.
+          </p>
+          <ShowcaseLayout layout={layout} gifts={gifts as any} />
+        </section>
+      )}
     </main>
   );
 }

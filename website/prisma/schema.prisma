@@ -756,6 +756,12 @@ model TastemakerGift {
   reviewComment     String?
   reviewedAt        DateTime?
 
+  // Audience segments — denormalized read convenience, OWNED & WRITTEN by the
+  // Tastemaker engine (ARRAY_AGG of the gift's approved segment slugs). The
+  // SegmentProduct join table is the source of truth for ordered retrieval.
+  segmentSlugs      String[]  @default([])
+  segmentLinks      SegmentProduct[]
+
   // Timestamps
   lastScrapedAt     DateTime  @default(now())
   createdAt         DateTime  @default(now())
@@ -772,6 +778,80 @@ model TastemakerGift {
   @@index([recipientTypes(ops: ArrayOps)], type: Gin, map: "idx_gift_recipients")
   @@index([occasions(ops: ArrayOps)], type: Gin, map: "idx_gift_occasions")
   @@index([interests(ops: ArrayOps)], type: Gin, map: "idx_gift_interests")
+  @@index([segmentSlugs(ops: ArrayOps)], type: Gin, map: "idx_gift_segment_slugs")
+}
+
+// ===========================================================================
+// Audience segments (Mosaic) — OWNED & CREATED by the external Tastemaker
+// engine (/Users/arunash/tastemaker/core/db.py:ensure_table), NOT by this app.
+// The engine creates these tables via raw CREATE TABLE IF NOT EXISTS and writes
+// them daily. Declared here ONLY so `prisma db push` adopts (never drops) them.
+// Types are nullable-with-default to mirror the engine DDL byte-for-byte so
+// `db push` stays a no-op. FK + index names match the engine's so Prisma adopts
+// the existing objects instead of recreating them. A Segment is a named
+// composite persona; SegmentProduct links a gift to a segment with a
+// per-segment fit score + rank.
+// ===========================================================================
+model Segment {
+  id              String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  slug            String    @unique
+  title           String
+  persona         String?
+
+  // substrate tags (reuse the flat taxonomies in config/tags.json)
+  relationship    String?
+  interests       String[]  @default([])
+  vibe            String[]  @default([])
+  occasions       String[]  @default([])
+  ageBand         String?
+  genderLean      String?
+  priceBand       String?   @default("mid")
+
+  // lifecycle + HITL
+  status          String?   @default("pending")   // pending | approved | retired
+  source          String?   @default("curated")   // curated | discovered
+  reviewComment   String?
+  reviewedAt      DateTime?
+
+  // loop controls
+  priority        Float?    @default(1.0)          // EPC-adjusted refresh weight
+  targetSize      Int?      @default(16)
+  queryTemplates  Json?     @default("[]")
+
+  // demand + performance (engine-written)
+  demandScore     Float?    @default(0)
+  demandSignals   Json?     @default("{}")
+  epcCents        Float?    @default(0)
+  clicks30d       Int?      @default(0)
+  conversions30d  Int?      @default(0)
+
+  lastRefreshedAt DateTime?
+  createdAt       DateTime? @default(now())
+  updatedAt       DateTime? @default(now())
+
+  products        SegmentProduct[]
+
+  @@index([status], map: "idx_segment_status")
+  @@index([priority(sort: Desc)], map: "idx_segment_priority")
+}
+
+model SegmentProduct {
+  id         String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  segmentId  String
+  giftId     String
+  fitScore   Float?   @default(0)
+  rank       Int?     @default(0)
+  source     String?  @default("auto")             // auto | manual (curator pin)
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @default(now())
+
+  segment    Segment        @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  gift       TastemakerGift @relation(fields: [giftId], references: [id], onDelete: Cascade)
+
+  @@unique([segmentId, giftId])
+  @@index([segmentId, rank], map: "idx_segproduct_seg_rank")
+  @@index([segmentId, fitScore(sort: Desc)], map: "idx_segproduct_seg_fit")
+  @@index([giftId], map: "idx_segproduct_gift")
 }
 
 // QuizSession — tracks an in-progress gift-finder quiz across multiple
