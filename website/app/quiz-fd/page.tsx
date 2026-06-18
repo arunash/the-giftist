@@ -10,12 +10,11 @@ const FD_PRODUCTS = [
 ];
 
 export default function QuizFdPage() {
-  const daysToFD = 2;
+  const daysToFD = 3;
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
 
-      {/* Urgency Banner */}
       <div style={{
         background: '#dc2626',
         color: '#fff',
@@ -29,7 +28,6 @@ export default function QuizFdPage() {
         🎁 Father&apos;s Day is THIS SUNDAY — {daysToFD} days · Order now with expedited shipping
       </div>
 
-      {/* Hero */}
       <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
         Gifts dads actually want this Father&apos;s Day
       </h1>
@@ -37,7 +35,6 @@ export default function QuizFdPage() {
         Curated picks shipping in time. Click any gift to shop now.
       </p>
 
-      {/* Social Proof Bar */}
       <div style={{
         background: '#f9fafb',
         border: '1px solid #e5e7eb',
@@ -55,7 +52,6 @@ export default function QuizFdPage() {
         </div>
       </div>
 
-      {/* Product Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28 }}>
         {FD_PRODUCTS.map((p) => (
           <Link
@@ -101,14 +97,13 @@ export default function QuizFdPage() {
                 fontSize: 13,
                 fontWeight: 600,
               }}>
-                Shop Now →
+                Shop Now &rarr;
               </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Trust Footer */}
       <div style={{
         textAlign: 'center',
         color: '#888',
