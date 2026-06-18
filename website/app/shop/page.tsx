@@ -294,7 +294,7 @@ export interface SegmentShelf {
 // Mosaic: the catalog organized BY audience persona. Pulls the top-priority
 // approved segments and each one's rank-ordered gifts (SegmentProduct is the
 // source of truth for per-persona ordering). Returns one shelf per persona.
-async function fetchSegmentShelves(segLimit = 10, perSegment = 12): Promise<SegmentShelf[]> {
+async function fetchSegmentShelves(segLimit = 50, perSegment = 12): Promise<SegmentShelf[]> {
   type ShelfRow = {
     seg_slug: string; seg_title: string; seg_persona: string | null;
     seg_price: string | null;
