@@ -1,8 +1,8 @@
 import { ShopHero } from "./shop-hero";
 import { CountdownStrip } from "./countdown-strip";
-import TopPicksStrip from "./TopPicksStrip";
 import { ShopPageViewTracker } from "./page-view-tracker";
 import { ShowcaseLayout } from "./showcase-layout";
+import { PersonaNav, personaEmoji } from "./persona-nav";
 import { prisma } from "@/lib/db";
 import { createTrackedLink } from "@/lib/product-link";
 import type { Metadata } from "next";
@@ -418,8 +418,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
               ← All personas
             </a>
             <div className="mt-3 mb-2 flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                Gifts for {shelf.title}
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2.5">
+                <span aria-hidden>{personaEmoji(shelf.slug, shelf.title)}</span>
+                <span>Gifts for {shelf.title}</span>
               </h2>
               <PriceBandChip band={shelf.priceBand} />
             </div>
@@ -461,8 +462,18 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       {/* Hero — affiliate-first by default, WA secondary */}
       <ShopHero variant={variant} recipientName={recipientName} />
 
-      {/* Curated top picks above the fold — biggest click driver per the data */}
-      <TopPicksStrip />
+      {/* Mosaic persona quick-nav — the primary affordance: jump straight to
+          the segment you're shopping for. Only rendered for the persona-shelf
+          (default) view; FD keeps its single dad-focused grid. */}
+      {variant === "default" && shelves.length > 0 && (
+        <PersonaNav
+          personas={shelves.map((s) => ({
+            slug: s.slug,
+            title: s.title,
+            priceBand: s.priceBand,
+          }))}
+        />
+      )}
 
       {/* Most clicked this week — data-driven social proof. Server-rendered
           from real ClickEvent counts joined to the approved catalog. Only
@@ -475,7 +486,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </h2>
             <span className="text-xs text-gray-400">based on real Giftist traffic</span>
           </div>
-          <ShowcaseLayout layout="grid" gifts={topClicked as any} />
+          <ShowcaseLayout layout="carousel" gifts={topClicked as any} />
         </section>
       )}
 
@@ -492,12 +503,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           </p>
           <div className="space-y-12">
             {shelves.map((shelf) => (
-              <div key={shelf.slug}>
+              <div key={shelf.slug} id={`seg-${shelf.slug}`} className="scroll-mt-6">
                 <div className="flex items-end justify-between gap-4 mb-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <h3 className="text-xl md:text-2xl font-bold text-gray-900">
-                        For the {shelf.title}
+                      <h3 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+                        <span aria-hidden>{personaEmoji(shelf.slug, shelf.title)}</span>
+                        <span>{shelf.title}</span>
                       </h3>
                       <PriceBandChip band={shelf.priceBand} />
                     </div>
