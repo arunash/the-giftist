@@ -1,40 +1,26 @@
 import Link from 'next/link';
 
-const FD_PRODUCTS = [
+const PRODUCTS = [
   { slug: 'nKB-SPAQ', name: 'Anker Power Bank 200W', price: '$89', emoji: '🔋', badge: '🔥 #1 this week' },
   { slug: '0SlUlvJE', name: 'Victorinox Multi-Tool', price: '$95', emoji: '🔧', badge: '🔥 #2 this week' },
   { slug: 'GmY_aTcb', name: 'SKG Neck Massager', price: '$129', emoji: '💆', badge: '🔥 #3 this week' },
   { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers', price: '$28', emoji: '🗂️', badge: null },
   { slug: 'LZl79hpy', name: 'Dad Joke QR Mug', price: '$19', emoji: '☕', badge: null },
-  { slug: '1rmUI4g4', name: 'Noise-Canceling Headphones', price: '$249', emoji: '🎧', badge: null },
 ];
 
 export default function QuizFdPage() {
-  const daysToFD = 3;
-
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
 
-      <div style={{
-        background: '#dc2626',
-        color: '#fff',
-        padding: '10px 16px',
-        borderRadius: 8,
-        textAlign: 'center',
-        fontWeight: 700,
-        fontSize: 15,
-        marginBottom: 16,
-      }}>
-        🎁 Father&apos;s Day is THIS SUNDAY — {daysToFD} days · Order now with expedited shipping
-      </div>
-
-      <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2 }}>
-        Gifts dads actually want this Father&apos;s Day
+      {/* Hero */}
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px', lineHeight: 1.2 }}>
+        Find the perfect birthday gift
       </h1>
-      <p style={{ color: '#555', margin: '0 0 16px', fontSize: 15 }}>
-        Curated picks shipping in time. Click any gift to shop now.
+      <p style={{ color: '#555', margin: '0 0 20px', fontSize: 16 }}>
+        Curated gifts people actually want. Click any pick to shop now.
       </p>
 
+      {/* Social Proof Bar */}
       <div style={{
         background: '#f9fafb',
         border: '1px solid #e5e7eb',
@@ -52,18 +38,19 @@ export default function QuizFdPage() {
         </div>
       </div>
 
+      {/* Product Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28 }}>
-        {FD_PRODUCTS.map((p) => (
+        {PRODUCTS.map((p) => (
           <Link
             key={p.slug}
             href={`/p/${p.slug}`}
             style={{ textDecoration: 'none', color: 'inherit' }}
           >
             <div style={{
-              border: p.badge ? '2px solid #dc2626' : '1px solid #e5e7eb',
+              border: p.badge ? '2px solid #2563eb' : '1px solid #e5e7eb',
               borderRadius: 10,
               padding: '14px 12px',
-              background: p.badge ? '#fff5f5' : '#fff',
+              background: p.badge ? '#eff6ff' : '#fff',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
@@ -74,8 +61,8 @@ export default function QuizFdPage() {
                 <span style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#dc2626',
-                  background: '#fee2e2',
+                  color: '#2563eb',
+                  background: '#dbeafe',
                   borderRadius: 4,
                   padding: '2px 6px',
                   alignSelf: 'flex-start',
@@ -104,6 +91,7 @@ export default function QuizFdPage() {
         ))}
       </div>
 
+      {/* Trust Footer */}
       <div style={{
         textAlign: 'center',
         color: '#888',
@@ -111,9 +99,9 @@ export default function QuizFdPage() {
         borderTop: '1px solid #f0f0f0',
         paddingTop: 20,
       }}>
-        <div style={{ marginBottom: 6 }}>✅ Curated from Wirecutter, Strategist, Reddit top picks</div>
-        <div style={{ marginBottom: 6 }}>🚚 Ships in time for Father&apos;s Day with expedited shipping</div>
-        <div>Powered by <strong>Giftist</strong> — AI gift concierge</div>
+        <div style={{ marginBottom: 6 }}>&#x2705; Curated from Wirecutter, Strategist, Reddit top picks</div>
+        <div style={{ marginBottom: 6 }}>&#x1F6E1;&#xFE0F; Free shipping available on most items</div>
+        <div>Powered by <strong>Giftist</strong> &mdash; AI gift concierge</div>
       </div>
 
     </main>
