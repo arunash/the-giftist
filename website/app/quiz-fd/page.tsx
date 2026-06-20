@@ -17,7 +17,7 @@ export default function QuizFdPage() {
         Find the perfect birthday gift
       </h1>
       <p style={{ color: '#555', margin: '0 0 20px', fontSize: 16 }}>
-        Curated gifts people actually want. Click any pick to shop now.
+        Curated gifts people actually love. Click any pick to shop now.
       </p>
 
       {/* Social Proof Bar */}
