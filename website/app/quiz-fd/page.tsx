@@ -1,11 +1,11 @@
 import Link from 'next/link';
 
 const PRODUCTS = [
-  { slug: 'nKB-SPAQ', name: 'Anker Power Bank 200W', price: '$89', emoji: '🔋', badge: '🔥 #1 this week' },
-  { slug: '0SlUlvJE', name: 'Victorinox Multi-Tool', price: '$95', emoji: '🔧', badge: '🔥 #2 this week' },
-  { slug: 'GmY_aTcb', name: 'SKG Neck Massager', price: '$129', emoji: '💆', badge: '🔥 #3 this week' },
-  { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers', price: '$28', emoji: '🗂️', badge: null },
-  { slug: 'LZl79hpy', name: 'Dad Joke QR Mug', price: '$19', emoji: '☕', badge: null },
+  { slug: '1rmUI4g4', name: 'Noise-Canceling Headphones', price: '$279', emoji: '🎧', badge: '🔥 #1 this week' },
+  { slug: 'nKB-SPAQ', name: 'Anker Power Bank 200W', price: '$89', emoji: '🔋', badge: '🔥 #2 this week' },
+  { slug: '0SlUlvJE', name: 'Victorinox Multi-Tool', price: '$95', emoji: '🔧', badge: '🔥 #3 this week' },
+  { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers (Set of 6)', price: '$28', emoji: '🗂️', badge: null },
+  { slug: 'NYajeiyE', name: 'Cast Iron Potato Baker', price: '$35', emoji: '🥔', badge: null },
 ];
 
 export default function QuizFdPage() {
@@ -17,7 +17,7 @@ export default function QuizFdPage() {
         Find the perfect birthday gift
       </h1>
       <p style={{ color: '#555', margin: '0 0 20px', fontSize: 16 }}>
-        Curated gifts people actually love. Click any pick to shop now.
+        Curated gifts people actually love — not another gift card. Click any pick to shop now.
       </p>
 
       {/* Social Proof Bar */}
@@ -99,7 +99,7 @@ export default function QuizFdPage() {
         borderTop: '1px solid #f0f0f0',
         paddingTop: 20,
       }}>
-        <div style={{ marginBottom: 6 }}>&#x2705; Curated from Wirecutter, Strategist, Reddit top picks</div>
+        <div style={{ marginBottom: 6 }}>&#x2705; Curated from Wirecutter, Strategist &amp; Reddit top picks</div>
         <div style={{ marginBottom: 6 }}>&#x1F6E1;&#xFE0F; Free shipping available on most items</div>
         <div>Powered by <strong>Giftist</strong> &mdash; AI gift concierge</div>
       </div>
