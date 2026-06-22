@@ -8,16 +8,30 @@ const PRODUCTS = [
   { slug: 'NYajeiyE', name: 'Cast Iron Potato Baker', price: '$35', emoji: '🥔', badge: null },
 ];
 
-export default function QuizFdPage() {
+interface Props {
+  searchParams?: { v?: string };
+}
+
+export default function QuizFdPage({ searchParams }: Props) {
+  const isVariantB = searchParams?.v === 'b';
+
+  const headline = isVariantB
+    ? 'They already have everything. That\'s what makes this hard.'
+    : 'Find the perfect birthday gift';
+
+  const subhead = isVariantB
+    ? 'These are the gifts that actually surprise people — curated from Wirecutter, Reddit, and 10,000 gift shoppers.'
+    : 'Curated gifts people actually love — not another gift card. Click any pick to shop now.';
+
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
 
       {/* Hero */}
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px', lineHeight: 1.2 }}>
-        Find the perfect birthday gift
+      <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 8px', lineHeight: 1.25 }}>
+        {headline}
       </h1>
-      <p style={{ color: '#555', margin: '0 0 20px', fontSize: 16 }}>
-        Curated gifts people actually love — not another gift card. Click any pick to shop now.
+      <p style={{ color: '#555', margin: '0 0 20px', fontSize: 15 }}>
+        {subhead}
       </p>
 
       {/* Social Proof Bar */}
@@ -99,8 +113,8 @@ export default function QuizFdPage() {
         borderTop: '1px solid #f0f0f0',
         paddingTop: 20,
       }}>
-        <div style={{ marginBottom: 6 }}>&#x2705; Curated from Wirecutter, Strategist &amp; Reddit top picks</div>
-        <div style={{ marginBottom: 6 }}>&#x1F6E1;&#xFE0F; Free shipping available on most items</div>
+        <div style={{ marginBottom: 6 }}>✅ Curated from Wirecutter, Strategist &amp; Reddit top picks</div>
+        <div style={{ marginBottom: 6 }}>🛡️ Free shipping available on most items</div>
         <div>Powered by <strong>Giftist</strong> &mdash; AI gift concierge</div>
       </div>
 
