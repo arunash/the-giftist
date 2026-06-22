@@ -6,6 +6,7 @@ const PRODUCTS = [
   { slug: '0SlUlvJE', name: 'Victorinox Multi-Tool', price: '$95', emoji: '🔧', badge: '🔥 #3 this week' },
   { slug: 'gyh4ZNpJ', name: 'Clear Shelf Dividers (Set of 6)', price: '$28', emoji: '🗂️', badge: null },
   { slug: 'NYajeiyE', name: 'Cast Iron Potato Baker', price: '$35', emoji: '🥔', badge: null },
+  { slug: 'LZl79hpy', name: 'Dad Joke QR Mug', price: '$28', emoji: '☕', badge: null },
 ];
 
 interface Props {
@@ -17,11 +18,11 @@ export default function QuizFdPage({ searchParams }: Props) {
 
   const headline = isVariantB
     ? 'They already have everything. That\'s what makes this hard.'
-    : 'Find the perfect birthday gift';
+    : 'Find the perfect gift for any occasion';
 
   const subhead = isVariantB
     ? 'These are the gifts that actually surprise people — curated from Wirecutter, Reddit, and 10,000 gift shoppers.'
-    : 'Curated gifts people actually love — not another gift card. Click any pick to shop now.';
+    : 'Birthday, anniversary, or just because — curated gifts people actually love, not another gift card.';
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 600, margin: '0 auto', padding: '16px 16px 40px' }}>
@@ -102,6 +103,27 @@ export default function QuizFdPage({ searchParams }: Props) {
               </div>
             </div>
           </Link>
+        ))}
+      </div>
+
+      {/* Occasion Chips */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+        marginBottom: 24,
+      }}>
+        {['🎂 Birthday', '💍 Anniversary', '🎉 Just Because', '🙏 Thank You'].map((label) => (
+          <span key={label} style={{
+            background: '#f3f4f6',
+            borderRadius: 20,
+            padding: '4px 12px',
+            fontSize: 13,
+            color: '#374151',
+            fontWeight: 500,
+          }}>
+            {label}
+          </span>
         ))}
       </div>
 
